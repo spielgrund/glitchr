@@ -1,0 +1,15 @@
+Effekte Geometrisch erweitern
+Fernseh Effekt mit Wölbung
+Joy Division
+Noise mit verschiedenen Blendmodi
+Alle Effekte einen Random Seed.
+Loop in Sekunden -> Frames die Sekunde
+Export als gif und mp4
+
+wav effekt
+
+sharpen
+erosion
+Hologramm
+Cloudy
+Mandala
