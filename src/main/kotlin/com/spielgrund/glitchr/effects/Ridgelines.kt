@@ -33,7 +33,7 @@ import kotlin.math.sin
  * of horizontal lines that rise where it is bright. The lines are drawn from the back
  * (top) to the front (bottom), and every line hides the ones behind it.
  */
-object Ridgelines : Effect("ridgelines", "Joy Division", "Gestapelte Linien, die sich mit dem Bild auftürmen – wie „Unknown Pleasures“") {
+object Ridgelines : Effect("ridgelines", "Spektroskop", "Gestapelte Linien, die sich mit dem Bild auftürmen – wie „Unknown Pleasures“") {
     override val params = listOf(
         Param.Slider("spacing", "Linienabstand", 3, 200, 12, " px"),
         Param.Slider("angle", "Winkel", 0, 359, 0, "°", "Dreht die Linien; die Berge wachsen immer quer zu den Linien"),

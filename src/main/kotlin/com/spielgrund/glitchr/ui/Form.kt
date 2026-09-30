@@ -84,20 +84,32 @@ class ColorField(rgb: Int, private val title: String, private val onChange: (Int
  * Slider with an editable number field next to it; double-clicking the slider resets it
  * to [default]. [onChange] is called with every new value.
  */
-class SliderField(min: Int, max: Int, value: Int, private val default: Int, unit: String = "", onChange: (Int) -> Unit) :
-    JPanel(GridBagLayout()) {
+/**
+ * Slider with a number field for a whole-number value. With [decimals], the field shows
+ * the value divided by 10^decimals (and steps by the smallest decimal place).
+ */
+class SliderField(
+    min: Int, max: Int, value: Int, private val default: Int, unit: String = "", decimals: Int = 0, onChange: (Int) -> Unit,
+) : JPanel(GridBagLayout()) {
+    private val factor = Math.pow(10.0, decimals.toDouble())
     private val slider = JSlider(min, max, value.coerceIn(min, max))
-    private val spinner = JSpinner(SpinnerNumberModel(value.coerceIn(min, max), min, max, 1))
+    private val spinner = if (decimals == 0) JSpinner(SpinnerNumberModel(value.coerceIn(min, max), min, max, 1))
+    else JSpinner(SpinnerNumberModel(value.coerceIn(min, max) / factor, min / factor, max / factor, 1 / factor)).apply {
+        editor = JSpinner.NumberEditor(this, "0." + "0".repeat(decimals))
+    }
+
+    /** The spinner's value as stored whole number. */
+    private val spinnerValue get() = ((spinner.value as Number).toDouble() * factor).let { Math.round(it).toInt() }
 
     init {
         isOpaque = false
         slider.preferredSize = Dimension(80, slider.preferredSize.height)
-        (spinner.editor as JSpinner.DefaultEditor).textField.columns = 4
+        (spinner.editor as JSpinner.DefaultEditor).textField.columns = 4 + decimals
         slider.addChangeListener {
-            if (spinner.value != slider.value) spinner.value = slider.value
+            if (spinnerValue != slider.value) spinner.value = if (decimals == 0) slider.value else slider.value / factor
         }
         spinner.addChangeListener {
-            val v = spinner.value as Int
+            val v = spinnerValue
             if (slider.value != v) slider.value = v
             onChange(v)
         }

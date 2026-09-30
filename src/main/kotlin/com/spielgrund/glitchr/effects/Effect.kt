@@ -7,10 +7,12 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
     /**
      * [max] is the upper end of the slider; with [canvasMax] the editor uses the larger
      * side of the canvas instead (for lengths that should be able to span the whole picture).
+     * With [decimals], the stored whole number is shown with that many decimal places
+     * (decimals = 1: 125 is 12.5).
      */
     class Slider(
         key: String, label: String, val min: Int, val max: Int, default: Int,
-        val unit: String = "", tip: String? = null, val canvasMax: Boolean = false,
+        val unit: String = "", tip: String? = null, val canvasMax: Boolean = false, val decimals: Int = 0,
     ) : Param(key, label, default, tip) {
         /** Upper end of the slider on a [width]×[height] canvas. */
         fun maxFor(width: Int, height: Int) = if (canvasMax) kotlin.math.max(min + 1, kotlin.math.max(width, height)) else max
@@ -25,8 +27,17 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
     /** A line of text; stored separately from the numbers (see [Values.text]). */
     open class Text(key: String, label: String, val defaultText: String, tip: String? = null) : Param(key, label, 0, tip)
 
+    /** A color ramp (see [ColorRamp]); stored as text, edited in a gradient editor. */
+    class Ramp(key: String, label: String, defaultText: String, tip: String? = null) : Text(key, label, defaultText, tip)
+
+    /** Tone curves (see [Curves]); stored as text, edited in a curve editor. */
+    class Curve(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+
     /** Strokes drawn on the canvas (see [FlowStrokes]); stored as text, edited by dragging in the picture. */
     class Flow(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+
+    /** A heading that starts a new group of settings in the editor; stores nothing meaningful. */
+    class Heading(key: String, label: String) : Param(key, label, 0, null)
 
     /** An RGB color, stored as 0xRRGGBB. */
     class Color(key: String, label: String, default: Int, tip: String? = null) :
@@ -67,8 +78,8 @@ abstract class Effect(val id: String, val name: String, val description: String)
 /** All available effects, in menu order. */
 object Effects {
     val all: List<Effect> = listOf(
-        PixelSort, PixelBleed, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Blur, Sharpen, BlockGlitch, Bitcrush,
-        Particles, Displace, Flow, Erosion, ErosionFast, NoiseField, ColorPattern, Geometric, Kaleidoscope, Generative, GridModules, Characters, Ridgelines, Lens, Hologram, Television,
+        PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Transform, Blur, Sharpen, BlockGlitch, Bitcrush, ColorCorrect, Ramp, LabColor,
+        Particles, Displace, Flow, Erosion, ErosionFast, Grow, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Hologram, Television,
     )
 
     fun byId(id: String) = all.first { it.id == id }

@@ -37,7 +37,7 @@ object Characters : Effect("chars", "Zeichen", "Baut das Bild aus ASCII-Zeichen,
         "Matrix" to " ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ",
         "Eigener Text" to "",
     )
-    private const val OWN_TEXT = 7
+    internal const val OWN_TEXT = 7
     private val fonts = listOf(Font.MONOSPACED, Font.SANS_SERIF, Font.SERIF)
 
     override val params = listOf(

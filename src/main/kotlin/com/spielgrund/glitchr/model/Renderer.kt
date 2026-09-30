@@ -1,5 +1,6 @@
 package com.spielgrund.glitchr.model
 
+import com.spielgrund.glitchr.effects.Generator
 import com.spielgrund.glitchr.effects.Values
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.image.alpha
@@ -10,15 +11,15 @@ import com.spielgrund.glitchr.image.lerpArgb
 import com.spielgrund.glitchr.image.parallelRows
 import com.spielgrund.glitchr.image.red
 import java.awt.RenderingHints
-import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Renders the layer stack onto a transparent canvas. The stack is split into groups:
- * an image layer and the effect layers above it. Each group's picture is placed on
- * the canvas, cut out by the image layer's mask, run through its effects and then laid
- * over the canvas below.
+ * a source layer and the effect layers above it. Each group's picture is placed on the
+ * canvas (or generated in canvas size), cut out by the source layer's mask, run through
+ * its effects and then laid over the canvas below.
  *
  * Every step is cached and only recomputed when its input or its own settings
  * changed; inputs are compared by identity, which works because cached results are
@@ -49,20 +50,27 @@ class Renderer {
     private val images = HashMap<Int, ImageEntry>()
     private var empty: Pixels? = null
 
-    /** [layers] bottom first; effect layers below the first image layer have nothing to work on and are skipped. */
+    /** The last pictures of the generator layers, by layer id; readable from any thread. */
+    private val generatedPictures = ConcurrentHashMap<Int, Pixels>()
+
+    /** The picture the generator layer [id] made in the last render; null if it hasn't been rendered yet. */
+    fun generated(id: Int): Pixels? = generatedPictures[id]
+
+    /** [layers] bottom first; effect layers below the first source layer have nothing to work on and are skipped. */
     @Synchronized
     fun render(width: Int, height: Int, layers: List<LayerState>): Pixels {
         val ids = layers.map { it.id }.toSet()
         effects.keys.retainAll(ids)
         images.keys.retainAll(ids)
+        generatedPictures.keys.retainAll(ids)
 
         var canvas = empty?.takeIf { it.width == width && it.height == height } ?: Pixels(width, height).also { empty = it }
         val blank = canvas
         var i = 0
         while (i < layers.size) {
-            val image = layers[i] as? ImageState
+            val image = layers[i] as? SourceState
             var end = i + 1
-            while (end < layers.size && layers[end] !is ImageState) end++
+            while (end < layers.size && layers[end] !is SourceState) end++
             if (image != null && image.visible && image.opacity > 0) {
                 val groupEffects = layers.subList(i + 1, end).filterIsInstance<EffectState>()
                 canvas = renderGroup(image, groupEffects, canvas, blank, width, height)
@@ -73,17 +81,24 @@ class Renderer {
     }
 
     private fun renderGroup(
-        image: ImageState, groupEffects: List<EffectState>, below: Pixels, blank: Pixels, width: Int, height: Int,
+        image: SourceState, groupEffects: List<EffectState>, below: Pixels, blank: Pixels, width: Int, height: Int,
     ): Pixels {
         val entry = images.getOrPut(image.id) { ImageEntry() }
-        val placeKey = listOf(image.image, image.x, image.y, image.scale, image.smooth, width, height)
+        val placeKey = when (image) {
+            is ImageState -> listOf(image.image, image.x, image.y, image.scale, image.smooth, image.rotation, width, height)
+            is GeneratorState -> listOf(image.generator.id, image.values, image.seed, image.texts, width, height)
+        }
         if (entry.placeKey != placeKey || entry.placed == null) {
-            entry.placed = place(image, width, height)
+            entry.placed = when (image) {
+                is ImageState -> place(image, width, height)
+                is GeneratorState -> image.generator.generate(width, height, Values(image.values, image.texts), image.seed)
+            }
             entry.placeKey = placeKey
             entry.cut = null
         }
+        if (image is GeneratorState) generatedPictures[image.id] = entry.placed!!
         // masks of this group lie on the placed picture, so they move and scale with it
-        val space = spaceOf(image)
+        val space = spaceOf(image, width, height)
 
         // the image layer's own mask cuts the picture out first, so the effects can reach
         // beyond the cut edge instead of being clipped by it afterwards
@@ -129,12 +144,26 @@ class Renderer {
     companion object {
         /** The canvas rectangle covered by the picture of [image]; its group's masks span it. */
         fun spaceOf(image: ImageState) =
-            MaskSpace(image.x, image.y, image.image.width * image.scale, image.image.height * image.scale)
+            MaskSpace(image.x, image.y, image.image.width * image.scale, image.image.height * image.scale, Math.toRadians(image.rotation))
+
+        /** Like [spaceOf]: for a generated picture the canvas, moved, scaled and turned by its position. */
+        fun spaceOf(source: SourceState, width: Int, height: Int) = when (source) {
+            is ImageState -> spaceOf(source)
+            is GeneratorState -> {
+                fun value(key: String, default: Int) = source.values[key] ?: default
+                val scale = value(Generator.POS_SCALE, 1000) / 1000.0
+                val w = width * scale
+                val h = height * scale
+                val cx = width / 2.0 + value(Generator.POS_X, 0) / 10.0
+                val cy = height / 2.0 + value(Generator.POS_Y, 0) / 10.0
+                MaskSpace(cx - w / 2, cy - h / 2, w, h, Math.toRadians(value(Generator.POS_ROTATION, 0) / 10.0))
+            }
+        }
 
         /** The picture of [layer] drawn onto a transparent canvas; the picture itself if it already fits exactly. */
         fun place(layer: ImageState, width: Int, height: Int): Pixels {
             val img = layer.image
-            if (layer.x == 0.0 && layer.y == 0.0 && layer.scale == 1.0 && img.width == width && img.height == height) return img
+            if (layer.x == 0.0 && layer.y == 0.0 && layer.scale == 1.0 && layer.rotation == 0.0 && img.width == width && img.height == height) return img
             val canvas = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
             canvas.createGraphics().apply {
                 setRenderingHint(
@@ -142,7 +171,7 @@ class Renderer {
                     if (layer.smooth) RenderingHints.VALUE_INTERPOLATION_BILINEAR
                     else RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR,
                 )
-                drawImage(img.toImage(), AffineTransform(layer.scale, 0.0, 0.0, layer.scale, layer.x, layer.y), null)
+                drawImage(img.toImage(), placement(img.width, img.height, layer.x, layer.y, layer.scale, layer.rotation), null)
                 dispose()
             }
             return Pixels(width, height, (canvas.raster.dataBuffer as DataBufferInt).data)

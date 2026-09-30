@@ -1,13 +1,14 @@
 package com.spielgrund.glitchr.project
 
 import com.google.gson.GsonBuilder
-import com.spielgrund.glitchr.effects.Effect
 import com.spielgrund.glitchr.effects.Effects
+import com.spielgrund.glitchr.effects.Generators
 import com.spielgrund.glitchr.effects.Param
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.model.BlendMode
 import com.spielgrund.glitchr.model.DocState
 import com.spielgrund.glitchr.model.EffectMemento
+import com.spielgrund.glitchr.model.GeneratorMemento
 import com.spielgrund.glitchr.model.ImageMemento
 import com.spielgrund.glitchr.model.Layer
 import com.spielgrund.glitchr.model.LayerMemento
@@ -29,7 +30,8 @@ import javax.imageio.ImageIO
  * `.glitchr` files are ZIP archives: `project.json` with all layer settings, every picture
  * of an image layer as PNG under `images/` (stored once, even when several layers share
  * it) and every painted mask as a grayscale PNG under `masks/`, so a project stays
- * complete when the original pictures are moved or deleted.
+ * complete when the original pictures are moved or deleted. Generator layers only store
+ * their settings; their picture is made anew when the project is opened.
  *
  * Version 1 files had a single source picture (`source.png`) and only effect layers;
  * they load with that picture as the bottom image layer.
@@ -156,9 +158,10 @@ private data class ProjectDto(
 )
 
 private data class LayerDto(
-    /** "effect" or "image"; version 1 only had effects. */
+    /** "effect", "image" or "generator"; version 1 only had effects. */
     val type: String = "effect",
     val effect: String = "",
+    val generator: String = "",
     val name: String? = null,
     val visible: Boolean = true,
     val opacity: Int = 100,
@@ -170,6 +173,7 @@ private data class LayerDto(
     val x: Double = 0.0,
     val y: Double = 0.0,
     val scale: Double = 1.0,
+    val rotation: Double = 0.0,
     val smooth: Boolean = true,
     val mask: MaskDto = MaskDto(),
 )
@@ -203,9 +207,13 @@ private fun LayerMemento.toDto(maskPath: String?, imagePath: String?): LayerDto 
             type = "effect", effect = effect.id, name = name, visible = visible, opacity = opacity,
             blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto,
         )
+        is GeneratorMemento -> LayerDto(
+            type = "generator", generator = generator.id, name = name, visible = visible, opacity = opacity,
+            blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto,
+        )
         is ImageMemento -> LayerDto(
             type = "image", name = name, visible = visible, opacity = opacity, blend = blend.name,
-            image = imagePath, x = x, y = y, scale = scale, smooth = smooth, mask = maskDto,
+            image = imagePath, x = x, y = y, scale = scale, rotation = rotation, smooth = smooth, mask = maskDto,
         )
     }
 }
@@ -237,6 +245,23 @@ private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels)
             y = y,
             scale = scale.takeIf { it > 0 } ?: 1.0,
             smooth = smooth,
+            rotation = rotation,
+        )
+    }
+    if (type == "generator") {
+        val generator = Generators.byId(generator)
+            ?: error("Unbekannter Generator „$generator“ – stammt die Datei von einer neueren GlitchR-Version?")
+        return GeneratorMemento(
+            id = Layer.newId(),
+            name = name ?: generator.name,
+            visible = visible,
+            opacity = opacity.coerceIn(0, 100),
+            blend = enumOr(blend, BlendMode.NORMAL),
+            mask = maskMemento,
+            generator = generator,
+            values = checkedValues(generator.params, generator.defaults(), values),
+            seed = seed,
+            texts = generator.textDefaults().apply { putAll(texts.filterKeys { it in keys }) },
         )
     }
     val effect = Effects.all.firstOrNull { it.id == effect }
@@ -249,7 +274,7 @@ private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels)
         blend = enumOr(blend, BlendMode.NORMAL),
         mask = maskMemento,
         effect = effect,
-        values = checkedValues(effect, values),
+        values = checkedValues(effect.params, effect.defaults(), values),
         seed = seed,
         texts = effect.textDefaults().apply { putAll(texts.filterKeys { it in keys }) },
     )
@@ -259,16 +284,17 @@ private fun emptyMask() = MaskMemento(
     MaskMode.OFF, false, RelPoint(0.5, 0.0), RelPoint(0.5, 1.0), RelPoint(0.5, 0.5), RelPoint(0.5, 0.05), null, 0, 0,
 )
 
-/** The effect's defaults, overridden by the stored values that still exist and are in range. */
-private fun checkedValues(effect: Effect, stored: Map<String, Int>): Map<String, Int> {
-    val values = effect.defaults()
-    for (p in effect.params) {
+/** The [defaults], overridden by the stored values of [params] that still exist and are in range. */
+private fun checkedValues(params: List<Param>, defaults: MutableMap<String, Int>, stored: Map<String, Int>): Map<String, Int> {
+    val values = defaults
+    for (p in params) {
         val v = stored[p.key] ?: continue
         values[p.key] = when (p) {
             // canvas-sized lengths may exceed the default range on big canvases
             is Param.Slider -> if (p.canvasMax) v.coerceAtLeast(p.min) else v.coerceIn(p.min, p.max)
             is Param.Choice -> v.coerceIn(0, p.options.size - 1)
             is Param.Toggle -> if (v != 0) 1 else 0
+            is Param.Heading -> 0
             is Param.Color -> v and 0xFFFFFF
             is Param.Text -> 0
         }

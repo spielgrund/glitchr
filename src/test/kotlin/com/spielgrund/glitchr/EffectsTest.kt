@@ -52,8 +52,9 @@ class EffectsTest {
             assertEquals(src.width, a.width, effect.name)
             assertEquals(src.height, a.height, effect.name)
             assertContentEquals(a.data, b.data, "${effect.name} ist nicht deterministisch")
-            // Flow starts at 0 % offset on purpose: first the direction is drawn, then the picture moves
-            if (effect.id != "flow") assertFalse(a.data.contentEquals(src.data), "${effect.name} ändert nichts")
+            // Flow starts at 0 % offset on purpose: first the direction is drawn, then the picture moves;
+            // the color correction starts neutral, every change is the user's
+            if (effect.id !in setOf("flow", "colorcorrect")) assertFalse(a.data.contentEquals(src.data), "${effect.name} ändert nichts")
             ImageIO.write(a.toImage(), "png", File(outDir, "${effect.id}.png"))
         }
     }

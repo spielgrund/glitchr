@@ -1,6 +1,8 @@
 package com.spielgrund.glitchr.model
 
 import com.spielgrund.glitchr.effects.Effect
+import com.spielgrund.glitchr.effects.Generator
+import com.spielgrund.glitchr.effects.Param
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.image.alpha
 import com.spielgrund.glitchr.image.argb
@@ -34,9 +36,9 @@ enum class BlendMode(val label: String, private val f: (Int, Int) -> Int) {
 private val nextId = AtomicInteger()
 
 /**
- * An entry of the layer stack: either a picture ([ImageLayer]) or an effect
- * ([EffectLayer]). Effects work on the nearest image layer below them; that image
- * with its effects is then laid over everything further down.
+ * An entry of the layer stack: a picture source ([SourceLayer]: a loaded picture or a
+ * generated one) or an effect ([EffectLayer]). Effects work on the nearest source layer
+ * below them; that picture with its effects is then laid over everything further down.
  */
 sealed class Layer(val id: Int) {
     companion object {
@@ -67,14 +69,33 @@ sealed class Layer(val id: Int) {
     }
 }
 
-/** A destructive effect applied to the image layer below it. */
-class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id) {
+/** A layer whose settings are built from [Param]s: an effect or a generator. */
+interface ParamLayer {
+    val params: List<Param>
+    val values: MutableMap<String, Int>
+    val texts: MutableMap<String, String>
+
+    /** Whether the result depends on the seed, i.e. whether "Neu würfeln" makes sense. */
+    val random: Boolean
+
+    fun defaults(): Map<String, Int>
+    fun textDefaults(): Map<String, String>
+    fun reseed()
+}
+
+/** A destructive effect applied to the source layer below it. */
+class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id), ParamLayer {
     override var name = effect.name
-    val values = effect.defaults()
-    val texts = effect.textDefaults()
+    override val values = effect.defaults()
+    override val texts = effect.textDefaults()
     var seed = Random.nextLong()
 
-    fun reseed() {
+    override val params get() = effect.params
+    override val random get() = effect.random
+    override fun defaults() = effect.defaults()
+    override fun textDefaults() = effect.textDefaults()
+
+    override fun reseed() {
         seed = Random.nextLong()
     }
 
@@ -90,21 +111,61 @@ class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id) {
     override fun state() = EffectState(id, visible, opacity, blend, mask.shape(), mask.version, effect, values.toMap(), seed, texts.toMap())
 }
 
+/** A layer that brings a picture: effects above it work on it, up to the next source layer. */
+sealed class SourceLayer(id: Int) : Layer(id)
+
+/**
+ * A picture made from nothing by a [Generator] (noise, patterns …), always as large as
+ * the canvas. Like an image layer, the effects above it work on it.
+ */
+class GeneratorLayer(val generator: Generator, id: Int = newId()) : SourceLayer(id), ParamLayer {
+    override var name = generator.name
+    override val values = generator.defaults()
+    override val texts = generator.textDefaults()
+    var seed = Random.nextLong()
+
+    override val params get() = generator.params
+    override val random get() = generator.random
+    override fun defaults() = generator.defaults()
+    override fun textDefaults() = generator.textDefaults()
+
+    override fun reseed() {
+        seed = Random.nextLong()
+    }
+
+    override fun duplicate() = GeneratorLayer(generator).also { copy ->
+        copyCommonTo(copy)
+        copy.values.putAll(values)
+        copy.texts.putAll(texts)
+        copy.seed = seed
+    }
+
+    override fun memento() = GeneratorMemento(id, name, visible, opacity, blend, mask.memento(), generator, values.toMap(), seed, texts.toMap())
+
+    override fun state() = GeneratorState(id, visible, opacity, blend, mask.shape(), mask.version, generator, values.toMap(), seed, texts.toMap())
+}
+
 /**
  * A picture placed on the canvas: its top-left corner at ([x], [y]) canvas pixels,
- * drawn [scale] times its own size.
+ * drawn [scale] times its own size and turned by [rotation] degrees around its middle.
  */
-class ImageLayer(val image: Pixels, id: Int = newId()) : Layer(id) {
+class ImageLayer(val image: Pixels, id: Int = newId()) : SourceLayer(id) {
     override var name = "Bild"
     var x = 0.0
     var y = 0.0
     var scale = 1.0
 
+    /** Degrees, clockwise, around the middle of the placed picture. */
+    var rotation = 0.0
+
     /** Smooth (bilinear) scaling; off gives hard nearest-neighbour pixels. */
     var smooth = true
 
-    /** Placed area in canvas pixels. */
+    /** Placed area in canvas pixels, before turning. */
     val bounds get() = Rectangle2D.Double(x, y, image.width * scale, image.height * scale)
+
+    /** Picture pixels → canvas pixels. */
+    fun toCanvas() = placement(image.width, image.height, x, y, scale, rotation)
 
     /** Scales the picture to fit into (or, with [cover], to cover) a canvas and centers it. */
     fun fitInto(width: Int, height: Int, cover: Boolean = false, onlyShrink: Boolean = false) {
@@ -126,12 +187,13 @@ class ImageLayer(val image: Pixels, id: Int = newId()) : Layer(id) {
         copy.x = x
         copy.y = y
         copy.scale = scale
+        copy.rotation = rotation
         copy.smooth = smooth
     }
 
-    override fun memento() = ImageMemento(id, name, visible, opacity, blend, mask.memento(), image, x, y, scale, smooth)
+    override fun memento() = ImageMemento(id, name, visible, opacity, blend, mask.memento(), image, x, y, scale, smooth, rotation)
 
-    override fun state() = ImageState(id, visible, opacity, blend, mask.shape(), mask.version, image, x, y, scale, smooth)
+    override fun state() = ImageState(id, visible, opacity, blend, mask.shape(), mask.version, image, x, y, scale, smooth, rotation)
 
     /** The picture drawn onto a transparent canvas of the given size. */
     fun placed(width: Int, height: Int) = Renderer.place(state(), width, height)
@@ -174,6 +236,30 @@ data class EffectMemento(
     }
 }
 
+data class GeneratorMemento(
+    override val id: Int,
+    override val name: String,
+    override val visible: Boolean,
+    override val opacity: Int,
+    override val blend: BlendMode,
+    override val mask: MaskMemento,
+    val generator: Generator,
+    val values: Map<String, Int>,
+    val seed: Long,
+    val texts: Map<String, String> = emptyMap(),
+) : LayerMemento {
+    override fun toLayer() = GeneratorLayer(generator, id).also { l ->
+        l.name = name
+        l.visible = visible
+        l.opacity = opacity
+        l.blend = blend
+        l.values.putAll(values)
+        l.texts.putAll(texts)
+        l.seed = seed
+        l.mask.restore(mask)
+    }
+}
+
 data class ImageMemento(
     override val id: Int,
     override val name: String,
@@ -186,6 +272,7 @@ data class ImageMemento(
     val y: Double,
     val scale: Double,
     val smooth: Boolean,
+    val rotation: Double = 0.0,
 ) : LayerMemento {
     override fun toLayer() = ImageLayer(image, id).also { l ->
         l.name = name
@@ -195,6 +282,7 @@ data class ImageMemento(
         l.x = x
         l.y = y
         l.scale = scale
+        l.rotation = rotation
         l.smooth = smooth
         l.mask.restore(mask)
     }
@@ -223,6 +311,22 @@ data class EffectState(
     val texts: Map<String, String> = emptyMap(),
 ) : LayerState
 
+/** What the renderer needs of a source layer. */
+sealed interface SourceState : LayerState
+
+data class GeneratorState(
+    override val id: Int,
+    override val visible: Boolean,
+    override val opacity: Int,
+    override val blend: BlendMode,
+    override val mask: MaskShape,
+    override val maskVersion: Long,
+    val generator: Generator,
+    val values: Map<String, Int>,
+    val seed: Long,
+    val texts: Map<String, String> = emptyMap(),
+) : SourceState
+
 data class ImageState(
     override val id: Int,
     override val visible: Boolean,
@@ -235,13 +339,28 @@ data class ImageState(
     val y: Double,
     val scale: Double,
     val smooth: Boolean,
-) : LayerState
+    val rotation: Double = 0.0,
+) : SourceState
 
-/** The layers that belong to the image layer at [index]: itself and the effects above it. */
+/**
+ * Picture pixels → canvas pixels for a [width]×[height] picture placed at ([x], [y]),
+ * [scale] times its size, turned by [rotation] degrees around the middle of its placed area.
+ */
+fun placement(width: Int, height: Int, x: Double, y: Double, scale: Double, rotation: Double) =
+    java.awt.geom.AffineTransform().apply {
+        val w = width * scale
+        val h = height * scale
+        translate(x + w / 2, y + h / 2)
+        rotate(Math.toRadians(rotation))
+        translate(-w / 2, -h / 2)
+        scale(scale, scale)
+    }
+
+/** The layers that belong to the source layer at [index]: itself and the effects above it. */
 fun groupRange(layers: List<Layer>, index: Int): IntRange {
     var start = index
-    while (start > 0 && layers[start] !is ImageLayer) start--
+    while (start > 0 && layers[start] !is SourceLayer) start--
     var end = start
-    while (end + 1 < layers.size && layers[end + 1] !is ImageLayer) end++
+    while (end + 1 < layers.size && layers[end + 1] !is SourceLayer) end++
     return start..end
 }

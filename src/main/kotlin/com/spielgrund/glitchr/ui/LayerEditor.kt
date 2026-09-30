@@ -4,9 +4,11 @@ import com.spielgrund.glitchr.effects.FlowStrokes
 import com.spielgrund.glitchr.effects.Param
 import com.spielgrund.glitchr.model.BlendMode
 import com.spielgrund.glitchr.model.EffectLayer
+import com.spielgrund.glitchr.model.GeneratorLayer
 import com.spielgrund.glitchr.model.ImageLayer
 import com.spielgrund.glitchr.model.Layer
 import com.spielgrund.glitchr.model.MaskMode
+import com.spielgrund.glitchr.model.ParamLayer
 import java.awt.FlowLayout
 import javax.swing.JButton
 import javax.swing.JCheckBox
@@ -47,7 +49,7 @@ interface LayerEditorHost {
     fun rebuildEditor(focusMaskMode: Boolean = false)
 }
 
-/** Settings of one layer: effect parameters or picture placement, opacity, blend mode and mask. */
+/** Settings of one layer: effect or generator parameters or picture placement, opacity, blend mode and mask. */
 class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) : JPanel(java.awt.BorderLayout()) {
     private val form = Form()
 
@@ -57,7 +59,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         form.border = javax.swing.BorderFactory.createEmptyBorder(8, 10, 10, 10)
         buildHeader()
         when (layer) {
-            is EffectLayer -> buildEffect(layer)
+            is EffectLayer -> buildParams(layer, "Effekt")
+            is GeneratorLayer -> buildParams(layer, "Generator")
             is ImageLayer -> buildImage(layer)
         }
         buildLayer()
@@ -69,6 +72,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         val (title, description) = when (layer) {
             is EffectLayer -> layer.effect.name to layer.effect.description
             is ImageLayer -> "Bildebene" to "Effekte darüber wirken auf dieses Bild. Das Ergebnis liegt über den Ebenen darunter."
+            is GeneratorLayer -> "${layer.generator.name} (Generator)" to
+                "${layer.generator.description}. Erzeugt ein Bild in Leinwandgrösse – Effekte darüber wirken darauf wie auf eine Bildebene."
         }
         form.section(title)
         form.full(JLabel("<html><body style='width:230px'>$description</body></html>").apply {
@@ -88,9 +93,9 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         form.row("Name", name)
     }
 
-    private fun buildEffect(layer: EffectLayer) {
-        form.section("Effekt")
-        for (p in layer.effect.params) {
+    private fun buildParams(layer: ParamLayer, title: String) {
+        form.section(title)
+        for (p in layer.params) {
             val value = layer.values.getValue(p.key)
             val set = { v: Int ->
                 if (layer.values[p.key] != v) {
@@ -101,7 +106,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             when (p) {
                 is Param.Slider -> {
                     val max = host.imageSize?.let { (w, h) -> p.maxFor(w, h) } ?: p.max
-                    form.row(p.label, SliderField(p.min, max, value, p.default.coerceAtMost(max), p.unit, set), p.tip)
+                    form.row(p.label, SliderField(p.min, max, value, p.default.coerceAtMost(max), p.unit, p.decimals, set), p.tip)
                 }
                 is Param.Choice -> form.row(p.label, JComboBox(p.options.toTypedArray()).apply {
                     selectedIndex = value
@@ -112,7 +117,20 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                     addActionListener { set(if (isSelected) 1 else 0) }
                 })
                 is Param.Color -> form.row(p.label, ColorField(value, p.label, set), p.tip)
+                is Param.Heading -> form.section(p.label)
                 is Param.Flow -> buildFlow(layer, p)
+                is Param.Ramp -> form.full(RampField(layer.texts[p.key] ?: p.defaultText) { text ->
+                    if (layer.texts[p.key] != text) {
+                        layer.texts[p.key] = text
+                        host.layerChanged()
+                    }
+                }.apply { toolTipText = p.tip })
+                is Param.Curve -> form.full(CurveField(layer.texts[p.key] ?: "") { text ->
+                    if (layer.texts[p.key] != text) {
+                        layer.texts[p.key] = text
+                        host.layerChanged()
+                    }
+                }.apply { toolTipText = p.tip })
                 is Param.Text -> form.row(p.label, JTextField(layer.texts[p.key] ?: p.defaultText, 8).apply {
                     toolTipText = p.tip
                     document.addDocumentListener(object : DocumentListener {
@@ -130,7 +148,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             }
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
-        if (layer.effect.random) {
+        if (layer.random) {
             buttons.add(JButton("Neu würfeln").apply {
                 toolTipText = "Neuer Zufallswert: gleiche Einstellungen, anderes Ergebnis"
                 addActionListener { layer.reseed(); host.layerChanged() }
@@ -139,7 +157,10 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         }
         buttons.add(JButton("Standardwerte").apply {
             addActionListener {
-                layer.values.putAll(layer.effect.defaults())
+                layer.values.putAll(layer.defaults())
+                // texts too (ramps, curves, own text) – but drawn flow strokes stay
+                val flows = layer.params.filterIsInstance<Param.Flow>().map { it.key }.toSet()
+                layer.texts.putAll(layer.textDefaults().filterKeys { it !in flows })
                 host.layerChanged()
                 host.rebuildEditor()
             }
@@ -148,7 +169,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
     }
 
     /** Drawn flow strokes: they are edited on the canvas, here they can be undone or cleared. */
-    private fun buildFlow(layer: EffectLayer, p: Param.Flow) {
+    private fun buildFlow(layer: ParamLayer, p: Param.Flow) {
         val strokes = FlowStrokes.parse(layer.texts[p.key] ?: "")
         form.row(p.label, JLabel(when (strokes.size) {
             0 -> "keine Striche"
@@ -206,11 +227,17 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             layer.y = b.centerY - layer.image.height * s / 2
             host.layerChanged()
         }, "Doppelklick auf den Regler: 100 %")
+        form.row("Drehung", SliderField(-1800, 1800, (layer.rotation * 10).roundToInt(), 0, "°", 1) { tenths ->
+            if ((layer.rotation * 10).roundToInt() == tenths) return@SliderField
+            // around the middle of the picture: position and size stay
+            layer.rotation = tenths / 10.0
+            host.layerChanged()
+        }, "Um die Mitte des Bilds. Im Bild: Umschalt + an einer Ecke ziehen")
         form.full(JCheckBox("Glatt skalieren", layer.smooth).apply {
             toolTipText = "Aus: harte Pixel (Nearest Neighbour) beim Vergrössern"
             addActionListener { layer.smooth = isSelected; host.layerChanged() }
         })
-        val buttons = JPanel(java.awt.GridLayout(2, 2, 6, 6)).apply { isOpaque = false }
+        val buttons = JPanel(java.awt.GridLayout(3, 2, 6, 6)).apply { isOpaque = false }
         buttons.add(JButton("Einpassen").apply {
             toolTipText = "Ganzes Bild auf der Leinwand zeigen"
             addActionListener { layer.fitInto(cw, ch); changed() }
@@ -225,8 +252,11 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         buttons.add(JButton("Zentrieren").apply {
             addActionListener { layer.center(cw, ch); changed() }
         })
+        buttons.add(JButton("Drehung zurücksetzen").apply {
+            addActionListener { layer.rotation = 0.0; changed() }
+        })
         form.full(buttons)
-        form.full(hint("Im Bild ziehen verschiebt die Ebene, an den Ecken ziehen skaliert sie. Ist die Maske eingeblendet (Strg+M), wird stattdessen die Maske bearbeitet – zum Verschieben dann ausblenden oder Strg halten."))
+        form.full(hint("Im Bild ziehen verschiebt die Ebene, an den Ecken ziehen skaliert sie, mit Umschalt dreht es sie. Ist die Maske eingeblendet (Strg+M), wird stattdessen die Maske bearbeitet – zum Verschieben dann ausblenden oder Strg halten."))
     }
 
     private fun buildLayer() {
@@ -268,7 +298,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             form.full(hint("Ohne Maske wirkt der Effekt auf das ganze Bild."))
             return
         }
-        if (layer is ImageLayer) {
+        if (layer is ImageLayer || layer is GeneratorLayer) {
             form.full(hint("Die Maske schneidet das Bild aus, bevor die Effekte darüber wirken – sie können also über die Maskenkante hinaus laufen."))
         }
         form.full(JCheckBox("Maske umkehren", mask.invert).apply {

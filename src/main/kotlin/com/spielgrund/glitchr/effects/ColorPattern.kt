@@ -75,6 +75,13 @@ abstract class TilePattern(
         if (withBands) {
             add(Param.Slider("bands", "Bänder", 2, 24, 8, tip = "Linien in verschachtelten Mustern (Winkel, Mäander, Rauten, Quadrate, Dreiecke, Würfel)"))
             add(Param.Slider("stroke", "Strichstärke", 5, 50, 22, " %", "Fugen bei Scherben, Wände beim Labyrinth, Arme beim Y-Muster"))
+            add(
+                Param.Slider(
+                    "length", "Strichlänge", 5, 300, 100, " %",
+                    "Nur Y-Muster: wie weit die Arme reichen; ab etwa 125 % laufen sie über die Ecke hinaus in die Nachbarfelder, " +
+                        "um 250 % bis auf die andere Seite",
+                ),
+            )
         }
     }
 
@@ -104,6 +111,7 @@ abstract class TilePattern(
         }
         val bands = if (withBands) v["bands"] else 8
         val stroke = if (withBands) v["stroke"] / 100.0 else 0.22
+        val armLength = if (withBands) v["length"] / 100.0 else 1.0
         val s = v["size"].toDouble()
         val a = v["angle"] * PI / 180
         val ca = cos(a)
@@ -129,7 +137,7 @@ abstract class TilePattern(
             // pattern coordinates: rotated around the canvas center
             val dx = px - ox
             val dy = py - oy
-            val tile = tile(pattern, dx * ca + dy * sa, -dx * sa + dy * ca, s, bands, stroke)
+            val tile = tile(pattern, dx * ca + dy * sa, -dx * sa + dy * ca, s, bands, stroke, armLength)
             if (mapping == 6) {
                 // a ramp from color 1 to color 2 across every dark + light stripe pair
                 return if (tile.phase >= 0) mix(color1, color2, tile.phase)
@@ -188,9 +196,9 @@ abstract class TilePattern(
         return argb(255, ch(red(a), red(b)), ch(green(a), green(b)), ch(blue(a), blue(b)))
     }
 
-    private fun tile(pattern: Int, u: Double, v: Double, s: Double, n: Int, stroke: Double): Tile {
+    private fun tile(pattern: Int, u: Double, v: Double, s: Double, n: Int, stroke: Double, armLength: Double): Tile {
         fun cell(p: Double) = floor(p / s).toInt()
-        if (pattern >= 9) return bandTile(pattern, u, v, s, n, stroke)
+        if (pattern >= 9) return bandTile(pattern, u, v, s, n, stroke, armLength)
         return when (pattern) {
             1 -> { // checkerboard
                 val i = cell(u); val j = cell(v)
@@ -274,7 +282,8 @@ abstract class TilePattern(
     }
 
     /** The patterns made of bands, lines or pieces inside tiles (the op-art set). */
-    private fun bandTile(pattern: Int, u: Double, v: Double, s: Double, n: Int, stroke: Double): Tile {
+    /** [armLength]: arms of the Y shapes relative to their normal length (1 = ending short of the corners). */
+    private fun bandTile(pattern: Int, u: Double, v: Double, s: Double, n: Int, stroke: Double, armLength: Double): Tile {
         val i = floor(u / s).toInt()
         val j = floor(v / s).toInt()
         // position inside the square tile, -0.5..0.5
@@ -374,20 +383,32 @@ abstract class TilePattern(
             }
             else -> { // Y shapes: three arms from each hexagon's center towards its corners, ending short of them
                 val (q, r) = hex(u, v, s)
+                // normally the arms stop before the corner, so the Ys stay separate shapes;
+                // longer arms run past the corner into the neighbouring cells
+                val reach = (0.92 - stroke * 0.5) * armLength
+                // arms of hexagons this many cells away can reach this point (centers are √3 apart)
+                val ring = when {
+                    reach + stroke < 1.0 -> 0
+                    reach + stroke < sqrt(3.0) + 0.5 -> 1
+                    else -> 2
+                }
+                var nearest = Double.MAX_VALUE
+                for (dq in -ring..ring) for (dr in max(-ring, -dq - ring)..min(ring, -dq + ring)) {
+                    val cx = s * sqrt(3.0) * (q + dq + (r + dr) / 2.0)
+                    val cy = s * 1.5 * (r + dr)
+                    val lx = (u - cx) / s
+                    val ly = (v - cy) / s
+                    for (k in 0 until 3) {
+                        val a = PI / 2 + k * 2 * PI / 3
+                        val dx = cos(a)
+                        val dy = sin(a)
+                        val along = lx * dx + ly * dy
+                        if (along < 0 || along > reach) continue
+                        nearest = min(nearest, abs(lx * dy - ly * dx))
+                    }
+                }
                 val hx = s * sqrt(3.0) * (q + r / 2.0)
                 val hy = s * 1.5 * r
-                val lx = (u - hx) / s
-                val ly = (v - hy) / s
-                var nearest = Double.MAX_VALUE
-                for (k in 0 until 3) {
-                    val a = PI / 2 + k * 2 * PI / 3
-                    val dx = cos(a)
-                    val dy = sin(a)
-                    val along = lx * dx + ly * dy
-                    // the arms stop before the corner, so the Ys stay separate shapes
-                    if (along < 0 || along > 0.92 - stroke * 0.5) continue
-                    nearest = min(nearest, abs(lx * dy - ly * dx))
-                }
                 Tile(q, r, 0, hx, hy, q + 2 * r, if (nearest < stroke * 0.5) 0 else 1, bands = true)
             }
         }

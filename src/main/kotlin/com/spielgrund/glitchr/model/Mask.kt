@@ -262,11 +262,44 @@ class MaskPatch(val rect: Rectangle, val data: ByteArray)
 
 /**
  * Where a mask lies on the canvas: its painted pixels and gradient points span this
- * rectangle (canvas pixels). For the layers of an image layer it is the placed picture,
- * so the mask moves and scales with it; outside the rectangle the mask continues with
- * its edge values (gradients simply go on).
+ * rectangle (canvas pixels), turned by [rotation] (radians) around its center. For the
+ * layers of an image layer it is the placed picture, so the mask moves, scales and turns
+ * with it; outside the rectangle the mask continues with its edge values (gradients
+ * simply go on).
  */
-data class MaskSpace(val x: Double, val y: Double, val width: Double, val height: Double) {
+data class MaskSpace(val x: Double, val y: Double, val width: Double, val height: Double, val rotation: Double = 0.0) {
+    private val cos = kotlin.math.cos(rotation)
+    private val sin = kotlin.math.sin(rotation)
+    private val centerX = x + width / 2
+    private val centerY = y + height / 2
+
+    /** Canvas point ([px], [py]) in the rectangle's own coordinates (0..width, 0..height before turning), into [out]. */
+    fun toLocal(px: Double, py: Double, out: DoubleArray) {
+        if (rotation == 0.0) {
+            out[0] = px - x
+            out[1] = py - y
+            return
+        }
+        val dx = px - centerX
+        val dy = py - centerY
+        out[0] = dx * cos + dy * sin + width / 2
+        out[1] = -dx * sin + dy * cos + height / 2
+    }
+
+    /** A point in the rectangle's own coordinates on the canvas. */
+    fun toCanvas(lx: Double, ly: Double): java.awt.geom.Point2D.Double {
+        val dx = lx - width / 2
+        val dy = ly - height / 2
+        return java.awt.geom.Point2D.Double(centerX + dx * cos - dy * sin, centerY + dx * sin + dy * cos)
+    }
+
+    /** Canvas → the rectangle's own coordinates, as a transform (for shapes). */
+    fun canvasToLocal() = java.awt.geom.AffineTransform().apply {
+        translate(width / 2, height / 2)
+        rotate(-rotation)
+        translate(-centerX, -centerY)
+    }
+
     companion object {
         fun canvas(width: Int, height: Int) = MaskSpace(0.0, 0.0, width.toDouble(), height.toDouble())
     }
@@ -293,18 +326,20 @@ class MaskShape(
     fun row(y: Int, width: Int, height: Int, out: FloatArray, space: MaskSpace = MaskSpace.canvas(width, height)) {
         val sw = space.width
         val sh = space.height
-        // row position relative to the mask's rectangle
-        val ly = y + 0.5 - space.y
+        // every pixel's position in the mask's own (possibly turned) rectangle
+        val local = DoubleArray(2)
         when (mode) {
             MaskMode.OFF -> out.fill(1f, 0, width)
             MaskMode.BRUSH -> {
                 if (painted == null || paintedWidth == 0 || sw <= 0 || sh <= 0) out.fill(0f, 0, width)
                 else {
-                    val py = floor(ly / sh * paintedHeight).toInt().coerceIn(0, paintedHeight - 1) * paintedWidth
                     val fx = paintedWidth / sw
+                    val fy = paintedHeight / sh
                     for (x in 0 until width) {
-                        val px = floor((x + 0.5 - space.x) * fx).toInt().coerceIn(0, paintedWidth - 1)
-                        out[x] = (painted[py + px].toInt() and 0xFF) / 255f
+                        space.toLocal(x + 0.5, y + 0.5, local)
+                        val px = floor(local[0] * fx).toInt().coerceIn(0, paintedWidth - 1)
+                        val py = floor(local[1] * fy).toInt().coerceIn(0, paintedHeight - 1)
+                        out[x] = (painted[py * paintedWidth + px].toInt() and 0xFF) / 255f
                     }
                 }
             }
@@ -314,9 +349,9 @@ class MaskShape(
                 val dx = b.x * sw - ax
                 val dy = b.y * sh - ay
                 val len2 = dx * dx + dy * dy
-                val py = ly - ay
                 for (x in 0 until width) {
-                    val t = if (len2 < 1e-9) 0.0 else ((x + 0.5 - space.x - ax) * dx + py * dy) / len2
+                    space.toLocal(x + 0.5, y + 0.5, local)
+                    val t = if (len2 < 1e-9) 0.0 else ((local[0] - ax) * dx + (local[1] - ay) * dy) / len2
                     out[x] = (1.0 - t.coerceIn(0.0, 1.0)).toFloat()
                 }
             }
@@ -324,10 +359,9 @@ class MaskShape(
                 val cx = a.x * sw
                 val cy = a.y * sh
                 val r = hypot(b.x * sw - cx, b.y * sh - cy)
-                val py = ly - cy
                 for (x in 0 until width) {
-                    val px = x + 0.5 - space.x - cx
-                    val t = if (r < 1e-9) 1.0 else sqrt(px * px + py * py) / r
+                    space.toLocal(x + 0.5, y + 0.5, local)
+                    val t = if (r < 1e-9) 1.0 else hypot(local[0] - cx, local[1] - cy) / r
                     out[x] = (1.0 - t.coerceIn(0.0, 1.0)).toFloat()
                 }
             }

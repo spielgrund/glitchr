@@ -2,9 +2,11 @@ package com.spielgrund.glitchr.ui
 
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.model.EffectLayer
+import com.spielgrund.glitchr.model.GeneratorLayer
 import com.spielgrund.glitchr.model.ImageLayer
 import com.spielgrund.glitchr.model.Layer
 import com.spielgrund.glitchr.model.MaskMode
+import com.spielgrund.glitchr.model.SourceLayer
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Image
@@ -27,13 +29,15 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * The layer stack, top layer first as in other image editors. Image layers show a
- * thumbnail; the effects that work on them are indented above them. Clicking a row
- * selects the layer, the checkbox shows or hides it.
+ * The layer stack, top layer first as in other image editors. Source layers (pictures
+ * and generators) show a thumbnail; the effects that work on them are indented above
+ * them. Clicking a row selects the layer, the checkbox shows or hides it.
  */
 class LayerList(
     private val onSelect: (Layer) -> Unit,
     private val onToggleVisible: (Layer) -> Unit,
+    /** The last picture of a generator layer, for its thumbnail. */
+    private val generated: (GeneratorLayer) -> Pixels? = { null },
 ) : JPanel(), Scrollable {
     private val thumbnails = WeakHashMap<Pixels, ImageIcon>()
 
@@ -45,12 +49,12 @@ class LayerList(
     fun update(layers: List<Layer>, selected: Layer?) {
         removeAll()
         if (layers.isEmpty()) {
-            add(JLabel("<html>Noch keine Ebenen.<br>Bild öffnen oder hierher ziehen.</html>").apply {
+            add(JLabel("<html>Noch keine Ebenen.<br>Bild öffnen oder hierher ziehen,<br>oder mit „Neu…“ ohne Bild beginnen.</html>").apply {
                 foreground = UIManager.getColor("Label.disabledForeground")
                 border = BorderFactory.createEmptyBorder(8, 10, 8, 10)
             })
         }
-        val firstImage = layers.indexOfFirst { it is ImageLayer }
+        val firstImage = layers.indexOfFirst { it is SourceLayer }
         for ((index, layer) in layers.withIndex().reversed()) {
             val orphan = layer is EffectLayer && (firstImage < 0 || index < firstImage)
             add(row(layer, layer === selected, orphan))
@@ -63,8 +67,9 @@ class LayerList(
     private fun row(layer: Layer, selected: Boolean, orphan: Boolean): JPanel {
         val row = JPanel(BorderLayout(6, 0))
         val indent = if (layer is EffectLayer) 22 else 6
-        row.border = BorderFactory.createEmptyBorder(if (layer is ImageLayer) 4 else 2, indent, if (layer is ImageLayer) 4 else 2, 8)
-        row.maximumSize = Dimension(Int.MAX_VALUE, if (layer is ImageLayer) 44 else 30)
+        val source = layer is SourceLayer
+        row.border = BorderFactory.createEmptyBorder(if (source) 4 else 2, indent, if (source) 4 else 2, 8)
+        row.maximumSize = Dimension(Int.MAX_VALUE, if (source) 44 else 30)
         row.alignmentX = LEFT_ALIGNMENT
         if (selected) row.background = UIManager.getColor("List.selectionBackground")
         val dim = UIManager.getColor("Label.disabledForeground")
@@ -77,17 +82,23 @@ class LayerList(
             toolTipText = "Ebene ein-/ausblenden"
             addActionListener { onToggleVisible(layer) }
         }, BorderLayout.WEST)
-        if (layer is ImageLayer) west.add(JLabel(thumbnail(layer.image)), BorderLayout.CENTER)
+        when (layer) {
+            is ImageLayer -> west.add(JLabel(thumbnail(layer.image)), BorderLayout.CENTER)
+            is GeneratorLayer -> west.add(JLabel(generated(layer)?.let(::thumbnail) ?: emptyThumbnail), BorderLayout.CENTER)
+            is EffectLayer -> {}
+        }
         row.add(west, BorderLayout.WEST)
 
         val title = when (layer) {
             is ImageLayer -> layer.name
+            is GeneratorLayer -> if (layer.name == layer.generator.name) layer.name else "${layer.name}  ·  ${layer.generator.name}"
             is EffectLayer -> if (layer.name == layer.effect.name) "↳ ${layer.name}" else "↳ ${layer.name}  ·  ${layer.effect.name}"
         }
         row.add(JLabel(title).apply {
             foreground = if (!layer.visible || orphan) dim else fg
-            if (layer is ImageLayer) font = font.deriveFont(java.awt.Font.BOLD)
-            if (orphan) toolTipText = "Keine Bildebene darunter – dieser Effekt hat nichts zu bearbeiten"
+            if (source) font = font.deriveFont(java.awt.Font.BOLD)
+            if (layer is GeneratorLayer) toolTipText = "Generator: ${layer.generator.description}"
+            if (orphan) toolTipText = "Keine Bild- oder Generator-Ebene darunter – dieser Effekt hat nichts zu bearbeiten"
         }, BorderLayout.CENTER)
 
         val info = buildList {
@@ -116,6 +127,9 @@ class LayerList(
     override fun getScrollableBlockIncrement(visible: Rectangle, orientation: Int, direction: Int) = visible.height - 32
     override fun getScrollableTracksViewportWidth() = true
     override fun getScrollableTracksViewportHeight() = false
+
+    /** Placeholder while a generator's picture is still being made. */
+    private val emptyThumbnail = ImageIcon(BufferedImage(36, 36, BufferedImage.TYPE_INT_ARGB))
 
     private fun thumbnail(image: Pixels): ImageIcon = thumbnails.getOrPut(image) {
         val s = 36.0 / max(image.width, image.height)

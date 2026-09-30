@@ -71,7 +71,7 @@ object PixelSort : Effect("pixelsort", "Pixelsort", "Sortiert Pixelstrecken inne
      * pixel along the main axis and follow the slope on the other axis, so every pixel
      * lies on exactly one line. [indices] lists a line's pixels in sorting direction.
      */
-    private class Lines(private val w: Int, private val h: Int, angleDeg: Int) {
+    internal class Lines(private val w: Int, private val h: Int, angleDeg: Int) {
         private val a = Math.toRadians(angleDeg.toDouble())
         private val alongX = abs(cos(a)) >= abs(sin(a))
         private val forward = if (alongX) cos(a) > 0 else sin(a) > 0

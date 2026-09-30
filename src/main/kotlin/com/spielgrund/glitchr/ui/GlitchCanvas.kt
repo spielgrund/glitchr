@@ -419,9 +419,14 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         }
     }
 
-    /** Frame of the selected image layer with its four scale handles. */
+    /** Frame of the selected image layer (turned with it) with its four scale handles. */
     private fun paintLayerFrame(g: Graphics2D, layer: ImageLayer) {
-        val r = layerFrame(layer)
+        val corners = screenCorners(layer)
+        val r = Path2D.Double().apply {
+            moveTo(corners[0].x, corners[0].y)
+            for (c in corners.drop(1)) lineTo(c.x, c.y)
+            closePath()
+        }
         g.stroke = BasicStroke(1f)
         g.color = Color(0, 0, 0, 160)
         g.draw(r)
@@ -429,7 +434,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         g.color = Color(0x4DA3FF)
         g.draw(r)
         g.stroke = BasicStroke(1f)
-        for (c in corners(r)) {
+        for (c in corners) {
             val box = Rectangle2D.Double(c.x - HANDLE, c.y - HANDLE, 2.0 * HANDLE, 2.0 * HANDLE)
             g.color = Color.WHITE
             g.fill(box)
@@ -438,21 +443,22 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         }
     }
 
-    /** The layer's placed area in screen coordinates. */
-    private fun layerFrame(layer: ImageLayer): Rectangle2D.Double {
-        val b = layer.bounds
-        return Rectangle2D.Double(originX() + b.x * zoom, originY() + b.y * zoom, b.width * zoom, b.height * zoom)
+    /** The placed picture's corners on the canvas: top-left, top-right, bottom-right, bottom-left (before turning). */
+    private fun canvasCorners(layer: ImageLayer): List<Point2D.Double> {
+        val t = layer.toCanvas()
+        val w = layer.image.width.toDouble()
+        val h = layer.image.height.toDouble()
+        return listOf(0.0 to 0.0, w to 0.0, w to h, 0.0 to h).map { (x, y) ->
+            Point2D.Double().also { t.transform(Point2D.Double(x, y), it) }
+        }
     }
 
-    /** Corners top-left, top-right, bottom-right, bottom-left. */
-    private fun corners(r: Rectangle2D.Double) = listOf(
-        Point2D.Double(r.minX, r.minY), Point2D.Double(r.maxX, r.minY),
-        Point2D.Double(r.maxX, r.maxY), Point2D.Double(r.minX, r.maxY),
-    )
+    private fun screenCorners(layer: ImageLayer) =
+        canvasCorners(layer).map { Point2D.Double(originX() + it.x * zoom, originY() + it.y * zoom) }
 
     /** Index of the scale handle under [p], or null. */
     private fun cornerAt(layer: ImageLayer, p: Point): Int? =
-        corners(layerFrame(layer)).indexOfFirst { hypot(it.x - p.x, it.y - p.y) <= HANDLE + 4 }.takeIf { it >= 0 }
+        screenCorners(layer).indexOfFirst { hypot(it.x - p.x, it.y - p.y) <= HANDLE + 4 }.takeIf { it >= 0 }
 
     /** Whether dragging moves/scales the selected image layer instead of editing its mask. */
     private fun transforms(e: java.awt.event.InputEvent): ImageLayer? {
@@ -508,32 +514,38 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     /** The canvas rectangle the active mask spans (the whole canvas for layers without picture). */
     private fun maskSpace(): MaskSpace = maskTarget()?.space ?: image!!.let { MaskSpace.canvas(it.width, it.height) }
 
-    /** A gradient point (relative to the mask's rectangle) on screen. */
+    /** A gradient point (relative to the mask's rectangle, which may be turned) on screen. */
     private fun toScreen(r: RelPoint): Point2D.Double {
         val s = maskSpace()
-        return Point2D.Double(originX() + (s.x + r.x * s.width) * zoom, originY() + (s.y + r.y * s.height) * zoom)
+        val c = s.toCanvas(r.x * s.width, r.y * s.height)
+        return Point2D.Double(originX() + c.x * zoom, originY() + c.y * zoom)
     }
 
     private fun toRel(p: Point): RelPoint {
         val s = maskSpace()
         val i = toImage(p)
-        return RelPoint((i.x - s.x) / s.width, (i.y - s.y) / s.height)
+        val local = DoubleArray(2)
+        s.toLocal(i.x, i.y, local)
+        return RelPoint(local[0] / s.width, local[1] / s.height)
     }
 
-    /** Canvas pixels → pixels of the painted mask. */
-    private fun toMask(p: Point2D.Double, t: MaskTarget) = Point2D.Double(
-        (p.x - t.space.x) * t.width / t.space.width,
-        (p.y - t.space.y) * t.height / t.space.height,
-    )
+    /** Canvas pixels → pixels of the painted mask (through the picture's turn). */
+    private fun toMask(p: Point2D.Double, t: MaskTarget): Point2D.Double {
+        val local = DoubleArray(2)
+        t.space.toLocal(p.x, p.y, local)
+        return Point2D.Double(local[0] * t.width / t.space.width, local[1] * t.height / t.space.height)
+    }
 
-    /** Painted-mask pixels → canvas pixels (for redrawing the overlay). */
+    /** Painted-mask pixels → the canvas rectangle they cover (for redrawing the overlay). */
     private fun toCanvas(r: Rectangle, t: MaskTarget): Rectangle {
         val sx = t.space.width / t.width
         val sy = t.space.height / t.height
-        val x0 = floor(t.space.x + r.x * sx).toInt()
-        val y0 = floor(t.space.y + r.y * sy).toInt()
-        val x1 = ceil(t.space.x + (r.x + r.width) * sx).toInt()
-        val y1 = ceil(t.space.y + (r.y + r.height) * sy).toInt()
+        val corners = listOf(r.x to r.y, r.x + r.width to r.y, r.x to r.y + r.height, r.x + r.width to r.y + r.height)
+            .map { (x, y) -> t.space.toCanvas(x * sx, y * sy) }
+        val x0 = floor(corners.minOf { it.x }).toInt()
+        val y0 = floor(corners.minOf { it.y }).toInt()
+        val x1 = ceil(corners.maxOf { it.x }).toInt()
+        val y1 = ceil(corners.maxOf { it.y }).toInt()
         return Rectangle(x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2)
     }
 
@@ -563,8 +575,13 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
 
     private class MoveLayer(val layer: ImageLayer, val start: Point2D.Double, val x: Double, val y: Double) : Drag
 
-    /** Scaling at [corner] (see [corners]); the opposite corner [anchor] stays in place. */
+    /** Scaling at [corner] (see [canvasCorners]); the opposite corner [anchor] stays in place. */
     private class ScaleLayer(val layer: ImageLayer, val corner: Int, val anchor: Point2D.Double) : Drag
+
+    /** Turning around the picture's middle ([cx], [cy]), from the mouse angle [startAngle] and the turn [startRotation]. */
+    private class RotateLayer(
+        val layer: ImageLayer, val cx: Double, val cy: Double, val startAngle: Double, val startRotation: Double,
+    ) : Drag
 
     /** Merges a selection (in painted-mask pixels) into the active layer's painted mask. */
     private fun applySelection(patch: MaskPatch?, subtract: Boolean) {
@@ -582,7 +599,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         val sx = t.width / t.space.width
         val toMask = AffineTransform().apply {
             scale(sx, t.height / t.space.height)
-            translate(-t.space.x, -t.space.y)
+            concatenate(t.space.canvasToLocal())
         }
         val feather = (brush.feather * sx).roundToInt()
         applySelection(Selection.shape(toMask.createTransformedShape(shape), t.width, t.height, feather), subtract)
@@ -606,7 +623,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     /** Move or resize cursor when the selected image layer would be transformed (mask off). */
     private fun imageLayerCursor(p: Point?): Cursor? {
         val l = layer as? ImageLayer ?: return null
-        if (editsMask && drag !is MoveLayer && drag !is ScaleLayer) return null
+        if (editsMask && drag !is MoveLayer && drag !is ScaleLayer && drag !is RotateLayer) return null
+        if (drag is RotateLayer) return Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         val corner = (drag as? ScaleLayer)?.corner ?: p?.let { cornerAt(l, it) }
         return Cursor.getPredefinedCursor(
             when (corner) {
@@ -666,12 +684,15 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             transforms(e)?.let { l ->
                 if (!SwingUtilities.isLeftMouseButton(e)) return
                 val corner = cornerAt(l, e.point)
-                drag = if (corner == null) MoveLayer(l, toImage(e.point), l.x, l.y)
-                else {
-                    val b = l.bounds
-                    val opposite = listOf(Point2D.Double(b.maxX, b.maxY), Point2D.Double(b.minX, b.maxY),
-                        Point2D.Double(b.minX, b.minY), Point2D.Double(b.maxX, b.minY))[corner]
-                    ScaleLayer(l, corner, opposite)
+                drag = when {
+                    corner == null -> MoveLayer(l, toImage(e.point), l.x, l.y)
+                    e.isShiftDown -> {
+                        val b = l.bounds
+                        val p = toImage(e.point)
+                        RotateLayer(l, b.centerX, b.centerY, kotlin.math.atan2(p.y - b.centerY, p.x - b.centerX), l.rotation)
+                    }
+                    // the opposite corner stays where it is
+                    else -> ScaleLayer(l, corner, canvasCorners(l)[(corner + 2) % 4])
                 }
                 return
             }
@@ -752,16 +773,37 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 is ScaleLayer -> {
                     val p = toImage(e.point)
                     val l = d.layer
-                    val s = max(
-                        kotlin.math.abs(p.x - d.anchor.x) / l.image.width,
-                        kotlin.math.abs(p.y - d.anchor.y) / l.image.height,
-                    ).coerceAtLeast(0.01)
+                    // the mouse relative to the fixed corner, in the picture's own (unturned) directions
+                    val a = Math.toRadians(l.rotation)
+                    val ca = kotlin.math.cos(a)
+                    val sa = kotlin.math.sin(a)
+                    val dx = p.x - d.anchor.x
+                    val dy = p.y - d.anchor.y
+                    val u = dx * ca + dy * sa
+                    val v = -dx * sa + dy * ca
+                    val s = max(kotlin.math.abs(u) / l.image.width, kotlin.math.abs(v) / l.image.height).coerceAtLeast(0.01)
                     val w = l.image.width * s
                     val h = l.image.height * s
+                    // corners: 0 top-left, 1 top-right, 2 bottom-right, 3 bottom-left; the dragged one lies this way from the anchor
+                    val signX = if (d.corner == 1 || d.corner == 2) 1 else -1
+                    val signY = if (d.corner == 2 || d.corner == 3) 1 else -1
+                    val hx = signX * w / 2
+                    val hy = signY * h / 2
+                    val cx = d.anchor.x + hx * ca - hy * sa
+                    val cy = d.anchor.y + hx * sa + hy * ca
                     l.scale = s
-                    // corners: 0 top-left, 1 top-right, 2 bottom-right, 3 bottom-left
-                    l.x = if (d.corner == 0 || d.corner == 3) d.anchor.x - w else d.anchor.x
-                    l.y = if (d.corner == 0 || d.corner == 1) d.anchor.y - h else d.anchor.y
+                    l.x = cx - w / 2
+                    l.y = cy - h / 2
+                    onTransformEdited(false)
+                }
+                is RotateLayer -> {
+                    val p = toImage(e.point)
+                    val angle = kotlin.math.atan2(p.y - d.cy, p.x - d.cx)
+                    var r = d.startRotation + Math.toDegrees(angle - d.startAngle)
+                    r = ((r + 180) % 360 + 360) % 360 - 180
+                    // Ctrl snaps to 15° steps
+                    if (e.isControlDown) r = kotlin.math.round(r / 15) * 15
+                    d.layer.rotation = kotlin.math.round(r * 10) / 10
                     onTransformEdited(false)
                 }
                 is FlowDraw -> {
@@ -781,7 +823,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             val d = drag
             val wasHandle = d is MoveHandle
             drag = null
-            if (d is MoveLayer || d is ScaleLayer) onTransformEdited(true)
+            if (d is MoveLayer || d is ScaleLayer || d is RotateLayer) onTransformEdited(true)
             if (d is FlowDraw) {
                 d.points.add(toImage(e.point))
                 val img = image
