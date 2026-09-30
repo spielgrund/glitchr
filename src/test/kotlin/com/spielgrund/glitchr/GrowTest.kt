@@ -117,4 +117,18 @@ class GrowTest {
         // far away nothing moves
         assertEquals(stripes[5, 5], out[5, 5])
     }
+
+    @Test
+    fun `horns grow out of the start mask and curl, reproducibly`() {
+        val v = Grow.defaultValues(mapOf("precision" to 0, "content" to 5, "horns" to 6, "hornLength" to 50, "hornWidth" to 8))
+        val out = Grow.apply(spot, v, 3L)
+        assertContentEquals(out.data, Grow.apply(spot, v, 3L).data)
+        // outside the spot the horns carry its bright color
+        val outside = (0 until 160 * 120).count { i ->
+            hypot(i % 160 + 0.5 - 80, i / 160 + 0.5 - 60) > 10 && red(out.data[i]) > 120
+        }
+        assertTrue(outside > 100, "Hörner aussen $outside")
+        // far away nothing
+        assertEquals(dark, out[2, 2])
+    }
 }

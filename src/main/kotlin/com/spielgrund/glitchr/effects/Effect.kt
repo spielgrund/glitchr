@@ -79,7 +79,7 @@ abstract class Effect(val id: String, val name: String, val description: String)
 object Effects {
     val all: List<Effect> = listOf(
         PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Transform, Blur, Sharpen, BlockGlitch, Bitcrush, ColorCorrect, Ramp, LabColor,
-        Particles, Displace, Flow, Erosion, ErosionFast, Grow, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Hologram, Television,
+        Particles, Displace, Flow, Erosion, ErosionFast, Grow, Bubbles, Turbulence, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Hologram, Television,
     )
 
     fun byId(id: String) = all.first { it.id == id }
