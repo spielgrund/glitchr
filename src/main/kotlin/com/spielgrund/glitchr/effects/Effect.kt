@@ -61,6 +61,12 @@ abstract class Effect(val id: String, val name: String, val description: String)
     /** Whether [apply] uses the seed, i.e. whether "Neu würfeln" makes sense. */
     open val random = true
 
+    /**
+     * A point on the canvas that dragging moves, stored in two slider settings as pixels
+     * from the canvas middle (see [CanvasHandle]); null if the effect has none.
+     */
+    open val canvasHandle: CanvasHandle? = null
+
     abstract fun apply(src: Pixels, v: Values, seed: Long): Pixels
 
     fun defaults(): MutableMap<String, Int> = params.associateTo(LinkedHashMap()) { it.key to it.default }
@@ -75,11 +81,14 @@ abstract class Effect(val id: String, val name: String, val description: String)
     override fun toString() = name
 }
 
+/** Two slider settings ([xKey], [yKey], in pixels from the canvas middle) that a handle on the canvas moves. */
+data class CanvasHandle(val xKey: String, val yKey: String)
+
 /** All available effects, in menu order. */
 object Effects {
     val all: List<Effect> = listOf(
-        PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Transform, Blur, Sharpen, BlockGlitch, Bitcrush, ColorCorrect, Ramp, LabColor,
-        Particles, Displace, Flow, Erosion, ErosionFast, Grow, Bubbles, Turbulence, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Hologram, Television,
+        PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Transform, Blur, Sharpen, BlockGlitch, Bitcrush, ColorCorrect, Ramp, LabColor, Filler,
+        Particles, Displace, UvTexture, Flow, Erosion, ErosionFast, Grow, Horns, Bubbles, Turbulence, DiffGrowth, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Glass, ZMap, Fog, Wiggle, Hologram, Television,
     )
 
     fun byId(id: String) = all.first { it.id == id }

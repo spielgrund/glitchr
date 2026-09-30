@@ -170,6 +170,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             // the editor shows the number of strokes
             if (finished) rebuildEditor()
         }
+        canvas.onHandleEdited = { finished ->
+            changed()
+            // the sliders show the new place
+            if (finished) rebuildEditor()
+        }
         canvas.onZoom = ::updateStatus
         canvas.maskTarget = { maskTarget }
         canvas.onTransformEdited = { finished ->

@@ -40,8 +40,7 @@ import kotlin.math.sin
  * a color ramp (optionally as rings), or the picture revealed along the front.
  */
 object Grow : Effect("grow", "Grow", "Ausbreitung wie eine Infektion: die Startpixel wachsen organisch und kristallin ins Bild hinein") {
-    private val contents = listOf("Verschmieren", "Bild aufdehnen", "Transportierte Pixel", "Wachstumszeit als Verlauf", "Bild enthüllen", "Hörner")
-    private const val HORNS = 5
+    private val contents = listOf("Verschmieren", "Bild aufdehnen", "Transportierte Pixel", "Wachstumszeit als Verlauf", "Bild enthüllen")
     private const val SMUDGE = 0
     private const val STRETCH = 1
     private const val TRANSPORT = 2
@@ -91,21 +90,6 @@ object Grow : Effect("grow", "Grow", "Ausbreitung wie eine Infektion: die Startp
             "texture", "Textur", 0, 100, 0, " %",
             "Transportierte Pixel: 0 % zieht die Startpixel zu Kristallschlieren, mehr lässt ihre Textur mitwandern (innerhalb der Startmaske)",
         ),
-        Param.Slider("horns", "Hörner", 1, 300, 20, tip = "Hörner: so viele wachsen aus dem Rand der Startmaske (Richtung und Richtungsstärke lenken sie)"),
-        Param.Slider("hornLength", "Hornlänge", 10, 3000, 250, " px", canvasMax = true),
-        Param.Slider("hornWidth", "Hornbreite", 2, 500, 50, " px"),
-        Param.Slider("hornTaper", "Verjüngung", 0, 100, 70, " %", "Hörner: wie spitz sie zulaufen"),
-        Param.Slider("hornCurl", "Einrollen", 0, 100, 40, " %", "Hörner: 0 % gerade, 100 % drei volle Windungen"),
-        Param.Slider("hornSpiral", "Spiralform", 0, 400, 150, " %", "Hörner: 0 % gleichmässiger Bogen, mehr: erst fast gerade, zur Spitze eng eingerollt"),
-        Param.Choice("hornTurn", "Drehsinn", listOf("Zufällig", "Links", "Rechts")),
-        Param.Slider("hornVariation", "Zufall", 0, 100, 40, " %", "Hörner: wie verschieden Länge, Breite und Einrollen ausfallen"),
-        Param.Slider(
-            "hornTexture", "Textur mitziehen", 0, 100, 20, " %",
-            "Hörner: 0 % – der Bildquerschnitt am Ansatz wird zu Streifen gezogen, mehr – Bildinhalt wandert mit hinaus",
-        ),
-        Param.Slider("hornShade", "Rundung", 0, 100, 40, " %", "Hörner: zu den Rändern dunkler – wirkt rund"),
-        Param.Slider("hornSoft", "Kantenweiche", 0, 100, 15, " %"),
-        Param.Slider("hornBaseSoft", "Ansatz weich", 0, 100, 15, " %", "Hörner: so viel der Länge blendet das Horn am Ansatz weich ein, statt hart zu beginnen"),
         Param.Ramp("ramp", "Verlauf", RampPalette.THERMAL.ramp.format(), "Wachstumszeit: von den Startpixeln (links) bis zur Front (rechts)"),
         Param.Slider("rings", "Ringe", 1, 50, 1, tip = "Wachstumszeit: der Verlauf läuft so oft durch – Wachstumsringe"),
         Param.Choice("background", "Nicht gewachsen", listOf("Bild", "Schwarz", "Transparent")),
@@ -129,7 +113,6 @@ object Grow : Effect("grow", "Grow", "Ausbreitung wie eine Infektion: die Startp
         val small = reduce(src, n)
         val start = BooleanArray(small.data.size) { chosen(small.data[it]) }
         if (start.none { it }) return src
-        if (v["content"] == HORNS) return GrowHorns.apply(src, start, small.width, small.height, n, v, seed)
         val growth = spread(small, start, v, seed, n)
         return compose(src, growth, n, v)
     }

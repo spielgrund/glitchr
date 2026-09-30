@@ -11,7 +11,8 @@ wav effekt
 sharpen X
 erosion X
 Hologramm X
-Grow
+
+Grow X
 Ich brauche einen Effekt names Grow
 Er soll ähnlich wie Erosion funktionieren, aber das Bild soll auf Grund von wählbaren Parametern wie Helligkeit oder Sättigung zu einer Organischen Struktur wachsen. Ähnlich wie ein SChleimpilz oder es soll sich zu einer Wolke entwickeln.
 
@@ -20,6 +21,7 @@ https://www.ericrawn.media/posts/diffGrowth
 Pusteln.
 Die Bildbereiche wachsen so lange, bis sie einen Kritischen bereich erreichen, Platzen und an anderen stellen weiterwachsen.
 
+Split X
 Einen Bildbereich auswählen der in eine Richtung wächst, sich öffnet und danach wieder selbst ausspuckt
 
 Mandala X
@@ -29,12 +31,12 @@ Pixelsort stretch X
 LAB X
 Feedback X
 
-Filler
+Filler X
 Ich brauche einen Filler Effekt, der Flächen im Bild auf verschiedene weisen findet und diese dann zufällig Füllt. entweder über zufällige Grauwerte oder Zufällige Farben z.b. aus Gradients.
 Möglichkeiten wären Blobs, HSL oder andere Verfahren.
 Wenn ich ein Bild aus dem Generator mit vielen Kacheln erstelle, soll er jede Kachel als fläche erkennen und diese dann mit einer anderne Farbe füllen.
 
-Glas Filter -> wie Facetten aus optik
+Glas Filter -> X
 Ich hätte gerne einen Glasfilter wie der Facetten Glitch aus Optik. Ich möchte Verschiedene Kombinationen aus Glasbausteinen, Wellenglas etc.
 
 transform X
@@ -46,7 +48,7 @@ Ich brauche einen Color Correct Effect
 mit Ramp zum einfärben, HSL slidern, Kurven, Tonemapping.
 Baue bitte auch Glitch Features wie überlauf etc ein.
 
-UV Mapping
+UV Mapping X
 Basierend auf x,y werten der Kanäle können Texturen platziert werden
 
 True Depth implementierung
