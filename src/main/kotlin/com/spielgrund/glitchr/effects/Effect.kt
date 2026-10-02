@@ -88,7 +88,7 @@ data class CanvasHandle(val xKey: String, val yKey: String)
 object Effects {
     val all: List<Effect> = listOf(
         PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Transform, Blur, Sharpen, BlockGlitch, Bitcrush, ColorCorrect, Ramp, LabColor, Filler,
-        Particles, Displace, UvTexture, Flow, Erosion, ErosionFast, Grow, Horns, Bubbles, Turbulence, DiffGrowth, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Glass, ZMap, Fog, Wiggle, Hologram, Television,
+        Particles, BlobEcho, Displace, UvTexture, Flow, Erosion, ErosionFast, Grow, Horns, Bubbles, Turbulence, DiffGrowth, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Glass, ZMap, Fog, Wiggle, Hologram, Television,
     )
 
     fun byId(id: String) = all.first { it.id == id }
