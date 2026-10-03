@@ -28,7 +28,7 @@ class HistoryTest {
         val layer = EffectLayer(Effects.byId("rgb"))
         val history = History()
         assertTrue(history.commit(state(listOf(layer))))
-        assertFalse(history.commit(state(listOf(layer))), "gleicher Zustand, auch mit gemalter Maske nicht doppelt")
+        assertFalse(history.commit(state(listOf(layer))), "same state, not twice even with a painted mask")
         layer.mask.mode = MaskMode.BRUSH
         layer.mask.ensurePainted(64, 48)
         assertTrue(history.commit(state(listOf(layer))))
@@ -91,8 +91,8 @@ class HistoryTest {
         for (angle in listOf(0, 17, 45, 90, 133, 180, 225, 270, 301, 359)) {
             val values = PixelSort.defaults().apply { put("angle", angle); put("lower", 0); put("upper", 255) }
             val out = PixelSort.apply(src, Values(values), 1L)
-            assertContentEquals(src.data.sortedArray(), out.data.sortedArray(), "Winkel $angle")
-            assertNotEquals(src.data.toList(), out.data.toList(), "Winkel $angle ändert nichts")
+            assertContentEquals(src.data.sortedArray(), out.data.sortedArray(), "angle $angle")
+            assertNotEquals(src.data.toList(), out.data.toList(), "angle $angle changes nothing")
         }
     }
 

@@ -22,25 +22,25 @@ import kotlin.math.sin
  * be cut into hard steps and pass through a middle color. Dithering hides the banding
  * of smooth 8-bit gradients. Only used as a generator; the input only gives the size.
  */
-object Gradient : Effect("gradient", "Gradient", "Farbverlauf: linear, gespiegelt, radial, Winkel, Raute oder Quadrat") {
-    private val types = listOf("Linear", "Linear gespiegelt", "Radial", "Winkel", "Raute", "Quadrat")
+object Gradient : Effect("gradient", "Gradient", "Color gradient: linear, mirrored, radial, angle, diamond or square") {
+    private val types = listOf("Linear", "Linear mirrored", "Radial", "Angle", "Diamond", "Square")
 
     override val params = listOf(
-        Param.Choice("type", "Art", types),
-        Param.Color("color1", "Farbe 1", 0x000000),
-        Param.Color("color2", "Farbe 2", 0xFFFFFF),
-        Param.Toggle("useMid", "Mittelfarbe", false, "Der Verlauf läuft über eine dritte Farbe in der Mitte"),
-        Param.Color("mid", "Mittelfarbe", 0xFF4FA3),
-        Param.Slider("midPos", "Lage der Mittelfarbe", 1, 99, 50, " %"),
-        Param.Slider("angle", "Winkel", 0, 359, 90, "°", "Richtung des Verlaufs; bei Winkel: wo er beginnt"),
-        Param.Slider("centerX", "Mitte X", -50, 150, 50, " %"),
-        Param.Slider("centerY", "Mitte Y", -50, 150, 50, " %"),
-        Param.Slider("size", "Grösse", 5, 400, 100, " %", "100 %: der Verlauf reicht über die ganze Leinwand"),
-        Param.Slider("repeats", "Wiederholungen", 1, 64, 1),
-        Param.Toggle("mirror", "Wiederholung spiegeln", true, "Jede zweite Wiederholung läuft zurück, statt hart neu zu beginnen"),
-        Param.Slider("curve", "Verteilung", 10, 1000, 100, " %", "Unter 100 % mehr von Farbe 2, darüber mehr von Farbe 1"),
-        Param.Slider("steps", "Stufen", 0, 64, 0, tip = "Harte Farbstufen statt eines weichen Verlaufs; 0 = stufenlos"),
-        Param.Toggle("dither", "Dithering", true, "Feines Rauschen gegen sichtbare Streifen im Verlauf"),
+        Param.Choice("type", "Type", types),
+        Param.Color("color1", "Color 1", 0x000000),
+        Param.Color("color2", "Color 2", 0xFFFFFF),
+        Param.Toggle("useMid", "Middle color", false, "The gradient runs through a third color in the middle"),
+        Param.Color("mid", "Middle color", 0xFF4FA3),
+        Param.Slider("midPos", "Position of the middle color", 1, 99, 50, " %"),
+        Param.Slider("angle", "Angle", 0, 359, 90, "°", "Direction of the gradient; for angle: where it starts"),
+        Param.Slider("centerX", "Center X", -50, 150, 50, " %"),
+        Param.Slider("centerY", "Center Y", -50, 150, 50, " %"),
+        Param.Slider("size", "Size", 5, 400, 100, " %", "100 %: the gradient spans the whole canvas"),
+        Param.Slider("repeats", "Repeats", 1, 64, 1),
+        Param.Toggle("mirror", "Mirror repeats", true, "Every second repeat runs back instead of starting over hard"),
+        Param.Slider("curve", "Distribution", 10, 1000, 100, " %", "Below 100 % more of color 2, above more of color 1"),
+        Param.Slider("steps", "Steps", 0, 64, 0, tip = "Hard color steps instead of a smooth gradient; 0 = stepless"),
+        Param.Toggle("dither", "Dithering", true, "Fine noise against visible banding in the gradient"),
     )
 
     override val random = false

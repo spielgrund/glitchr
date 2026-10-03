@@ -31,8 +31,8 @@ import kotlin.math.sqrt
  * tints the reflection, towards grazing angles it turns white (Fresnel); a light adds a
  * highlight. Roughness blurs the reflection and widens the highlight.
  */
-object Metal : Effect("metal", "Metall", "Macht alles zu Metall: Chrom, Gold, Kupfer … mit Relief, Oberfläche und Spiegelung") {
-    private val metals = listOf("Chrom", "Silber", "Gold", "Kupfer", "Bronze", "Messing", "Stahl", "Angelaufen", "Eigene Farbe")
+object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, gold, copper … with relief, surface and reflection") {
+    private val metals = listOf("Chrome", "Silver", "Gold", "Copper", "Bronze", "Brass", "Steel", "Tempered", "Custom color")
     private const val TEMPERED = 7
     private const val CUSTOM = 8
 
@@ -50,56 +50,56 @@ object Metal : Effect("metal", "Metall", "Macht alles zu Metall: Chrom, Gold, Ku
     /** Temper colors of heated steel, from cool to hot. */
     private val TEMPER = intArrayOf(0xC9C9C4, 0xE8D9A0, 0xC9933F, 0x9A4E3A, 0x7A3C8C, 0x3A55B8, 0x4E9EC4, 0xB8C8C8)
 
-    private val surfaces = listOf("Glatt", "Gebürstet", "Gehämmert", "Körnig", "Kreisgebürstet")
+    private val surfaces = listOf("Smooth", "Brushed", "Hammered", "Grainy", "Spun")
     private const val BRUSHED = 1
     private const val HAMMERED = 2
     private const val GRAINY = 3
     private const val SPUN = 4
 
-    private val environments = listOf("Chrom-Horizont", "Studio", "Streifen", "Bild")
+    private val environments = listOf("Chrome horizon", "Studio", "Stripes", "Picture")
     private const val HORIZON = 0
     private const val STUDIO = 1
     private const val BANDS = 2
     private const val PICTURE = 3
 
     override val params = listOf(
-        Param.Heading("metalHeading", "Metall"),
+        Param.Heading("metalHeading", "Metal"),
         Param.Choice(
-            "metal", "Metall", metals, 0,
-            "Angelaufen: Anlauffarben von erhitztem Stahl – Stroh, Bronze, Violett, Blau – je nach Höhe des Reliefs",
+            "metal", "Metal", metals, 0,
+            "Tempered: temper colors of heated steel – straw, bronze, violet, blue – depending on the height of the relief",
         ),
-        Param.Color("color", "Eigene Farbe", 0xB0C4DE),
-        Param.Slider("imageColor", "Bildfarbe", 0, 100, 0, " %", "Das Metall nimmt die Farben des Bilds an – wie eloxiert"),
+        Param.Color("color", "Custom color", 0xB0C4DE),
+        Param.Slider("imageColor", "Picture color", 0, 100, 0, " %", "The metal takes on the picture's colors – like anodized"),
         Param.Heading("reliefHeading", "Relief"),
-        Param.Slider("relief", "Prägung", 0, 500, 100, " %", "Wie hoch helle Stellen über dunkle hinausragen"),
-        Param.Slider("smooth", "Rundung", 0, 100, 4, " px", "Weichzeichnet das Relief – runde, gegossene Kanten statt scharfer Stufen"),
-        Param.Toggle("invert", "Relief umkehren", false, "Dunkel ist hoch, hell ist tief"),
-        Param.Heading("surfaceHeading", "Oberfläche"),
-        Param.Choice("surface", "Oberfläche", surfaces, BRUSHED),
-        Param.Slider("surfaceSize", "Grösse", 1, 200, 6, " px", canvasMax = true),
-        Param.Slider("surfaceStrength", "Stärke", 0, 200, 50, " %"),
-        Param.Slider("brushAngle", "Richtung", 0, 179, 0, "°", "Richtung der Bürstenstriche"),
-        Param.Heading("envHeading", "Spiegelung"),
+        Param.Slider("relief", "Embossing", 0, 500, 100, " %", "How high bright spots rise above dark ones"),
+        Param.Slider("smooth", "Roundness", 0, 100, 4, " px", "Blurs the relief – round, cast edges instead of sharp steps"),
+        Param.Toggle("invert", "Invert relief", false, "Dark is high, bright is low"),
+        Param.Heading("surfaceHeading", "Surface"),
+        Param.Choice("surface", "Surface", surfaces, BRUSHED),
+        Param.Slider("surfaceSize", "Size", 1, 200, 6, " px", canvasMax = true),
+        Param.Slider("surfaceStrength", "Strength", 0, 200, 50, " %"),
+        Param.Slider("brushAngle", "Direction", 0, 179, 0, "°", "Direction of the brush strokes"),
+        Param.Heading("envHeading", "Reflection"),
         Param.Choice(
-            "env", "Umgebung", environments, HORIZON,
-            "Chrom-Horizont: Himmel oben, dunkler Boden unten – der klassische Chrom-Look · Studio: dunkler Raum mit hellen Softboxen · " +
-                "Streifen: helle und dunkle Bänder · Bild: spiegelt das Bild selbst",
+            "env", "Environment", environments, HORIZON,
+            "Chrome horizon: sky above, dark ground below – the classic chrome look · Studio: dark room with bright softboxes · " +
+                "Stripes: light and dark bands · Picture: reflects the picture itself",
         ),
-        Param.Slider("horizon", "Horizont", -60, 60, 15, "°", "Wo der Horizont in flachen Stellen liegt – höher: mehr Boden"),
-        Param.Slider("envAngle", "Drehung", -180, 180, 0, "°", "Dreht die Umgebung"),
-        Param.Slider("roughness", "Rauheit", 0, 100, 15, " %", "Macht die Spiegelung unscharf und den Glanz breiter"),
-        Param.Heading("lightHeading", "Licht"),
-        Param.Slider("lightAngle", "Lichtrichtung", 0, 359, 225, "°"),
-        Param.Slider("lightHeight", "Lichthöhe", 5, 90, 45, "°"),
-        Param.Slider("gloss", "Glanz", 0, 200, 80, " %"),
-        Param.Slider("shading", "Schattierung", 0, 100, 30, " %", "Dunkelt Flächen ab, die vom Licht weg zeigen"),
-        Param.Heading("outHeading", "Ausgabe"),
+        Param.Slider("horizon", "Horizon", -60, 60, 15, "°", "Where the horizon lies in flat spots – higher: more ground"),
+        Param.Slider("envAngle", "Rotation", -180, 180, 0, "°", "Rotates the environment"),
+        Param.Slider("roughness", "Roughness", 0, 100, 15, " %", "Makes the reflection blurry and the gloss wider"),
+        Param.Heading("lightHeading", "Light"),
+        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°"),
+        Param.Slider("lightHeight", "Light height", 5, 90, 45, "°"),
+        Param.Slider("gloss", "Gloss", 0, 200, 80, " %"),
+        Param.Slider("shading", "Shading", 0, 100, 30, " %", "Darkens areas that face away from the light"),
+        Param.Heading("outHeading", "Output"),
         Param.Choice(
-            "antialias", "Kantenglättung", listOf("Aus", "2 × 2", "4 × 4", "8 × 8"), 1,
-            "Wo benachbarte Pixel stark verschieden sind – Horizont, Glanzpunkte, steile Kanten – wird mehrfach abgetastet",
+            "antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4", "8 × 8"), 1,
+            "Where neighboring pixels differ a lot – horizon, highlights, steep edges – it is sampled several times",
         ),
-        Param.Slider("aaThreshold", "Glättungsschwelle", 1, 100, 12, " %", "Ab welchem Farbunterschied zum Nachbarn geglättet wird – weniger: mehr Pixel werden geglättet"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("aaThreshold", "Smoothing threshold", 1, 100, 12, " %", "The color difference to a neighbor from which it is smoothed – less: more pixels are smoothed"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     private fun smoothstep(a: Double, b: Double, x: Double): Double {

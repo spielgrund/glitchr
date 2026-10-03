@@ -23,17 +23,17 @@ import kotlin.math.sqrt
 
 /** Tile patterns in the picture's most prominent colors: stripes, checkerboard, hexagons, rings and more. */
 object ColorPattern : TilePattern(
-    "pattern", "Farbmuster", "Geometrische Muster aus den markantesten Bildfarben",
-    listOf("Streifen", "Schachbrett", "Dreiecke", "Sechsecke", "Punkte", "Rauten", "Zickzack", "Ringe", "Truchet"),
+    "pattern", "Color pattern", "Geometric patterns from the most striking colors of the picture",
+    listOf("Stripes", "Checkerboard", "Triangles", "Hexagons", "Dots", "Diamonds", "Zigzag", "Rings", "Truchet"),
     first = 0, withBands = false, defaultMapping = 0, defaultSize = 40,
 )
 
 /** Op-art patterns made of bands, lines and pieces – black and white by default. */
 object Geometric : TilePattern(
-    "geometric", "Geometrisch", "Op-Art-Muster aus Bändern und Linien, schwarzweiss oder in den Bildfarben",
+    "geometric", "Geometric", "Op-art patterns of bands and lines, black and white or in the picture's colors",
     listOf(
-        "Winkel", "Karo gewebt", "Mäander", "Rauten verschachtelt", "Quadrate verschachtelt", "Dreiecksbänder",
-        "Würfel", "Scherben", "Labyrinth", "Y-Muster",
+        "Angle", "Woven check", "Meander", "Nested diamonds", "Nested squares", "Triangle bands",
+        "Cubes", "Shards", "Maze", "Y pattern",
     ),
     first = 9, withBands = true, defaultMapping = 3, defaultSize = 70,
 )
@@ -54,32 +54,32 @@ abstract class TilePattern(
     defaultMapping: Int, defaultSize: Int,
 ) : Effect(id, name, description) {
     override val params = buildList {
-        add(Param.Choice("pattern", "Muster", names))
-        add(Param.Slider("colors", "Farben", 2, 12, 5, tip = "Wie viele der markantesten Bildfarben benutzt werden"))
-        add(Param.Slider("size", "Grösse", 4, 600, defaultSize, " px"))
-        add(Param.Slider("angle", "Winkel", 0, 179, 0, "°"))
-        val mappings = listOf("Nach Bild", "Zufällig", "Der Reihe nach", "Schwarz/Weiss", "Verlauf", "Verlauf je Band", "Streifenverlauf")
+        add(Param.Choice("pattern", "Pattern", names))
+        add(Param.Slider("colors", "Colors", 2, 12, 5, tip = "How many of the picture's most striking colors are used"))
+        add(Param.Slider("size", "Size", 4, 600, defaultSize, " px"))
+        add(Param.Slider("angle", "Angle", 0, 179, 0, "°"))
+        val mappings = listOf("By picture", "Random", "In order", "Black/white", "Gradient", "Gradient per band", "Stripe gradient")
         add(
             Param.Choice(
-                "mapping", "Farbverteilung", mappings, defaultMapping,
-                tip = "Nach Bild: jede Kachel nimmt die passendste Palettenfarbe. Verlauf: von Farbe 1 zu Farbe 2 über das Bild. " +
-                    "Verlauf je Band: jedes Band eine Stufe weiter. Streifenverlauf: jedes Streifenpaar (dunkel + hell) " +
-                    "verläuft von Farbe 1 an seiner Oberkante zu Farbe 2 an seiner Unterkante",
+                "mapping", "Color distribution", mappings, defaultMapping,
+                tip = "By picture: every tile takes the best-matching palette color. Gradient: from color 1 to color 2 across the picture. " +
+                    "Gradient per band: every band one step further. Stripe gradient: every pair of stripes (dark + light) " +
+                    "runs from color 1 at its top edge to color 2 at its bottom edge",
             ),
         )
-        add(Param.Color("color1", "Verlauf Farbe 1", 0x14125A, "Für die Verläufe"))
-        add(Param.Color("color2", "Verlauf Farbe 2", 0x19C3A0, "Für die Verläufe"))
-        add(Param.Color("background", "Hintergrundfarbe", 0xFFFFFF, "Für die Verläufe: Farbe zwischen den Linien"))
-        add(Param.Slider("gradientAngle", "Verlaufswinkel", 0, 359, 45, "°", "Richtung des Verlaufs über das Bild"))
-        add(Param.Choice("smoothing", "Kantenglättung", listOf("Aus", "Normal (3×3)", "Hoch (5×5)"), 1, "Mehrere Stichproben je Pixel für weiche Kanten"))
+        add(Param.Color("color1", "Gradient color 1", 0x14125A, "For the gradients"))
+        add(Param.Color("color2", "Gradient color 2", 0x19C3A0, "For the gradients"))
+        add(Param.Color("background", "Background color", 0xFFFFFF, "For the gradients: color between the lines"))
+        add(Param.Slider("gradientAngle", "Gradient angle", 0, 359, 45, "°", "Direction of the gradient across the picture"))
+        add(Param.Choice("smoothing", "Anti-aliasing", listOf("Off", "Normal (3×3)", "High (5×5)"), 1, "Several samples per pixel for smooth edges"))
         if (withBands) {
-            add(Param.Slider("bands", "Bänder", 2, 24, 8, tip = "Linien in verschachtelten Mustern (Winkel, Mäander, Rauten, Quadrate, Dreiecke, Würfel)"))
-            add(Param.Slider("stroke", "Strichstärke", 5, 50, 22, " %", "Fugen bei Scherben, Wände beim Labyrinth, Arme beim Y-Muster"))
+            add(Param.Slider("bands", "Bands", 2, 24, 8, tip = "Lines in nested patterns (angles, meander, diamonds, squares, triangles, cubes)"))
+            add(Param.Slider("stroke", "Line width", 5, 50, 22, " %", "Joints for shards, walls for the maze, arms for the Y pattern"))
             add(
                 Param.Slider(
-                    "length", "Strichlänge", 5, 300, 100, " %",
-                    "Nur Y-Muster: wie weit die Arme reichen; ab etwa 125 % laufen sie über die Ecke hinaus in die Nachbarfelder, " +
-                        "um 250 % bis auf die andere Seite",
+                    "length", "Line length", 5, 300, 100, " %",
+                    "Y pattern only: how far the arms reach; from about 125 % they run past the corner into the neighboring cells, " +
+                        "at around 250 % all the way to the other side",
                 ),
             )
         }
@@ -90,9 +90,9 @@ abstract class TilePattern(
      * and its shade – 0 for the tile's color, 1 and 2 for the next palette colors
      * (background, stripes). [bands] marks patterns that are made of alternating bands
      * (or have their own background), [pos] is the band's place 0..1 inside its tile for
-     * "Verlauf je Band" (-1 = none, then the gradient runs over the picture). [phase] is
+     * "Gradient per band" (-1 = none, then the gradient runs over the picture). [phase] is
      * the continuous position 0..1 across a pair of stripes – from the start of the dark
-     * stripe to the end of the light one – for "Streifenverlauf" (-1 = the pattern has no stripes).
+     * stripe to the end of the light one – for "Stripe gradient" (-1 = the pattern has no stripes).
      */
     private class Tile(
         val ix: Int, val iy: Int, val part: Int, val cu: Double, val cv: Double, val seq: Int, val shade: Int,

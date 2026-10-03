@@ -49,7 +49,7 @@ class LayerList(
     fun update(layers: List<Layer>, selected: Layer?) {
         removeAll()
         if (layers.isEmpty()) {
-            add(JLabel("<html>Noch keine Ebenen.<br>Bild öffnen oder hierher ziehen,<br>oder mit „Neu…“ ohne Bild beginnen.</html>").apply {
+            add(JLabel("<html>No layers yet.<br>Open an image or drag it here,<br>or start without an image via “New…”.</html>").apply {
                 foreground = UIManager.getColor("Label.disabledForeground")
                 border = BorderFactory.createEmptyBorder(8, 10, 8, 10)
             })
@@ -79,7 +79,7 @@ class LayerList(
         west.add(JCheckBox().apply {
             isSelected = layer.visible
             isOpaque = false
-            toolTipText = "Ebene ein-/ausblenden"
+            toolTipText = "Show/hide layer"
             addActionListener { onToggleVisible(layer) }
         }, BorderLayout.WEST)
         when (layer) {
@@ -98,21 +98,21 @@ class LayerList(
             foreground = if (!layer.visible || orphan) dim else fg
             if (source) font = font.deriveFont(java.awt.Font.BOLD)
             if (layer is GeneratorLayer) toolTipText = "Generator: ${layer.generator.description}"
-            if (orphan) toolTipText = "Keine Bild- oder Generator-Ebene darunter – dieser Effekt hat nichts zu bearbeiten"
+            if (orphan) toolTipText = "No image or generator layer below – this effect has nothing to work on"
         }, BorderLayout.CENTER)
 
         val info = buildList {
             if (layer.opacity < 100) add("${layer.opacity} %")
             when (layer.mask.mode) {
                 MaskMode.OFF -> {}
-                MaskMode.BRUSH -> add("◐ Pinsel")
-                MaskMode.LINEAR -> add("◐ Verlauf")
+                MaskMode.BRUSH -> add("◐ Brush")
+                MaskMode.LINEAR -> add("◐ Gradient")
                 MaskMode.RADIAL -> add("◐ Radial")
             }
         }.joinToString("  ")
         if (info.isNotEmpty()) row.add(JLabel(info).apply {
             foreground = dim
-            toolTipText = "Maske: ${layer.mask.mode.label}"
+            toolTipText = "Mask: ${layer.mask.mode.label}"
         }, BorderLayout.EAST)
 
         row.addMouseListener(object : MouseAdapter() {

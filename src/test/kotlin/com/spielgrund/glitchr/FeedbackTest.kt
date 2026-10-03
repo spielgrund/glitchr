@@ -41,9 +41,9 @@ class FeedbackTest {
         val red = Pixels(10, 10, IntArray(100) { argb(255, 255, 0, 0) })
         fun hueAfter(steps: Int) = Feedback.apply(red, Feedback.defaultValues(mapOf("scale" to 1000, "steps" to steps, "hue" to 120)), 0)[5, 5]
         val one = hueAfter(1)
-        assertTrue(green(one) > 250 && red(one) < 5, "1 Schritt: Grün")
+        assertTrue(green(one) > 250 && red(one) < 5, "1 step: green")
         val two = hueAfter(2)
-        assertTrue(blue(two) > 250 && green(two) < 5, "2 Schritte: Blau")
+        assertTrue(blue(two) > 250 && green(two) < 5, "2 steps: blue")
     }
 
     @Test
@@ -83,8 +83,8 @@ class FeedbackTest {
         val out = Feedback.apply(lonelyDisc, Feedback.defaultValues(v), 0)
         val column = (0 until 60).map { out[60, it] and 0xFFFFFF == 0xFF00FF }
         // the ring (y ≈ 30) and the blob's own outline (y ≈ 40)
-        assertTrue(column[30] || column[31], "Ring bei 150 %")
-        assertTrue(column[40] || column[41], "eigene Kontur")
+        assertTrue(column[30] || column[31], "ring at 150 %")
+        assertTrue(column[40] || column[41], "own outline")
         // nothing between them, and each line at most 3 px thick
         assertTrue(!column[35])
         assertTrue(column.subList(25, 36).count { it } <= 3)
@@ -157,8 +157,8 @@ class FeedbackTest {
         fun isStroke(x: Int, y: Int) = out[x, y] and 0xFFFFFF == 0x00FF00 && out[x, y] ushr 24 > 200
         // somewhere just outside the masked circle, on the middle row: a green stroke
         val row = (0 until 50).filter { isStroke(it, 50) }
-        assertTrue(row.isNotEmpty(), "keine Kontur an der Maskenkante")
-        assertTrue(row.all { it in 5..35 }, "Kontur bei $row")
+        assertTrue(row.isNotEmpty(), "no outline at the mask edge")
+        assertTrue(row.all { it in 5..35 }, "outline at $row")
         // the canvas corner stays empty, the circle's middle keeps the picture
         assertEquals(0, out[2, 2] ushr 24)
         assertEquals(argb(255, 200, 40, 40), out[50, 50])

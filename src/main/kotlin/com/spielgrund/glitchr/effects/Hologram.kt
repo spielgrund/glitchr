@@ -19,61 +19,61 @@ import kotlin.math.sqrt
 
 /**
  * A holographic foil card. The picture is first simplified into flat areas (blobs, as in
- * "Partikel"); every area gets a random tilt and a random depth. Turning the card by the
+ * "Particles"); every area gets a random tilt and a random depth. Turning the card by the
  * rotation angle then sweeps the foil's colors across it: each area catches the light at
  * its own angle, and deeper areas shift further (parallax) and change color faster, like
  * embossed layers of a real hologram. Patterns (stars, crosses, circles …) printed into
  * the areas move with them, and the bright parts of the foil can glow.
  */
-object Hologram : Effect("hologram", "Hologramm", "Holografische Folie: das Bild in geneigten Flächen mit Tiefe, die beim Drehen in Regenbogen, Gold oder Diamant schillern") {
-    private val styles = listOf("Regenbogen", "Gold", "Diamant", "Eigener Verlauf")
-    private val blends = listOf("Aufhellen", "Overlay", "Farbe")
-    private val bandShapes = listOf("Linien", "Wellen", "Ringe", "Quadrate", "Rauten", "Sechsecke", "Strahlen", "Spirale")
-    private val patterns = listOf("Aus", "Sterne", "Kreuze", "Kreise", "Punkte", "Rauten", "Gemischt")
+object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture in tilted areas with depth that shimmer in rainbow, gold or diamond when turned") {
+    private val styles = listOf("Rainbow", "Gold", "Diamond", "Custom gradient")
+    private val blends = listOf("Screen", "Overlay", "Color")
+    private val bandShapes = listOf("Lines", "Waves", "Rings", "Squares", "Diamonds", "Hexagons", "Rays", "Spiral")
+    private val patterns = listOf("Off", "Stars", "Crosses", "Circles", "Dots", "Diamonds", "Mixed")
 
     override val params = listOf(
-        Param.Slider("rotation", "Drehung", -90, 90, 20, "°", "Dreht die Karte: die Farben wandern über die Flächen, tiefere Flächen reagieren stärker"),
-        Param.Slider("axis", "Drehachse", 0, 359, 0, "°", "In welche Richtung die Karte gekippt wird; 0° = links/rechts"),
-        Param.Slider("areas", "Flächen", 0, 100, 50, " %", "Wie grob das Bild in Flächen zerlegt wird"),
-        Param.Slider("tilt", "Neigung", 0, 100, 60, " %", "Wie unterschiedlich die Flächen geneigt sind: jede fängt das Licht bei einem anderen Winkel, und ihr Streifenmuster ist gegenüber der Drehachse verdreht (bis 60° bei 100 %)"),
-        Param.Slider("depth", "Tiefe", 0, 100, 40, " %", "Wie weit die Flächen in der Tiefe auseinanderliegen: tiefere schillern beim Drehen schneller"),
-        Param.Slider("parallax", "Parallaxe", 0, 200, 40, " px", "Wie weit sich die Flächen beim Drehen gegeneinander verschieben: vordere und hintere in entgegengesetzte Richtungen (Wert bei 90°)"),
-        Param.Choice("parallaxEdge", "Parallaxe am Rand", listOf("Spiegeln", "Wiederholen"), tip = "Was eine verschobene Fläche an ihrem Rand zeigt: ihr eigenes Bild gespiegelt oder den Randpixel gestreckt – nie Teile anderer Flächen"),
-        Param.Slider("smooth", "Kanten glätten", 0, 30, 2, " px", "Rundet die Umrisse der Flächen ab: zackige Ränder und dünne Ausläufer verschwinden, das Bild bleibt scharf"),
-        Param.Choice("style", "Holo-Effekt", styles),
-        Param.Color("color1", "Farbe 1", 0x00E5FF, "Für „Eigener Verlauf“"),
-        Param.Color("color2", "Farbe 2", 0xFF3FD8),
-        Param.Color("color3", "Farbe 3", 0xFFE14D),
-        Param.Slider("bands", "Streifen", 1, 20, 3, "", "Wie oft sich der Farbverlauf über die Karte wiederholt"),
+        Param.Slider("rotation", "Rotation", -90, 90, 20, "°", "Turns the card: the colors travel across the areas, deeper areas react more strongly"),
+        Param.Slider("axis", "Rotation axis", 0, 359, 0, "°", "In which direction the card is tilted; 0° = left/right"),
+        Param.Slider("areas", "Areas", 0, 100, 50, " %", "How coarsely the picture is split into areas"),
+        Param.Slider("tilt", "Tilt", 0, 100, 60, " %", "How differently the areas are tilted: each catches the light at a different angle, and its stripe pattern is rotated against the rotation axis (up to 60° at 100 %)"),
+        Param.Slider("depth", "Depth", 0, 100, 40, " %", "How far apart the areas lie in depth: deeper ones shimmer faster when turned"),
+        Param.Slider("parallax", "Parallax", 0, 200, 40, " px", "How far the areas shift against each other when turned: front and back ones in opposite directions (value at 90°)"),
+        Param.Choice("parallaxEdge", "Parallax at the edge", listOf("Mirror", "Repeat"), tip = "What a shifted area shows at its edge: its own picture mirrored or the edge pixel stretched – never parts of other areas"),
+        Param.Slider("smooth", "Smooth edges", 0, 30, 2, " px", "Rounds off the outlines of the areas: jagged edges and thin offshoots disappear, the picture stays sharp"),
+        Param.Choice("style", "Holo effect", styles),
+        Param.Color("color1", "Color 1", 0x00E5FF, "For “Custom gradient”"),
+        Param.Color("color2", "Color 2", 0xFF3FD8),
+        Param.Color("color3", "Color 3", 0xFFE14D),
+        Param.Slider("bands", "Stripes", 1, 20, 3, "", "How often the color gradient repeats across the card"),
         Param.Choice(
-            "bandShape", "Streifenform", bandShapes,
-            tip = "Welche Form die Farbstreifen der Folie haben: gerade Linien, Wellen, Ringe, Quadrate, Rauten oder Sechsecke um die Mitte, Strahlen oder eine Spirale; die Drehachse dreht die Form mit",
+            "bandShape", "Stripe shape", bandShapes,
+            tip = "The shape of the foil's color stripes: straight lines, waves, rings, squares, diamonds or hexagons around the middle, rays or a spiral; the rotation axis turns the shape too",
         ),
         Param.Slider(
-            "tile", "Kacheln", 0, 500, 0, " px",
-            "Wiederholt die Streifenform als Kacheln dieser Grösse nebeneinander (0 = eine Form über das ganze Bild); klein ergibt ein feines Raster, z. B. viele kleine Quadrate",
+            "tile", "Tiles", 0, 500, 0, " px",
+            "Repeats the stripe shape as tiles of this size side by side (0 = one shape across the whole picture); small gives a fine grid, e.g. many small squares",
         ),
-        Param.Slider("strength", "Stärke", 0, 100, 55, " %"),
-        Param.Choice("blend", "Mischen", blends, 1, tip = "Aufhellen: die Folie leuchtet über dem Bild · Overlay: kräftiger, dunkle Stellen bleiben dunkel · Farbe: das Bild übernimmt die Folienfarbe, behält seine Helligkeit"),
-        Param.Slider("gloss", "Glanz", 0, 100, 50, " %", "Glanzlichter auf den Flächen, die gerade zum Licht zeigen"),
-        Param.Slider("sparkle", "Funkeln", 0, 100, 0, " %", "Wie viele kleine Sterne auf den Flächen sitzen (100 %: dicht an dicht); sie wandern mit ihrer Fläche und blitzen beim Drehen auf"),
-        Param.Slider("sparkleSize", "Funkeln Grösse", 1, 60, 6, " px", "Grösse der Funkelsterne"),
-        Param.Slider("edges", "Kanten", 0, 100, 0, " %", "Helle Prägekanten zwischen den Flächen"),
-        Param.Choice("pattern", "Muster", patterns, tip = "Muster, die in die Flächen geprägt sind; sie wandern mit ihrer Fläche und schillern in einer eigenen Folienfarbe"),
-        Param.Slider("patternSize", "Muster Grösse", 4, 300, 28, " px", "Abstand der Muster"),
-        Param.Slider("patternDensity", "Muster Dichte", 0, 100, 50, " %", "Wie viele Plätze ein Muster bekommen"),
-        Param.Slider("patternStrength", "Muster Stärke", 0, 100, 70, " %"),
-        Param.Slider("glow", "Glow", 0, 100, 40, " %", "Die hellen Teile – Glanzlichter, Kanten, Muster, Funken – strahlen in die Umgebung"),
-        Param.Slider("glowRadius", "Glow Radius", 1, 100, 12, " px"),
-        Param.Slider("glowColor", "Glow Farbe", 0, 100, 80, " %", "Wie stark der Glow die Farbe der Folie und des Bildes annimmt; 0 % leuchtet weiss"),
-        Param.Slider("fringe", "Glow Farbsaum", 0, 100, 40, " %", "Rot strahlt weiter als Blau: farbige Säume um die Lichter"),
-        Param.Slider("streak", "Lichtstreifen", 0, 100, 30, " %", "Lange Lichtstreifen durch die hellsten Stellen, wie bei einer anamorphen Linse"),
-        Param.Slider("streakLength", "Streifen Länge", 10, 800, 160, " px"),
-        Param.Slider("streakAngle", "Streifen Winkel", 0, 179, 0, "°", "0° = waagrecht"),
-        Param.Choice("tonemap", "Tonemapping", listOf("Aus", "Filmisch"), 1, "Filmisch: helle Stellen laufen weich aus statt auszubrennen, Lichter und Schatten lassen sich getrennt steuern"),
-        Param.Slider("exposure", "Belichtung", -200, 200, 0, " %", "Hundertstel Blendenstufen: −100 % halbiert das Licht, +100 % verdoppelt es"),
-        Param.Slider("highlights", "Lichter", 0, 300, 60, " %", "Filmische Schulter bis 100 %: die Lichter laufen weich aus statt auszubrennen; über 100 % bekommen die Lichter noch mehr Kontrast, helle Stellen werden knackiger, die Schatten bleiben"),
-        Param.Slider("shadows", "Schatten", -100, 100, 0, " %", "Negativ: tiefere Schatten · positiv: Schatten aufhellen"),
+        Param.Slider("strength", "Strength", 0, 100, 55, " %"),
+        Param.Choice("blend", "Mix", blends, 1, tip = "Screen: the foil glows over the picture · Overlay: stronger, dark spots stay dark · Color: the picture takes on the foil color, keeps its brightness"),
+        Param.Slider("gloss", "Gloss", 0, 100, 50, " %", "Highlights on the areas currently facing the light"),
+        Param.Slider("sparkle", "Sparkle", 0, 100, 0, " %", "How many little stars sit on the areas (100 %: packed tightly); they travel with their area and flash when turned"),
+        Param.Slider("sparkleSize", "Sparkle size", 1, 60, 6, " px", "Size of the sparkle stars"),
+        Param.Slider("edges", "Edges", 0, 100, 0, " %", "Bright embossed edges between the areas"),
+        Param.Choice("pattern", "Pattern", patterns, tip = "Patterns embossed into the areas; they travel with their area and shimmer in a foil color of their own"),
+        Param.Slider("patternSize", "Pattern size", 4, 300, 28, " px", "Spacing of the patterns"),
+        Param.Slider("patternDensity", "Pattern density", 0, 100, 50, " %", "How many places get a pattern"),
+        Param.Slider("patternStrength", "Pattern strength", 0, 100, 70, " %"),
+        Param.Slider("glow", "Glow", 0, 100, 40, " %", "The bright parts – highlights, edges, patterns, sparks – radiate into their surroundings"),
+        Param.Slider("glowRadius", "Glow radius", 1, 100, 12, " px"),
+        Param.Slider("glowColor", "Glow color", 0, 100, 80, " %", "How much the glow takes on the color of the foil and the picture; 0 % glows white"),
+        Param.Slider("fringe", "Glow fringe", 0, 100, 40, " %", "Red radiates further than blue: colored fringes around the lights"),
+        Param.Slider("streak", "Light streaks", 0, 100, 30, " %", "Long light streaks through the brightest spots, as with an anamorphic lens"),
+        Param.Slider("streakLength", "Streak length", 10, 800, 160, " px"),
+        Param.Slider("streakAngle", "Streak angle", 0, 179, 0, "°", "0° = horizontal"),
+        Param.Choice("tonemap", "Tone mapping", listOf("Off", "Filmic"), 1, "Filmic: bright spots roll off softly instead of burning out, highlights and shadows can be controlled separately"),
+        Param.Slider("exposure", "Exposure", -200, 200, 0, " %", "Hundredths of a stop: −100 % halves the light, +100 % doubles it"),
+        Param.Slider("highlights", "Highlights", 0, 300, 60, " %", "Filmic shoulder up to 100 %: the highlights roll off softly instead of burning out; above 100 % the highlights get even more contrast, bright spots become crisper, the shadows stay"),
+        Param.Slider("shadows", "Shadows", -100, 100, 0, " %", "Negative: deeper shadows · positive: lift the shadows"),
     )
 
     private val gold = intArrayOf(0x4A2E06, 0xA8740F, 0xF2C94C, 0xFFF4C8, 0xD9A32E, 0x7A5410)

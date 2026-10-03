@@ -25,7 +25,7 @@ class DiffGrowthTest {
         val out = DiffGrowth.apply(disk, v, 3L)
         assertContentEquals(out.data, DiffGrowth.apply(disk, v, 3L).data)
         val changed = (0 until 160 * 160).count { out.data[it] != disk.data[it] }
-        assertTrue(changed > 3000, "verändert $changed")
+        assertTrue(changed > 3000, "changed $changed")
         // well away from the area nothing happens
         assertEquals(dark, out[2, 2])
     }
@@ -36,10 +36,10 @@ class DiffGrowthTest {
         val short = red(3)
         val long = red(150)
         fun count(p: Pixels) = p.data.count { it == 0xFFFF0033.toInt() }
-        assertTrue(count(long) > count(short) * 2, "kurz ${count(short)}, lang ${count(long)}")
+        assertTrue(count(long) > count(short) * 2, "short ${count(short)}, long ${count(long)}")
         // no curve far outside the disk
         for (i in 0 until 160 * 160) {
-            if (long.data[i] == 0xFFFF0033.toInt()) assertTrue(hypot(i % 160 + 0.5 - 80, i / 160 + 0.5 - 80) < 64, "Kurve ausserhalb bei $i")
+            if (long.data[i] == 0xFFFF0033.toInt()) assertTrue(hypot(i % 160 + 0.5 - 80, i / 160 + 0.5 - 80) < 64, "curve outside at $i")
         }
     }
 
@@ -48,6 +48,6 @@ class DiffGrowthTest {
         val limited = DiffGrowth.apply(disk, DiffGrowth.defaultValues(settings + mapOf("fold" to 5, "maxNodes" to 500, "showMask" to 1)), 3L)
         val free = DiffGrowth.apply(disk, DiffGrowth.defaultValues(settings + mapOf("fold" to 5, "showMask" to 1)), 3L)
         fun count(p: Pixels) = p.data.count { it == 0xFFFF0033.toInt() }
-        assertTrue(count(limited) < count(free), "begrenzt ${count(limited)}, frei ${count(free)}")
+        assertTrue(count(limited) < count(free), "limited ${count(limited)}, free ${count(free)}")
     }
 }

@@ -27,10 +27,10 @@ class LensTest {
     fun `the center stays, filled distortion leaves no empty border`() {
         for (d in listOf(-100, 60, 100)) {
             val out = run(src, "distortion" to d)
-            assertTrue(out.data.all { it ushr 24 == 255 }, "Wölbung $d: keine leeren Ränder")
+            assertTrue(out.data.all { it ushr 24 == 255 }, "distortion $d: no empty borders")
         }
         val open = run(src, "distortion" to 100, "fit" to 0)
-        assertTrue(open.data.any { it ushr 24 == 0 }, "ohne Füllen entstehen leere Ränder")
+        assertTrue(open.data.any { it ushr 24 == 0 }, "without filling empty borders appear")
     }
 
     @Test
@@ -42,8 +42,8 @@ class LensTest {
         }
         val out = run(img, "aberration" to 20)
         fun colored(x0: Int, x1: Int) = (x0..x1).count { x -> out[x, 50].let { abs((it shr 16 and 0xFF) - (it and 0xFF)) > 12 } }
-        assertTrue(colored(170, 199) > 0, "am Rand Farbsaum")
-        assertEquals(0, colored(95, 105), "in der Mitte keiner")
+        assertTrue(colored(170, 199) > 0, "color fringe at the edge")
+        assertEquals(0, colored(95, 105), "none in the middle")
     }
 
     @Test
@@ -59,7 +59,7 @@ class LensTest {
         val plain = run(src, "distortion" to 20)
         for (g in 1..5) {
             val out = run(src, "distortion" to 20, "glitch" to g, "glitchAmount" to 80, "glitchSize" to 40)
-            assertTrue(!out.data.contentEquals(plain.data), "Glitch $g ändert nichts")
+            assertTrue(!out.data.contentEquals(plain.data), "glitch $g changes nothing")
         }
     }
 
@@ -68,9 +68,9 @@ class LensTest {
         val black = Pixels(200, 200).also { it.data.fill(0xFF000000.toInt()) }
         for (g in listOf(1, 2, 3, 5)) {
             val out = run(black, "glitch" to g, "glitchSize" to 50, "glitchLines" to 100)
-            assertTrue(out.data.count { (it shr 8 and 0xFF) > 200 } > 50, "Glitch $g: helle Linien")
+            assertTrue(out.data.count { (it shr 8 and 0xFF) > 200 } > 50, "glitch $g: bright lines")
             val dark = run(black, "glitch" to g, "glitchSize" to 50, "glitchLines" to 0)
-            assertTrue(dark.data.all { (it shr 8 and 0xFF) < 5 }, "Glitch $g: ohne Linien bleibt es schwarz")
+            assertTrue(dark.data.all { (it shr 8 and 0xFF) < 5 }, "glitch $g: without lines it stays black")
         }
     }
 
@@ -81,9 +81,9 @@ class LensTest {
         assertTrue(bright("lineWidth" to 60) > 2 * bright("lineWidth" to 10), "dicker")
         // vertical: the cracks start along the top edge; radial: out of the middle
         val down = run(black, "glitch" to 5, "glitchLines" to 100, "crackDirection" to 0, "crackBranch" to 0, "glitchSize" to 60)
-        assertTrue((0 until 300).count { x -> (down[x, 1] shr 8 and 0xFF) > 150 } >= 3, "oben beginnen Risse")
+        assertTrue((0 until 300).count { x -> (down[x, 1] shr 8 and 0xFF) > 150 } >= 3, "cracks start at the top")
         val out = run(black, "glitch" to 5, "glitchLines" to 100, "crackDirection" to 100, "crackBranch" to 0, "glitchSize" to 60)
-        assertTrue((145..155).any { x -> (95..105).any { y -> (out[x, y] shr 8 and 0xFF) > 150 } }, "Risse im Einschlag")
+        assertTrue((145..155).any { x -> (95..105).any { y -> (out[x, y] shr 8 and 0xFF) > 150 } }, "cracks at the impact")
     }
 
     @Test
@@ -91,12 +91,12 @@ class LensTest {
         val white = Pixels(200, 200).also { it.data.fill(-1) }
         for (g in listOf(1, 2, 3, 5)) {
             val dark = run(white, "glitch" to g, "glitchSize" to 50, "glitchLines" to -100, "glitchFringe" to 0, "glitchAmount" to 0)
-            assertTrue(dark.data.count { (it shr 8 and 0xFF) < 50 } > 50, "Glitch $g: dunkle Linien")
+            assertTrue(dark.data.count { (it shr 8 and 0xFF) < 50 } > 50, "glitch $g: dark lines")
             val shaded = run(white, "glitch" to g, "glitchSize" to 50, "glitchLines" to 0, "elementGradient" to -100, "glitchAmount" to 0)
-            assertTrue(shaded.data.count { (it shr 8 and 0xFF) < 128 } > 500, "Glitch $g: Verlauf zu den Kanten")
+            assertTrue(shaded.data.count { (it shr 8 and 0xFF) < 128 } > 500, "glitch $g: gradient towards the edges")
             val lit = run(testImage(200, 200), "glitch" to g, "glitchSize" to 50, "tilt" to 100, "light" to 100, "refraction" to 0, "glitchLines" to 0)
             val flat = run(testImage(200, 200), "glitch" to g, "glitchSize" to 50, "tilt" to 0, "glitchLines" to 0)
-            assertTrue(!lit.data.contentEquals(flat.data), "Glitch $g: Neigung wirkt")
+            assertTrue(!lit.data.contentEquals(flat.data), "glitch $g: tilt works")
         }
     }
 
@@ -108,6 +108,6 @@ class LensTest {
         val thinLines = thin.data.indices.filter { (thin.data[it] shr 8 and 0xFF) > 200 }
         assertTrue(thinLines.size > 100)
         // every pixel of a thin line lies on the thick line too
-        assertTrue(thinLines.all { (thick.data[it] shr 8 and 0xFF) > 150 }, "gleiche Risse")
+        assertTrue(thinLines.all { (thick.data[it] shr 8 and 0xFF) > 150 }, "same cracks")
     }
 }

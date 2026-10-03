@@ -11,7 +11,7 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /** Block size choice shared by the streak effects; the last option picks sizes at random. */
-internal val blockOptions = listOf("1 px", "2 px", "4 px", "8 px", "16 px", "32 px", "Zufällig")
+internal val blockOptions = listOf("1 px", "2 px", "4 px", "8 px", "16 px", "32 px", "Random")
 private val blockSizes = intArrayOf(1, 2, 4, 8, 16, 32)
 
 /** What a blockable effect produced: new pixels, and which pixels it actually changed. */

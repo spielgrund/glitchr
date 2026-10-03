@@ -7,15 +7,15 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /** Moves random horizontal (or vertical) bands of the image sideways, optionally only one color channel. */
-object SliceShift : Effect("slices", "Zeilenversatz", "Verschiebt zufällige Streifen des Bildes seitlich") {
+object SliceShift : Effect("slices", "Slice shift", "Shifts random stripes of the picture sideways") {
     override val params = listOf(
-        Param.Choice("direction", "Streifen", listOf("Waagrecht", "Senkrecht")),
-        Param.Slider("count", "Anzahl", 1, 400, 24),
-        Param.Slider("minSize", "Min. Dicke", 1, 500, 2, " px"),
-        Param.Slider("maxSize", "Max. Dicke", 1, 500, 40, " px"),
-        Param.Slider("shift", "Max. Versatz", 0, 3000, 120, " px"),
-        Param.Choice("channels", "Kanäle", channelOptions),
-        Param.Choice("edge", "Rand", Edge.labels),
+        Param.Choice("direction", "Stripes", listOf("Horizontal", "Vertical")),
+        Param.Slider("count", "Count", 1, 400, 24),
+        Param.Slider("minSize", "Min. thickness", 1, 500, 2, " px"),
+        Param.Slider("maxSize", "Max. thickness", 1, 500, 40, " px"),
+        Param.Slider("shift", "Max. offset", 0, 3000, 120, " px"),
+        Param.Choice("channels", "Channels", channelOptions),
+        Param.Choice("edge", "Edge", Edge.labels),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

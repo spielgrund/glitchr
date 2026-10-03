@@ -26,13 +26,13 @@ class HologramTest {
     @Test
     fun `every style gives its own colors`() {
         val outs = (0..3).map { run("style" to it).data }
-        for (a in 0..3) for (b in a + 1..3) assertTrue(!outs[a].contentEquals(outs[b]), "Stil $a und $b")
+        for (a in 0..3) for (b in a + 1..3) assertTrue(!outs[a].contentEquals(outs[b]), "style $a and $b")
     }
 
     @Test
     fun `parallax moves the areas against each other when turned`() {
         val moved = run(*none, "parallax" to 100, "rotation" to 60)
-        assertTrue(!moved.data.contentEquals(src.data), "Parallaxe")
+        assertTrue(!moved.data.contentEquals(src.data), "Parallax")
         // not turned, nothing moves
         assertContentEquals(src.data, run(*none, "parallax" to 100, "rotation" to 0).data)
     }
@@ -45,8 +45,8 @@ class HologramTest {
         }
         for (edge in 0..1) {
             val out = Hologram.apply(halves, Hologram.defaultValues(mapOf(*none, "parallax" to 200, "rotation" to 90, "parallaxEdge" to edge)), 7L)
-            assertTrue((0 until 100).all { y -> (0 until 95).all { x -> out[x, y] == 0xFFFF0000.toInt() } }, "Rand $edge: links nur Rot")
-            assertTrue((0 until 100).all { y -> (105 until 200).all { x -> out[x, y] == 0xFF0000FF.toInt() } }, "Rand $edge: rechts nur Blau")
+            assertTrue((0 until 100).all { y -> (0 until 95).all { x -> out[x, y] == 0xFFFF0000.toInt() } }, "edge $edge: only red on the left")
+            assertTrue((0 until 100).all { y -> (105 until 200).all { x -> out[x, y] == 0xFF0000FF.toInt() } }, "edge $edge: only blue on the right")
         }
     }
 
@@ -58,15 +58,15 @@ class HologramTest {
         val rough = run(*none, "edges" to 100, "smooth" to 0)
         val round = run(*none, "edges" to 100, "smooth" to 20)
         fun changed(p: com.spielgrund.glitchr.image.Pixels) = p.data.indices.count { p.data[it] != src.data[it] }
-        assertTrue(changed(round) < changed(rough), "glatter: ${changed(round)} < ${changed(rough)}")
+        assertTrue(changed(round) < changed(rough), "smoother: ${changed(round)} < ${changed(rough)}")
     }
 
     @Test
     fun `filmic tonemapping keeps the lights off white and steers the shadows`() {
         val white = com.spielgrund.glitchr.image.Pixels(40, 40).also { it.data.fill(-1) }
         fun tone(vararg c: Pair<String, Int>) = Hologram.apply(white, Hologram.defaultValues(mapOf(*none, "tonemap" to 1, *c)), 7L)
-        assertTrue((tone("highlights" to 100)[20, 20] and 0xFF) < 250, "Lichter laufen weich aus")
-        assertTrue((tone("highlights" to 0)[20, 20] and 0xFF) == 255, "ohne Schulter bleibt Weiss")
+        assertTrue((tone("highlights" to 100)[20, 20] and 0xFF) < 250, "highlights roll off softly")
+        assertTrue((tone("highlights" to 0)[20, 20] and 0xFF) == 255, "without shoulder white stays")
         // above 100 % the lights get more contrast: bright gets brighter, the upper midtones darker
         fun level(c: Int, h: Int) = Hologram.apply(
             com.spielgrund.glitchr.image.Pixels(20, 20).also { it.data.fill(c) },
@@ -74,11 +74,11 @@ class HologramTest {
         )[10, 10] and 0xFF
         val bright = 0xFFE0E0E0.toInt()
         val mid = 0xFF9A9A9A.toInt()
-        assertTrue(level(bright, 300) > level(bright, 100), "hell heller: ${level(bright, 300)} > ${level(bright, 100)}")
-        assertTrue(level(bright, 300) - level(mid, 300) > level(bright, 100) - level(mid, 100) + 20, "mehr Kontrast im Licht")
+        assertTrue(level(bright, 300) > level(bright, 100), "bright brighter: ${level(bright, 300)} > ${level(bright, 100)}")
+        assertTrue(level(bright, 300) - level(mid, 300) > level(bright, 100) - level(mid, 100) + 20, "more contrast in the highlights")
         val grey = com.spielgrund.glitchr.image.Pixels(40, 40).also { it.data.fill(0xFF303030.toInt()) }
         fun shade(s: Int) = Hologram.apply(grey, Hologram.defaultValues(mapOf(*none, "tonemap" to 1, "highlights" to 0, "shadows" to s)), 7L)[20, 20] and 0xFF
-        assertTrue(shade(-100) < shade(0) && shade(0) < shade(100), "Schatten: ${shade(-100)} < ${shade(0)} < ${shade(100)}")
+        assertTrue(shade(-100) < shade(0) && shade(0) < shade(100), "shadows: ${shade(-100)} < ${shade(0)} < ${shade(100)}")
         fun exposed(e: Int) = Hologram.apply(grey, Hologram.defaultValues(mapOf(*none, "tonemap" to 1, "exposure" to e)), 7L)[20, 20] and 0xFF
         assertTrue(exposed(100) > exposed(0) && exposed(-100) < exposed(0))
     }
@@ -88,16 +88,16 @@ class HologramTest {
         fun sparkles(vararg c: Pair<String, Int>) = run(*none, "style" to 2, "sparkle" to 100, *c)
         val a = sparkles("rotation" to 10)
         val b = sparkles("rotation" to 40)
-        assertTrue(!a.data.contentEquals(src.data), "Funken sichtbar")
-        assertTrue(!a.data.contentEquals(b.data), "beim Drehen andere Funken")
+        assertTrue(!a.data.contentEquals(src.data), "sparks visible")
+        assertTrue(!a.data.contentEquals(b.data), "different sparks when turned")
         fun lit(p: com.spielgrund.glitchr.image.Pixels) = p.data.indices.count { p.data[it] != src.data[it] }
-        assertTrue(lit(sparkles("sparkleSize" to 20)) > lit(sparkles("sparkleSize" to 3)), "grössere Funken")
+        assertTrue(lit(sparkles("sparkleSize" to 20)) > lit(sparkles("sparkleSize" to 3)), "larger sparks")
     }
 
     @Test
     fun `every band shape gives its own foil`() {
         val outs = (0..7).map { run("bandShape" to it).data }
-        for (a in 0..7) for (b in a + 1..7) assertTrue(!outs[a].contentEquals(outs[b]), "Streifenform $a und $b")
+        for (a in 0..7) for (b in a + 1..7) assertTrue(!outs[a].contentEquals(outs[b]), "stripe shape $a and $b")
     }
 
     @Test
@@ -113,7 +113,7 @@ class HologramTest {
         fun difference(step: Int) = (0 until 100).sumOf { x ->
             (0..16 step 8).sumOf { s -> kotlin.math.abs((out[x, 60] shr s and 0xFF) - (out[x + step, 60] shr s and 0xFF)) }
         }
-        assertTrue(difference(10) * 2 < difference(5), "Kacheln wiederholen sich: ${difference(10)} gegen ${difference(5)}")
+        assertTrue(difference(10) * 2 < difference(5), "tiles repeat: ${difference(10)} against ${difference(5)}")
     }
 
     @Test
@@ -129,7 +129,7 @@ class HologramTest {
         for (style in 0..3) {
             val plain = run(*none, "style" to style, "sparkle" to 0)
             val sparkling = run(*none, "style" to style, "sparkle" to 100)
-            assertTrue(!sparkling.data.contentEquals(plain.data), "Stil $style funkelt")
+            assertTrue(!sparkling.data.contentEquals(plain.data), "style $style sparkles")
         }
     }
 
@@ -139,7 +139,7 @@ class HologramTest {
         for (p in 1..6) {
             val out = run(*none, "glow" to 0, "pattern" to p, "patternDensity" to 100, "patternSize" to 30)
             val changed = out.data.indices.count { out.data[it] != plain.data[it] }
-            assertTrue(changed in 300 until out.data.size / 2, "Muster $p: $changed")
+            assertTrue(changed in 300 until out.data.size / 2, "pattern $p: $changed")
         }
     }
 

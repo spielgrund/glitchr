@@ -59,7 +59,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         form.border = javax.swing.BorderFactory.createEmptyBorder(8, 10, 10, 10)
         buildHeader()
         when (layer) {
-            is EffectLayer -> buildParams(layer, "Effekt")
+            is EffectLayer -> buildParams(layer, "Effect")
             is GeneratorLayer -> buildParams(layer, "Generator")
             is ImageLayer -> buildImage(layer)
         }
@@ -71,9 +71,9 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
     private fun buildHeader() {
         val (title, description) = when (layer) {
             is EffectLayer -> layer.effect.name to layer.effect.description
-            is ImageLayer -> "Bildebene" to "Effekte darüber wirken auf dieses Bild. Das Ergebnis liegt über den Ebenen darunter."
+            is ImageLayer -> "Image layer" to "Effects above work on this image. The result lies over the layers below."
             is GeneratorLayer -> "${layer.generator.name} (Generator)" to
-                "${layer.generator.description}. Erzeugt ein Bild in Leinwandgrösse – Effekte darüber wirken darauf wie auf eine Bildebene."
+                "${layer.generator.description}. Creates an image the size of the canvas – effects above work on it like on an image layer."
         }
         form.section(title)
         form.full(JLabel("<html><body style='width:230px'>$description</body></html>").apply {
@@ -149,13 +149,13 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
         if (layer.random) {
-            buttons.add(JButton("Neu würfeln").apply {
-                toolTipText = "Neuer Zufallswert: gleiche Einstellungen, anderes Ergebnis"
+            buttons.add(JButton("Reroll").apply {
+                toolTipText = "New random value: same settings, different result"
                 addActionListener { layer.reseed(); host.layerChanged() }
             })
             buttons.add(javax.swing.Box.createHorizontalStrut(6))
         }
-        buttons.add(JButton("Standardwerte").apply {
+        buttons.add(JButton("Defaults").apply {
             addActionListener {
                 layer.values.putAll(layer.defaults())
                 // texts too (ramps, curves, own text) – but drawn flow strokes stay
@@ -172,9 +172,9 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
     private fun buildFlow(layer: ParamLayer, p: Param.Flow) {
         val strokes = FlowStrokes.parse(layer.texts[p.key] ?: "")
         form.row(p.label, JLabel(when (strokes.size) {
-            0 -> "keine Striche"
-            1 -> "1 Strich"
-            else -> "${strokes.size} Striche"
+            0 -> "no strokes"
+            1 -> "1 stroke"
+            else -> "${strokes.size} strokes"
         }), p.tip)
         fun store(changed: List<List<java.awt.geom.Point2D.Double>>) {
             layer.texts[p.key] = FlowStrokes.format(changed)
@@ -182,30 +182,30 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             host.rebuildEditor()
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
-        buttons.add(JButton("Letzten Strich entfernen").apply {
+        buttons.add(JButton("Remove last stroke").apply {
             isEnabled = strokes.isNotEmpty()
             addActionListener { store(strokes.dropLast(1)) }
         })
         buttons.add(javax.swing.Box.createHorizontalStrut(6))
-        buttons.add(JButton("Alle löschen").apply {
+        buttons.add(JButton("Delete all").apply {
             isEnabled = strokes.isNotEmpty()
             addActionListener { store(emptyList()) }
         })
         form.full(buttons)
-        form.full(JCheckBox("Pfeile anzeigen", host.showFlow).apply {
-            toolTipText = "Blendet die gezeichneten Pfeile auf der Leinwand ein oder aus; sie wirken trotzdem"
+        form.full(JCheckBox("Show arrows", host.showFlow).apply {
+            toolTipText = "Shows or hides the drawn arrows on the canvas; they work either way"
             addActionListener { host.showFlow = isSelected }
         })
         form.full(hint(
             (p.tip?.let { "$it. " } ?: "") +
-                "Rechte Maustaste (oder Alt) wischt Pfeile weg. Ist die Maske eingeblendet, wird stattdessen die Maske bearbeitet.",
+                "The right mouse button (or Alt) wipes arrows away. While the mask is shown, the mask is edited instead.",
         ))
     }
 
     private fun buildImage(layer: ImageLayer) {
-        form.section("Position & Grösse")
+        form.section("Position & size")
         val (cw, ch) = host.imageSize ?: (layer.image.width to layer.image.height)
-        form.full(hint("Original ${layer.image.width} × ${layer.image.height} px, Leinwand $cw × $ch px"))
+        form.full(hint("Original ${layer.image.width} × ${layer.image.height} px, canvas $cw × $ch px"))
         fun changed() {
             host.layerChanged()
             host.rebuildEditor()
@@ -217,7 +217,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         val limit = 100_000
         form.row("X", spinner(layer.x, -limit, limit) { if (it != layer.x.roundToInt()) { layer.x = it.toDouble(); host.layerChanged() } })
         form.row("Y", spinner(layer.y, -limit, limit) { if (it != layer.y.roundToInt()) { layer.y = it.toDouble(); host.layerChanged() } })
-        form.row("Skalierung", SliderField(1, 1000, (layer.scale * 100).roundToInt(), 100, "%") { percent ->
+        form.row("Scale", SliderField(1, 1000, (layer.scale * 100).roundToInt(), 100, "%") { percent ->
             val s = percent / 100.0
             if ((layer.scale * 100).roundToInt() == percent) return@SliderField
             // scale around the center
@@ -226,58 +226,58 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             layer.x = b.centerX - layer.image.width * s / 2
             layer.y = b.centerY - layer.image.height * s / 2
             host.layerChanged()
-        }, "Doppelklick auf den Regler: 100 %")
-        form.row("Drehung", SliderField(-1800, 1800, (layer.rotation * 10).roundToInt(), 0, "°", 1) { tenths ->
+        }, "Double-click the slider: 100 %")
+        form.row("Rotation", SliderField(-1800, 1800, (layer.rotation * 10).roundToInt(), 0, "°", 1) { tenths ->
             if ((layer.rotation * 10).roundToInt() == tenths) return@SliderField
             // around the middle of the picture: position and size stay
             layer.rotation = tenths / 10.0
             host.layerChanged()
-        }, "Um die Mitte des Bilds. Im Bild: Umschalt + an einer Ecke ziehen")
-        form.full(JCheckBox("Glatt skalieren", layer.smooth).apply {
-            toolTipText = "Aus: harte Pixel (Nearest Neighbour) beim Vergrössern"
+        }, "Around the middle of the image. In the picture: Shift + drag a corner")
+        form.full(JCheckBox("Smooth scaling", layer.smooth).apply {
+            toolTipText = "Off: hard pixels (nearest neighbor) when enlarging"
             addActionListener { layer.smooth = isSelected; host.layerChanged() }
         })
         val buttons = JPanel(java.awt.GridLayout(3, 2, 6, 6)).apply { isOpaque = false }
-        buttons.add(JButton("Einpassen").apply {
-            toolTipText = "Ganzes Bild auf der Leinwand zeigen"
+        buttons.add(JButton("Fit").apply {
+            toolTipText = "Show the whole image on the canvas"
             addActionListener { layer.fitInto(cw, ch); changed() }
         })
-        buttons.add(JButton("Füllen").apply {
-            toolTipText = "Leinwand ganz bedecken (Ränder werden abgeschnitten)"
+        buttons.add(JButton("Fill").apply {
+            toolTipText = "Cover the whole canvas (borders are cropped)"
             addActionListener { layer.fitInto(cw, ch, cover = true); changed() }
         })
-        buttons.add(JButton("Originalgrösse").apply {
+        buttons.add(JButton("Original size").apply {
             addActionListener { layer.scale = 1.0; layer.center(cw, ch); changed() }
         })
-        buttons.add(JButton("Zentrieren").apply {
+        buttons.add(JButton("Center").apply {
             addActionListener { layer.center(cw, ch); changed() }
         })
-        buttons.add(JButton("Drehung zurücksetzen").apply {
+        buttons.add(JButton("Reset rotation").apply {
             addActionListener { layer.rotation = 0.0; changed() }
         })
         form.full(buttons)
-        form.full(hint("Im Bild ziehen verschiebt die Ebene, an den Ecken ziehen skaliert sie, mit Umschalt dreht es sie. Ist die Maske eingeblendet (Strg+M), wird stattdessen die Maske bearbeitet – zum Verschieben dann ausblenden oder Strg halten."))
+        form.full(hint("Dragging in the picture moves the layer, dragging the corners scales it, with Shift it rotates it. While the mask is shown (Ctrl+M), the mask is edited instead – hide it or hold Ctrl to move."))
     }
 
     private fun buildLayer() {
-        form.section("Ebene")
-        form.row("Deckkraft", SliderField(0, 100, layer.opacity, 100, "%") {
+        form.section("Layer")
+        form.row("Opacity", SliderField(0, 100, layer.opacity, 100, "%") {
             layer.opacity = it
             host.layerChanged()
         })
-        form.row("Mischmodus", JComboBox(BlendMode.entries.toTypedArray()).apply {
+        form.row("Blend mode", JComboBox(BlendMode.entries.toTypedArray()).apply {
             selectedItem = layer.blend
             addActionListener {
                 layer.blend = selectedItem as BlendMode
                 host.layerChanged()
             }
-        }, "Wie die Ebene mit dem darunter verrechnet wird")
+        }, "How the layer is combined with what lies below")
     }
 
     private fun buildMask() {
         val mask = layer.mask
-        form.section("Maske")
-        form.row("Art", JComboBox(MaskMode.entries.toTypedArray()).apply {
+        form.section("Mask")
+        form.row("Type", JComboBox(MaskMode.entries.toTypedArray()).apply {
             selectedItem = mask.mode
             name = MASK_MODE_BOX
             // arrow keys only move through the list; the choice is made with Enter or a click,
@@ -295,30 +295,30 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             }
         })
         if (mask.mode == MaskMode.OFF) {
-            form.full(hint("Ohne Maske wirkt der Effekt auf das ganze Bild."))
+            form.full(hint("Without a mask the effect works on the whole picture."))
             return
         }
         if (layer is ImageLayer || layer is GeneratorLayer) {
-            form.full(hint("Die Maske schneidet das Bild aus, bevor die Effekte darüber wirken – sie können also über die Maskenkante hinaus laufen."))
+            form.full(hint("The mask cuts out the image before the effects above work – so they can run beyond the mask edge."))
         }
-        form.full(JCheckBox("Maske umkehren", mask.invert).apply {
+        form.full(JCheckBox("Invert mask", mask.invert).apply {
             addActionListener { mask.invert = isSelected; host.maskChanged() }
         })
         val thresholdField = SliderField(0, 100, mask.threshold, 50, "%") {
             mask.threshold = it
             host.maskChanged()
         }.apply { isEnabled = mask.hardEdge }
-        form.full(JCheckBox("Harte Kante (nur Schwarz/Weiss)", mask.hardEdge).apply {
-            toolTipText = "Alles ab der Schwelle bekommt den vollen Effekt, alles darunter keinen"
+        form.full(JCheckBox("Hard edge (black/white only)", mask.hardEdge).apply {
+            toolTipText = "Everything from the threshold up gets the full effect, everything below none"
             addActionListener {
                 mask.hardEdge = isSelected
                 thresholdField.isEnabled = isSelected
                 host.maskChanged()
             }
         })
-        form.row("Schwelle", thresholdField, "Ab diesem Maskenwert wirkt der Effekt voll")
-        form.full(JCheckBox("Maske anzeigen (rot = kein Effekt)", host.showMask).apply {
-            toolTipText = "Blendet die rote Markierung ein oder aus; die Maske wirkt trotzdem (Strg+M)"
+        form.row("Threshold", thresholdField, "From this mask value the effect works fully")
+        form.full(JCheckBox("Show mask (red = no effect)", host.showMask).apply {
+            toolTipText = "Shows or hides the red overlay; the mask works either way (Ctrl+M)"
             addActionListener { host.showMask = isSelected }
         })
 
@@ -327,15 +327,15 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             MaskMode.LINEAR, MaskMode.RADIAL -> {
                 form.full(JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply {
                     isOpaque = false
-                    add(JButton("Verlauf zurücksetzen").apply {
+                    add(JButton("Reset gradient").apply {
                         addActionListener { mask.resetGradient(); host.maskChanged() }
                     })
                 })
                 form.full(hint(
                     if (mask.mode == MaskMode.LINEAR)
-                        "Im Bild ziehen setzt den Verlauf neu: voller Effekt am weissen Punkt, keiner am schwarzen. Die Punkte lassen sich einzeln verschieben."
+                        "Dragging in the picture sets the gradient anew: full effect at the white point, none at the black one. The points can be moved one by one."
                     else
-                        "Im Bild ziehen setzt den Kreis neu: voller Effekt in der Mitte (weiss), keiner ab dem Rand (schwarz)."
+                        "Dragging in the picture sets the circle anew: full effect in the middle (white), none from the edge on (black)."
                 ))
             }
             MaskMode.OFF -> {}
@@ -346,7 +346,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
     private fun buildMaskTools() {
         val mask = layer.mask
         val brush = host.brush
-        form.row("Werkzeug", JComboBox(MaskTool.entries.toTypedArray()).apply {
+        form.row("Tool", JComboBox(MaskTool.entries.toTypedArray()).apply {
             selectedItem = brush.tool
             putClientProperty("JComboBox.isTableCellEditor", true)
             addActionListener {
@@ -358,43 +358,43 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         })
         when (brush.tool) {
             MaskTool.BRUSH -> {
-                form.row("Pinselgrösse", SliderField(1, 1500, brush.size, 120, "px") { brush.size = it })
-                form.row("Härte", SliderField(0, 100, brush.hardness, 40, "%") { brush.hardness = it })
-                form.row("Stärke", SliderField(1, 100, brush.strength, 60, "%") { brush.strength = it })
+                form.row("Brush size", SliderField(1, 1500, brush.size, 120, "px") { brush.size = it })
+                form.row("Hardness", SliderField(0, 100, brush.hardness, 40, "%") { brush.hardness = it })
+                form.row("Strength", SliderField(1, 100, brush.strength, 60, "%") { brush.strength = it })
             }
             MaskTool.WAND -> {
-                form.row("Toleranz", SliderField(0, 255, brush.tolerance, 32) { brush.tolerance = it },
-                    "Wie stark eine Farbe von der angeklickten abweichen darf (je Kanal)")
-                form.full(JCheckBox("Nur zusammenhängende Flächen", brush.contiguous).apply {
-                    toolTipText = "Aus: wählt die ähnlichen Farben im ganzen Bild"
+                form.row("Tolerance", SliderField(0, 255, brush.tolerance, 32) { brush.tolerance = it },
+                    "How much a color may differ from the clicked one (per channel)")
+                form.full(JCheckBox("Contiguous areas only", brush.contiguous).apply {
+                    toolTipText = "Off: selects similar colors in the whole picture"
                     addActionListener { brush.contiguous = isSelected }
                 })
-                form.row("Weiche Kante", SliderField(0, 200, brush.feather, 0, "px") { brush.feather = it })
+                form.row("Soft edge", SliderField(0, 200, brush.feather, 0, "px") { brush.feather = it })
             }
-            else -> form.row("Weiche Kante", SliderField(0, 200, brush.feather, 0, "px") { brush.feather = it })
+            else -> form.row("Soft edge", SliderField(0, 200, brush.feather, 0, "px") { brush.feather = it })
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
-        buttons.add(JButton("Alles füllen").apply {
+        buttons.add(JButton("Fill all").apply {
             addActionListener { ensurePainted(); mask.fill(255); host.maskChanged() }
         })
         buttons.add(javax.swing.Box.createHorizontalStrut(6))
-        buttons.add(JButton("Leeren").apply {
+        buttons.add(JButton("Clear").apply {
             addActionListener { ensurePainted(); mask.fill(0); host.maskChanged() }
         })
         buttons.add(javax.swing.Box.createHorizontalStrut(6))
-        buttons.add(JButton("Aus Bildhelligkeit").apply {
-            toolTipText = "Helle Bildteile bekommen den Effekt, dunkle nicht. Mit „Harte Kante“ entsteht eine scharfe Auswahl"
+        buttons.add(JButton("From picture brightness").apply {
+            toolTipText = "Bright parts of the picture get the effect, dark ones don't. With “Hard edge” this gives a sharp selection"
             addActionListener {
                 host.maskTarget?.image?.let { mask.fromBrightness(it); host.maskChanged() }
             }
         })
         form.full(buttons)
         form.full(hint(when (brush.tool) {
-            MaskTool.BRUSH -> "Linke Maustaste malt den Effekt hinein, rechte Maustaste (oder Alt) radiert."
-            MaskTool.RECT, MaskTool.ELLIPSE -> "Aufziehen fügt den Bereich hinzu, mit rechter Maustaste (oder Alt) wird er abgezogen."
-            MaskTool.LASSO -> "Freihand umfahren; beim Loslassen wird die Form geschlossen. Rechte Maustaste (oder Alt) zieht ab."
-            MaskTool.WAND -> "Klick wählt ähnliche Farben des Originalbilds aus, rechte Maustaste (oder Alt) zieht sie ab."
-        } + " Leertaste + Ziehen verschiebt die Ansicht."))
+            MaskTool.BRUSH -> "The left mouse button paints the effect in, the right mouse button (or Alt) erases."
+            MaskTool.RECT, MaskTool.ELLIPSE -> "Dragging adds the area, with the right mouse button (or Alt) it is subtracted."
+            MaskTool.LASSO -> "Trace freehand; on release the shape is closed. The right mouse button (or Alt) subtracts."
+            MaskTool.WAND -> "A click selects similar colors of the original picture, the right mouse button (or Alt) subtracts them."
+        } + " Space + drag pans the view."))
     }
 
     /** Focuses the mask mode box, so keyboard users stay where they were after a rebuild. */

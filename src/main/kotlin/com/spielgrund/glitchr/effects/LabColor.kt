@@ -24,31 +24,31 @@ import kotlin.math.sin
  * that end up outside what a screen can show are clipped – or wrap around, which gives
  * hard, glitchy color jumps.
  */
-object LabColor : Effect("lab", "LAB-Farben", "Farben im LAB-Farbraum verändern: Helligkeit, Grün–Magenta, Blau–Gelb, Buntheit, Farbton") {
-    private val swaps = listOf("Keine", "a ↔ b", "L ↔ a", "L ↔ b", "Rotieren L → a → b → L")
+object LabColor : Effect("lab", "LAB colors", "Change colors in LAB color space: lightness, green–magenta, blue–yellow, chroma, hue") {
+    private val swaps = listOf("None", "a ↔ b", "L ↔ a", "L ↔ b", "Rotate L → a → b → L")
 
     override val params = listOf(
-        Param.Heading("lHeading", "L – Helligkeit"),
-        Param.Slider("lShift", "Verschiebung", -100, 100, 0, tip = "Hebt oder senkt die Helligkeit, ohne die Farben zu ändern"),
-        Param.Slider("lContrast", "Kontrast", 0, 400, 100, " %", "Um die mittlere Helligkeit (L 50)"),
-        Param.Toggle("lInvert", "Helligkeit umkehren", false, "Hell wird dunkel, die Farben bleiben"),
-        Param.Heading("aHeading", "a – Grün ↔ Magenta"),
-        Param.Slider("aShift", "Verschiebung", -128, 128, 0, tip = "Negativ: grüner, positiv: magentaroter"),
-        Param.Slider("aGain", "Stärke", -400, 400, 100, " %", "Negativ dreht Grün und Magenta um"),
-        Param.Heading("bHeading", "b – Blau ↔ Gelb"),
-        Param.Slider("bShift", "Verschiebung", -128, 128, 0, tip = "Negativ: blauer, positiv: gelber"),
-        Param.Slider("bGain", "Stärke", -400, 400, 100, " %", "Negativ dreht Blau und Gelb um"),
-        Param.Heading("lchHeading", "Buntheit und Farbton (LCh)"),
-        Param.Slider("chroma", "Buntheit", 0, 400, 150, " %", "0 %: grau, 100 %: unverändert, darüber immer bunter – ohne die Helligkeit zu ändern"),
-        Param.Slider("hue", "Farbton drehen", -180, 180, 0, "°"),
+        Param.Heading("lHeading", "L – lightness"),
+        Param.Slider("lShift", "Displacement", -100, 100, 0, tip = "Raises or lowers the lightness without changing the colors"),
+        Param.Slider("lContrast", "Contrast", 0, 400, 100, " %", "Around the middle lightness (L 50)"),
+        Param.Toggle("lInvert", "Invert lightness", false, "Light turns dark, the colors stay"),
+        Param.Heading("aHeading", "a – green ↔ magenta"),
+        Param.Slider("aShift", "Displacement", -128, 128, 0, tip = "Negative: greener, positive: more magenta"),
+        Param.Slider("aGain", "Strength", -400, 400, 100, " %", "Negative swaps green and magenta"),
+        Param.Heading("bHeading", "b – blue ↔ yellow"),
+        Param.Slider("bShift", "Displacement", -128, 128, 0, tip = "Negative: bluer, positive: yellower"),
+        Param.Slider("bGain", "Strength", -400, 400, 100, " %", "Negative swaps blue and yellow"),
+        Param.Heading("lchHeading", "Chroma and hue (LCh)"),
+        Param.Slider("chroma", "Chroma", 0, 400, 150, " %", "0 %: grey, 100 %: unchanged, above ever more colorful – without changing the lightness"),
+        Param.Slider("hue", "Rotate hue", -180, 180, 0, "°"),
         Param.Heading("glitchHeading", "Glitch"),
-        Param.Choice("swap", "Kanäle tauschen", swaps, tip = "L wird dabei auf den Bereich von a und b umgerechnet (und zurück)"),
-        Param.Slider("steps", "Stufen", 0, 64, 0, tip = "Schneidet L, a und b in so viele Stufen; 0 = stufenlos"),
+        Param.Choice("swap", "Swap channels", swaps, tip = "L is converted to the range of a and b for this (and back)"),
+        Param.Slider("steps", "Steps", 0, 64, 0, tip = "Cuts L, a and b into this many steps; 0 = stepless"),
         Param.Choice(
-            "gamut", "Ausserhalb des Farbraums", listOf("Abschneiden", "Überlauf"),
-            tip = "Was mit Farben passiert, die der Bildschirm nicht zeigen kann: auf den Rand setzen oder überlaufen lassen (harte Farbsprünge)",
+            "gamut", "Outside the gamut", listOf("Clip", "Overflow"),
+            tip = "What happens to colors the screen cannot show: set them to the edge or let them overflow (hard color jumps)",
         ),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override val random = false

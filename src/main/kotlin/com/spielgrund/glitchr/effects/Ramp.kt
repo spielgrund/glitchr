@@ -57,21 +57,21 @@ class ColorRamp(stops: List<ColorStop>) {
 
 /** Built-in gradients as starting points (the Noiser palettes and a few more). */
 enum class RampPalette(private val label: String, private vararg val stops: Pair<Double, Int>) {
-    SUNSET("Abendrot", 0.0 to 0x1A0B3D, 0.5 to 0xE0457B, 1.0 to 0xFFE6A8),
-    GRAY("Graustufen", 0.0 to 0x000000, 1.0 to 0xFFFFFF),
+    SUNSET("Sunset", 0.0 to 0x1A0B3D, 0.5 to 0xE0457B, 1.0 to 0xFFE6A8),
+    GRAY("Greyscale", 0.0 to 0x000000, 1.0 to 0xFFFFFF),
     TERRAIN(
         "Terrain",
         0.0 to 0x0B1F4B, 0.35 to 0x1D5FA8, 0.45 to 0x3A9AD9, 0.48 to 0xE8D7A0, 0.55 to 0x5AA14B,
         0.7 to 0x2F6B2C, 0.82 to 0x7A6A58, 0.92 to 0xD8D8D8, 1.0 to 0xFFFFFF,
     ),
-    FIRE("Feuer", 0.0 to 0x000000, 0.35 to 0x7A0A00, 0.6 to 0xE0470B, 0.8 to 0xFFB319, 1.0 to 0xFFF6D0),
-    OCEAN("Ozean", 0.0 to 0x020A1A, 0.5 to 0x0E4D80, 0.8 to 0x3FB8D6, 1.0 to 0xE8FBFF),
+    FIRE("Fire", 0.0 to 0x000000, 0.35 to 0x7A0A00, 0.6 to 0xE0470B, 0.8 to 0xFFB319, 1.0 to 0xFFF6D0),
+    OCEAN("Ocean", 0.0 to 0x020A1A, 0.5 to 0x0E4D80, 0.8 to 0x3FB8D6, 1.0 to 0xE8FBFF),
     NEON("Neon", 0.0 to 0x0D0221, 0.33 to 0x541388, 0.66 to 0xF52A86, 1.0 to 0x2DE2E6),
-    TOXIC("Toxisch", 0.0 to 0x0A0F0A, 0.6 to 0x2E7D32, 1.0 to 0xD4FF3A),
-    DUOTONE("Duoton", 0.0 to 0x14125A, 1.0 to 0x19C3A0),
-    THERMAL("Wärmebild", 0.0 to 0x000000, 0.25 to 0x3B0F70, 0.5 to 0xB5367A, 0.75 to 0xFB8861, 1.0 to 0xFCFDBF),
+    TOXIC("Toxic", 0.0 to 0x0A0F0A, 0.6 to 0x2E7D32, 1.0 to 0xD4FF3A),
+    DUOTONE("Duotone", 0.0 to 0x14125A, 1.0 to 0x19C3A0),
+    THERMAL("Thermal", 0.0 to 0x000000, 0.25 to 0x3B0F70, 0.5 to 0xB5367A, 0.75 to 0xFB8861, 1.0 to 0xFCFDBF),
     RAINBOW(
-        "Regenbogen", 0.0 to 0xFF0000, 0.17 to 0xFFFF00, 0.33 to 0x00FF00, 0.5 to 0x00FFFF, 0.67 to 0x0000FF,
+        "Rainbow", 0.0 to 0xFF0000, 0.17 to 0xFFFF00, 0.33 to 0x00FF00, 0.5 to 0x00FFFF, 0.67 to 0x0000FF,
         0.83 to 0xFF00FF, 1.0 to 0xFF0000,
     );
 
@@ -84,19 +84,19 @@ enum class RampPalette(private val label: String, private vararg val stops: Pair
  * Colors the picture through a gradient (gradient map): every pixel's value – its
  * brightness, or saturation, hue, a channel … – picks a color on the ramp. The ramp can
  * run several times (back and forth or with hard jumps) and be shifted along, and is
- * mixed with the picture in several ways; "Nur Farbe" keeps the picture's brightness.
+ * mixed with the picture in several ways; "Color only" keeps the picture's brightness.
  */
-object Ramp : Effect("ramp", "Ramp", "Färbt das Bild über einen Farbverlauf nach Helligkeit, Sättigung, Farbton oder einem Kanal") {
-    private val modes = listOf("Ersetzen", "Nur Farbe", "Weiches Licht", "Overlay", "Multiplizieren", "Negativ multiplizieren", "Differenz")
+object Ramp : Effect("ramp", "Ramp", "Colors the picture through a gradient by brightness, saturation, hue or a channel") {
+    private val modes = listOf("Replace", "Color only", "Soft light", "Overlay", "Multiply", "Screen", "Difference")
 
     override val params = listOf(
-        Param.Ramp("ramp", "Verlauf", RampPalette.SUNSET.ramp.format(), "Klicken: Farbpunkt hinzufügen · Ziehen: verschieben · Doppelklick: Farbe wählen · Rechtsklick: entfernen"),
-        Param.Choice("source", "Ramp nach", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Choice("mode", "Mischen", modes, tip = "Nur Farbe: der Verlauf gibt die Farbe, die Helligkeit bleibt die des Bilds"),
-        Param.Slider("repeats", "Wiederholungen", 1, 32, 1, tip = "Der Verlauf läuft mehrmals durch – Farbbänder"),
-        Param.Toggle("mirror", "Wiederholung spiegeln", true, "Jede zweite Wiederholung läuft zurück; aus: harte Sprünge"),
-        Param.Slider("shift", "Verschieben", 0, 100, 0, " %", "Schiebt den Verlauf entlang der Werte (läuft am Ende wieder von vorn)"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Ramp("ramp", "Gradient", RampPalette.SUNSET.ramp.format(), "Click: add a color stop · Drag: move · Double-click: choose color · Right-click: remove"),
+        Param.Choice("source", "Ramp by", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Choice("mode", "Mix", modes, tip = "Color only: the gradient gives the color, the brightness stays the picture's"),
+        Param.Slider("repeats", "Repeats", 1, 32, 1, tip = "The gradient runs through several times – color bands"),
+        Param.Toggle("mirror", "Mirror repeats", true, "Every second repeat runs back; off: hard jumps"),
+        Param.Slider("shift", "Shift", 0, 100, 0, " %", "Shifts the gradient along the values (starts over at the end)"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override val random = false

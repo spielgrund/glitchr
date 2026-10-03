@@ -33,20 +33,20 @@ class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(
 
     init {
         isOpaque = false
-        val channelBox = JComboBox(arrayOf("RGB", "Rot", "Grün", "Blau")).apply {
+        val channelBox = JComboBox(arrayOf("RGB", "Red", "Green", "Blue")).apply {
             addActionListener { channel = selectedIndex; area.repaint() }
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
             isOpaque = false
             add(channelBox)
             add(javax.swing.Box.createHorizontalStrut(6))
-            add(JButton("Zurücksetzen").apply {
-                toolTipText = "Diese Kurve wieder gerade"
+            add(JButton("Reset").apply {
+                toolTipText = "Make this curve straight again"
                 addActionListener { curves[channel] = mutableListOf(0 to 0, 255 to 255); changed() }
             })
             add(javax.swing.Box.createHorizontalStrut(6))
-            add(JButton("Alle").apply {
-                toolTipText = "Alle Kurven wieder gerade"
+            add(JButton("All").apply {
+                toolTipText = "Make all curves straight again"
                 addActionListener { for (k in curves.indices) curves[k] = mutableListOf(0 to 0, 255 to 255); changed() }
             })
         }
@@ -111,7 +111,7 @@ class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(
             }
             addMouseListener(mouse)
             addMouseMotionListener(mouse)
-            toolTipText = "Klicken setzt einen Punkt, Ziehen verschiebt ihn, Rechtsklick entfernt ihn"
+            toolTipText = "Click sets a point, dragging moves it, right-click removes it"
         }
 
         private val pad = 6

@@ -8,13 +8,13 @@ import com.spielgrund.glitchr.image.parallelRows
 import kotlin.random.Random
 
 /** Fewer bits per color channel, with optional dithering and a pixel mosaic. */
-object Bitcrush : Effect("bitcrush", "Bitcrush", "Reduziert die Farbtiefe und vergröbert die Pixel") {
+object Bitcrush : Effect("bitcrush", "Bitcrush", "Reduces the color depth and coarsens the pixels") {
     private val bayer = intArrayOf(0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5)
 
     override val params = listOf(
-        Param.Slider("bits", "Bits pro Kanal", 1, 8, 3),
-        Param.Choice("dither", "Dithering", listOf("Aus", "Bayer 4×4", "Rauschen")),
-        Param.Slider("pixel", "Pixelgrösse", 1, 128, 1, " px"),
+        Param.Slider("bits", "Bits per channel", 1, 8, 3),
+        Param.Choice("dither", "Dithering", listOf("Off", "Bayer 4×4", "Noise")),
+        Param.Slider("pixel", "Pixel size", 1, 128, 1, " px"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

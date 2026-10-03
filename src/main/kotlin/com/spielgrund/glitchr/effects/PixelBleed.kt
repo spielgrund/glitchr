@@ -17,20 +17,20 @@ import kotlin.random.Random
  * R, G, B as in the script, or by brightness, saturation, hue or a channel – smears its color over a random number of following pixels, getting a little
  * brighter every few steps. Smeared pixels are skipped, so streaks don't restart.
  */
-object PixelBleed : Effect("pixelbleed", "Pixelbleed", "Helle Pixel laufen in zufällig langen Streifen aus") {
-    private val directions = listOf("Nach unten", "Nach oben", "Nach rechts", "Nach links")
+object PixelBleed : Effect("pixelbleed", "Pixelbleed", "Bright pixels bleed out in randomly long streaks") {
+    private val directions = listOf("Down", "Up", "Right", "Left")
 
     override val params = listOf(
-        Param.Choice("direction", "Richtung", directions),
-        Param.Choice("thresholdMode", "Schwelle nach", thresholdModes, THRESHOLD_MEAN, THRESHOLD_TIP),
-        Param.Slider("threshold", "Schwelle", 0, 255, 100, tip = "Wert, ab dem ein Pixel ausläuft"),
-        Param.Toggle("darker", "Pixel unter der Schwelle auswählen", false, "Aus: Pixel über der Schwelle laufen aus. An: Pixel darunter"),
-        Param.Slider("length", "Max. Länge", 1, 3000, 300, " px", "Jeder Streifen ist zufällig 1 bis so lang; höchstens die längere Seite der Leinwand", canvasMax = true),
-        Param.Slider("jitter", "Längen-Zufall", 0, 100, 100, " %", "100 %: jeder Streifen ist zufällig 1 bis Max. Länge lang. 0 %: alle genau Max. Länge"),
-        Param.Color("endColor", "Zielfarbe", 0xFF0033, "Farbe, zu der jeder Streifen verläuft"),
-        Param.Slider("colorMix", "Farbstärke", 0, 100, 100, " %", "Wie viel Zielfarbe am Streifenende beigemischt ist: 0 % = keine, 100 % = ganz"),
-        Param.Slider("step", "Schritt", 1, 100, 5, " px", "Alle wie viele Pixel die Farbe wechselt; grösser = treppiger Verlauf"),
-        Param.Choice("block", "Blockgrösse", blockOptions, tip = "Die auslaufenden Pixel werden n×n gross"),
+        Param.Choice("direction", "Direction", directions),
+        Param.Choice("thresholdMode", "Threshold by", thresholdModes, THRESHOLD_MEAN, THRESHOLD_TIP),
+        Param.Slider("threshold", "Threshold", 0, 255, 100, tip = "Value from which a pixel bleeds"),
+        Param.Toggle("darker", "Select pixels below the threshold", false, "Off: pixels above the threshold bleed. On: pixels below it"),
+        Param.Slider("length", "Max. length", 1, 3000, 300, " px", "Every streak is randomly 1 to this long; at most the longer side of the canvas", canvasMax = true),
+        Param.Slider("jitter", "Length variation", 0, 100, 100, " %", "100 %: every streak is randomly 1 to max. length long. 0 %: all exactly max. length"),
+        Param.Color("endColor", "Target color", 0xFF0033, "Color every streak fades to"),
+        Param.Slider("colorMix", "Color strength", 0, 100, 100, " %", "How much target color is mixed in at the end of the streak: 0 % = none, 100 % = fully"),
+        Param.Slider("step", "Step", 1, 100, 5, " px", "Every how many pixels the color changes; larger = steppier gradient"),
+        Param.Choice("block", "Block size", blockOptions, tip = "The bleeding pixels become n×n in size"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

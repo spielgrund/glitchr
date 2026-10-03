@@ -15,7 +15,7 @@ class SlitScanTest {
         // one pixel per line, linear up to 159 px: row y moves y pixels to the right
         val out = run("size" to 1, "offset" to 159)
         for (y in listOf(0, 40, 159)) for (x in 0 until 240) {
-            assertEquals(src[Math.floorMod(x - y, 240), y], out[x, y], "Zeile $y, x $x")
+            assertEquals(src[Math.floorMod(x - y, 240), y], out[x, y], "row $y, x $x")
         }
     }
 
@@ -43,7 +43,7 @@ class SlitScanTest {
     @Test
     fun `exponential stays calm at first, random differs per seed`() {
         val exp = run("size" to 1, "offset" to 159, "curve" to 1)
-        assertTrue((0 until 16).all { y -> (0 until 240).all { x -> exp[x, y] == src[x, y] } }, "oben kaum Versatz")
+        assertTrue((0 until 16).all { y -> (0 until 240).all { x -> exp[x, y] == src[x, y] } }, "hardly any offset at the top")
         val a = SlitScan.apply(src, SlitScan.defaultValues(mapOf("curve" to 2)), 1L)
         val b = SlitScan.apply(src, SlitScan.defaultValues(mapOf("curve" to 2)), 2L)
         assertTrue(!a.data.contentEquals(b.data))
@@ -54,7 +54,7 @@ class SlitScanTest {
         // 0°, one pixel per line, only Y: row y shows the source row y - y/2 (linear up to 79.5 px)
         val out = run("size" to 1, "offset" to 0, "offsetY" to 159)
         for (y in listOf(0, 60, 159)) for (x in 0 until 240 step 17) {
-            assertEquals(src[x, Math.floorMod(y - y, 160)], out[x, y], "Zeile $y")
+            assertEquals(src[x, Math.floorMod(y - y, 160)], out[x, y], "row $y")
         }
         val half = run("size" to 1, "offset" to 0, "offsetY" to -159)
         // negative: row y shows source row 2 y (wrapped)

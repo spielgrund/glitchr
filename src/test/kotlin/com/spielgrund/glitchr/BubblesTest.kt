@@ -27,20 +27,20 @@ class BubblesTest {
         val out = Bubbles.apply(blocks, v, 5L)
         assertContentEquals(out.data, Bubbles.apply(blocks, v, 5L).data)
         val changed = (0 until 200 * 120).count { out.data[it] != blocks.data[it] }
-        assertTrue(changed > 1000, "verändert $changed")
+        assertTrue(changed > 1000, "changed $changed")
         // far from the area nothing moves
         assertEquals(dark, out[2, 2])
         assertEquals(dark, out[197, 117])
         // the mask view: the gap between the blocks melted into the area, the walls red
         val mask = Bubbles.apply(blocks, Bubbles.defaultValues(settings + ("showMask" to 1)), 5L)
-        assertTrue(mask[100, 60] != 0xFF000000.toInt() && mask[100, 60] != -1, "Lücke nicht verschmolzen")
-        assertTrue(mask.data.any { it == 0xFFFF0033.toInt() }, "keine Blasen")
+        assertTrue(mask[100, 60] != 0xFF000000.toInt() && mask[100, 60] != -1, "gap not merged")
+        assertTrue(mask.data.any { it == 0xFFFF0033.toInt() }, "no bubbles")
     }
 
     @Test
     fun `anti-aliasing adds in-between colors at the walls`() {
         fun colors(aa: Int) = Bubbles.apply(blocks, Bubbles.defaultValues(settings + ("antialias" to aa)), 5L).data.toSet().size
-        assertTrue(colors(2) > colors(0), "glatt ${colors(2)}, hart ${colors(0)}")
+        assertTrue(colors(2) > colors(0), "smooth ${colors(2)}, hard ${colors(0)}")
     }
 
     @Test

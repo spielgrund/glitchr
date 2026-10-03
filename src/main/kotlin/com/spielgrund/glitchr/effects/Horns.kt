@@ -27,80 +27,80 @@ import kotlin.math.sqrt
  * after another, each over the ones before, with soft, anti-aliased edges (every stamp is
  * spread bilinearly over the pixels).
  */
-object Horns : Effect("horns", "Hörner", "Eingerollte Hörner oder verzweigte Fächer mit Lamellen wachsen aus dem Bild") {
+object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gills grow out of the picture") {
     private const val STEP = 0.35
     private const val ACROSS = 0.5
 
     override val params = listOf(
-        Param.Heading("startHeading", "Ansatz"),
+        Param.Heading("startHeading", "Base"),
         Param.Choice(
-            "region", "Bereich", listOf("Schwellen", "Ellipse", "Ellipse und Schwellen"),
-            tip = "Woraus es wächst: aus dem Schwellenbereich, aus einer Ellipse (z. B. um einen Kopf) oder dem Schwellenbereich innerhalb der Ellipse",
+            "region", "Region", listOf("Thresholds", "Ellipse", "Ellipse and thresholds"),
+            tip = "Where it grows from: the threshold range, an ellipse (e.g. around a head) or the threshold range inside the ellipse",
         ),
         Param.Slider("regionX", "Ellipse X", 0, 1000, 500, " %", decimals = 1),
         Param.Slider("regionY", "Ellipse Y", 0, 1000, 500, " %", decimals = 1),
-        Param.Slider("regionW", "Ellipse Breite", 1, 1000, 300, " %", decimals = 1),
-        Param.Slider("regionH", "Ellipse Höhe", 1, 1000, 300, " %", decimals = 1),
-        Param.Choice("source", "Wert", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("lower", "Untere Schwelle", 0, 255, 140, tip = "Beim Farbton darf sie über der oberen liegen (Bereich über Rot hinweg)"),
-        Param.Slider("upper", "Obere Schwelle", 0, 255, 255),
-        Param.Toggle("invert", "Bereich umkehren", false),
-        Param.Toggle("showMask", "Startmaske zeigen", false, "Zeigt schwarzweiss, aus welchem Bereich die Hörner wachsen"),
-        Param.Slider("direction", "Richtung", 0, 359, 0, "°", "Die Hörner neigen sich in diese Richtung"),
-        Param.Slider("directionStrength", "Richtungsstärke", 0, 100, 0, " %", "0 %: sie wachsen senkrecht aus dem Rand"),
-        Param.Heading("hornHeading", "Hörner"),
+        Param.Slider("regionW", "Ellipse width", 1, 1000, 300, " %", decimals = 1),
+        Param.Slider("regionH", "Ellipse height", 1, 1000, 300, " %", decimals = 1),
+        Param.Choice("source", "Value", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("lower", "Lower threshold", 0, 255, 140, tip = "For hue it may lie above the upper one (a range across red)"),
+        Param.Slider("upper", "Upper threshold", 0, 255, 255),
+        Param.Toggle("invert", "Invert range", false),
+        Param.Toggle("showMask", "Show start mask", false, "Shows in black and white which region the horns grow from"),
+        Param.Slider("direction", "Direction", 0, 359, 0, "°", "The horns lean in this direction"),
+        Param.Slider("directionStrength", "Direction strength", 0, 100, 0, " %", "0 %: they grow straight out of the edge"),
+        Param.Heading("hornHeading", "Horns"),
         Param.Choice(
-            "hornShape", "Form", listOf("Horn", "Fächer", "Spaltung"),
-            tip = "Fächer: der Strang wird breiter statt spitz, gabelt sich und trägt feine Lamellen – wie ein Spaltblättling. " +
-                "Spaltung: der ganze Bereich (z. B. ein Kopf) wächst hinaus, spaltet sich in zwei eingerollte Hälften, aus der Mitte wächst der nächste",
+            "hornShape", "Shape", listOf("Horn", "Fan", "Split"),
+            tip = "Fan: the strand widens instead of tapering, forks and carries fine gills – like a split gill mushroom. " +
+                "Split: the whole region (e.g. a head) grows outwards, splits into two curled halves, the next one grows from the middle",
         ),
-        Param.Slider("horns", "Anzahl", 1, 300, 20, tip = "So viele wachsen aus dem Rand der Startmaske"),
-        Param.Slider("hornLength", "Länge", 10, 3000, 250, " px", canvasMax = true),
-        Param.Slider("hornWidth", "Breite", 2, 500, 50, " px", "Breite am Ansatz"),
-        Param.Slider("hornCurl", "Einrollen", 0, 100, 40, " %", "0 % gerade, 100 % drei volle Windungen (Fächer biegen sich nur sanft)"),
-        Param.Slider("hornSpiral", "Spiralform", 0, 400, 150, " %", "0 % gleichmässiger Bogen, mehr: erst fast gerade, zur Spitze eng eingerollt"),
-        Param.Choice("hornTurn", "Drehsinn", listOf("Zufällig", "Links", "Rechts")),
-        Param.Slider("hornVariation", "Zufall", 0, 100, 40, " %", "Wie verschieden Länge, Breite und Einrollen ausfallen"),
-        Param.Slider("hornShade", "Rundung", 0, 100, 40, " %", "Zu den Rändern dunkler – wirkt rund"),
-        Param.Slider("hornSoft", "Kantenweiche", 0, 100, 15, " %"),
-        Param.Slider("hornBaseSoft", "Ansatz weich", 0, 100, 15, " %", "So viel der Länge blendet das Horn am Ansatz weich ein, statt hart zu beginnen"),
-        Param.Heading("hornOnlyHeading", "Form Horn"),
-        Param.Slider("hornTaper", "Verjüngung", 0, 100, 70, " %", "Wie spitz sie zulaufen"),
+        Param.Slider("horns", "Count", 1, 300, 20, tip = "This many grow from the edge of the start mask"),
+        Param.Slider("hornLength", "Length", 10, 3000, 250, " px", canvasMax = true),
+        Param.Slider("hornWidth", "Width", 2, 500, 50, " px", "Width at the base"),
+        Param.Slider("hornCurl", "Curl", 0, 100, 40, " %", "0 % straight, 100 % three full turns (fans only bend gently)"),
+        Param.Slider("hornSpiral", "Spiral shape", 0, 400, 150, " %", "0 % an even arc, more: almost straight at first, curled tightly towards the tip"),
+        Param.Choice("hornTurn", "Turning direction", listOf("Random", "Left", "Right")),
+        Param.Slider("hornVariation", "Random", 0, 100, 40, " %", "How much length, width and curl vary"),
+        Param.Slider("hornShade", "Roundness", 0, 100, 40, " %", "Darker towards the edges – looks round"),
+        Param.Slider("hornSoft", "Edge softness", 0, 100, 15, " %"),
+        Param.Slider("hornBaseSoft", "Soft base", 0, 100, 15, " %", "This much of the length fades the horn in softly at the base instead of starting hard"),
+        Param.Heading("hornOnlyHeading", "Horn shape"),
+        Param.Slider("hornTaper", "Taper", 0, 100, 70, " %", "How pointed they get"),
         Param.Slider(
-            "hornTexture", "Textur mitziehen", 0, 100, 20, " %",
-            "0 % – der Bildquerschnitt am Ansatz wird zu Streifen gezogen, mehr – Bildinhalt wandert mit hinaus",
+            "hornTexture", "Drag texture along", 0, 100, 20, " %",
+            "0 % – the picture's cross-section at the base is pulled into stripes, more – the picture content travels outwards too",
         ),
-        Param.Heading("fanHeading", "Form Fächer"),
-        Param.Slider("fanSpread", "Auffächern", 0, 3000, 900, " %", "So viel breiter wird der ganze Fächer bis zu seinem Rand"),
-        Param.Slider("fanBranches", "Verzweigungen", 0, 4, 2, tip = "Wie oft sich die Stränge gabeln"),
-        Param.Slider("fanChildren", "Äste je Gabel", 2, 4, 2),
-        Param.Slider("fanFork", "Gabelwinkel", 0, 150, 60, "°"),
-        Param.Slider("gills", "Lamellen", 0, 300, 60, tip = "So viele feine Lamellen laufen längs durch den Strang und fächern sich auf"),
-        Param.Slider("gillDepth", "Lamellentiefe", 0, 100, 60, " %"),
-        Param.Slider("ruffle", "Rüschen", 0, 100, 50, " %", "Gewellter Saum an den Enden"),
-        Param.Slider("ruffleWaves", "Rüschenwellen", 1, 20, 5, tip = "So viele Wellen hat der Saum je Lappen"),
-        Param.Color("fanTint", "Tönung", 0xE8D2C4, "In dieser Farbe gefärbt, die Bildhelligkeit bleibt als Struktur"),
-        Param.Slider("fanTintAmount", "Tönungsstärke", 0, 100, 0, " %"),
-        Param.Slider("fanTexture", "Textur mitziehen", 0, 100, 0, " %", "Mehr lässt Bildinhalt quer durch den Fächer wandern"),
-        Param.Heading("splitHeading", "Form Spaltung"),
-        Param.Slider("splitFront", "Vorne", 0, 359, 270, "°", "Wo beim Bereich vorne ist (270° = oben): so wird er von allen Stämmen gelesen"),
-        Param.Slider("splitStems", "Stämme", 1, 200, 2, tip = "In so viele Richtungen wächst es aus dem Bereich – alle sind Klone eines Stamms, also schnell"),
-        Param.Slider("splitTilt", "Stämme drehen", -180, 180, 0, "°", "Jeder Stamm wird um seinen Ansatz gedreht – 0°: gerade vom Bereich weg"),
+        Param.Heading("fanHeading", "Fan shape"),
+        Param.Slider("fanSpread", "Fan out", 0, 3000, 900, " %", "The whole fan widens this much towards its edge"),
+        Param.Slider("fanBranches", "Branches", 0, 4, 2, tip = "How often the strands fork"),
+        Param.Slider("fanChildren", "Branches per fork", 2, 4, 2),
+        Param.Slider("fanFork", "Fork angle", 0, 150, 60, "°"),
+        Param.Slider("gills", "Gills", 0, 300, 60, tip = "This many fine gills run lengthwise through the strand and fan out"),
+        Param.Slider("gillDepth", "Gill depth", 0, 100, 60, " %"),
+        Param.Slider("ruffle", "Ruffles", 0, 100, 50, " %", "Wavy hem at the ends"),
+        Param.Slider("ruffleWaves", "Ruffle waves", 1, 20, 5, tip = "This many waves the hem has per lobe"),
+        Param.Color("fanTint", "Tint", 0xE8D2C4, "Tinted in this color, the picture's brightness stays as structure"),
+        Param.Slider("fanTintAmount", "Tint strength", 0, 100, 0, " %"),
+        Param.Slider("fanTexture", "Drag texture along", 0, 100, 0, " %", "More lets picture content travel across the fan"),
+        Param.Heading("splitHeading", "Split shape"),
+        Param.Slider("splitFront", "Front", 0, 359, 270, "°", "Where the front of the region is (270° = up): this is how every stem reads it"),
+        Param.Slider("splitStems", "Stems", 1, 200, 2, tip = "It grows out of the region in this many directions – all are clones of one stem, so it's fast"),
+        Param.Slider("splitTilt", "Rotate stems", -180, 180, 0, "°", "Every stem is rotated around its base – 0°: straight away from the region"),
         Param.Choice(
-            "splitMirror", "Textur spiegeln", listOf("Aus", "Seitlich", "Längs", "Beides"),
-            tip = "Seitlich: links und rechts vertauscht. Längs: vorne und hinten vertauscht",
+            "splitMirror", "Mirror texture", listOf("Off", "Sideways", "Lengthwise", "Both"),
+            tip = "Sideways: left and right swapped. Lengthwise: front and back swapped",
         ),
         Param.Choice(
-            "splitSpread", "Verteilung", listOf("Gleichmässig", "Zufällig"),
-            tip = "Gleichmässig: rundherum, der erste in die Richtung. Zufällig: in zufällige Richtungen, mit Zufall auch verschieden gross",
+            "splitSpread", "Distribution", listOf("Even", "Random"),
+            tip = "Even: all around, the first one in the direction. Random: in random directions, with variation also in different sizes",
         ),
-        Param.Slider("splitLevels", "Stufen", 1, 8, 3, tip = "So oft spaltet es sich und wächst aus der Mitte weiter"),
-        Param.Slider("splitGrowth", "Wachstum je Stufe", 50, 200, 125, " %", "Jede Stufe ist so viel länger und breiter als die vorige"),
-        Param.Slider("splitStem", "Stiel", 0, 200, 70, " %", "Wie weit der nächste Kopf aus der Spaltung wächst, bevor er sich teilt (Anteil der Länge)"),
-        Param.Slider("splitWidth", "Kopfbreite", 10, 200, 60, " %", "Breite der Stränge im Verhältnis zum Bereich"),
-        Param.Toggle("splitMaskOnly", "Nur der Bereich", true, "Die Stränge tragen nur den Bereich selbst, ohne seine Umgebung"),
-        Param.Heading("outHeading", "Ausgabe"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("splitLevels", "Levels", 1, 8, 3, tip = "It splits this often and keeps growing from the middle"),
+        Param.Slider("splitGrowth", "Growth per level", 50, 200, 125, " %", "Every level is this much longer and wider than the previous one"),
+        Param.Slider("splitStem", "Stalk", 0, 200, 70, " %", "How far the next head grows out of the split before it divides (share of the length)"),
+        Param.Slider("splitWidth", "Head width", 10, 200, 60, " %", "Width of the strands relative to the region"),
+        Param.Toggle("splitMaskOnly", "Region only", true, "The strands carry only the region itself, without its surroundings"),
+        Param.Heading("outHeading", "Output"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -166,7 +166,7 @@ object Horns : Effect("horns", "Hörner", "Eingerollte Hörner oder verzweigte F
      * into two curls, each carrying its half, curling outwards; from the split the next,
      * larger stem grows on and splits again.
      *
-     * The area is always read the same way, with "Vorne" at its front, so every stem looks
+     * The area is always read the same way, with "Front" at its front, so every stem looks
      * the same: one stem is drawn once into a sprite (its size measured by a dry run first,
      * at most the canvas diagonal each way), then cloned – turned to each stem's direction,
      * scaled and, with a random turn, mirrored – and laid over the picture. The sprite is
@@ -180,7 +180,7 @@ object Horns : Effect("horns", "Hörner", "Eingerollte Hörner oder verzweigte F
         for (i in start.indices) if (start[i]) { sx += i % w + 0.5; sy += i / w + 0.5; count++ }
         val cx = sx / count
         val cy = sy / count
-        // the area's frame: its front is "Vorne"
+        // the area's frame: its front is "Front"
         val front = Math.toRadians(v["splitFront"].toDouble())
         val fx = cos(front)
         val fy = sin(front)

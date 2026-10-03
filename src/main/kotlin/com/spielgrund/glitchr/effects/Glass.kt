@@ -31,8 +31,8 @@ import kotlin.math.sqrt
  * a tint, the joints between blocks, facets and cells as bright or dark lines, and light
  * with a highlight. Along joints and facet edges the pixel is supersampled.
  */
-object Glass : Effect("glass", "Glas", "Strukturglas: Glasbausteine, Wellenglas, Hammerschlag, Prismen, Waben … auch kombiniert") {
-    private val patterns = listOf("Keins", "Glasbausteine", "Wellenglas", "Wellen", "Prismen", "Waben", "Kristall", "Noppen", "Scheiben")
+object Glass : Effect("glass", "Glass", "Patterned glass: glass blocks, reeded glass, hammered glass, prisms, honeycomb … also combined") {
+    private val patterns = listOf("None", "Glass blocks", "Reeded glass", "Waves", "Prisms", "Honeycomb", "Crystal", "Dimples", "Panes")
     private const val NONE = 0
     private const val BLOCKS = 1
     private const val REEDED = 2
@@ -51,49 +51,49 @@ object Glass : Effect("glass", "Glas", "Strukturglas: Glasbausteine, Wellenglas,
         ),
     ).format()
 
-    private const val PATTERN_TIP = "Glasbausteine: Kissen, die das Bild verkleinert und gespiegelt zeigen · Wellenglas: parallele Rundstäbe · " +
-        "Wellen: sanfte Wellen · Prismen: Pyramiden mit vier Facetten · Waben: sechseckige Linsen · " +
-        "Kristall: zufällige ebene Facetten · Noppen: runde Buckel · Scheiben: Architekturglas – hohe farbige Scheiben, leicht versetzt, mit Rahmen"
+    private const val PATTERN_TIP = "Glass blocks: pillows that show the picture shrunk and mirrored · Reeded glass: parallel round rods · " +
+        "Waves: gentle waves · Prisms: pyramids with four facets · Honeycomb: hexagonal lenses · " +
+        "Crystal: random flat facets · Dimples: round bumps · Panes: architectural glass – tall colored panes, slightly offset, with frames"
 
     override val params = listOf(
-        Param.Heading("pattern1Heading", "Muster 1"),
-        Param.Choice("pattern1", "Glas", patterns, REEDED, PATTERN_TIP),
-        Param.Slider("size1", "Grösse", 4, 1000, 24, " px", canvasMax = true),
-        Param.Slider("strength1", "Brechung", -300, 300, 100, " %", "Wie weit die Neigung das Bild verschiebt – negativ: umgekehrt gewölbt"),
-        Param.Slider("angle1", "Winkel", 0, 179, 0, "°"),
-        Param.Heading("pattern2Heading", "Muster 2"),
-        Param.Choice("pattern2", "Glas", patterns, NONE, "Wird über Muster 1 gelegt – die Neigungen addieren sich. $PATTERN_TIP"),
-        Param.Slider("size2", "Grösse", 4, 1000, 12, " px", canvasMax = true),
-        Param.Slider("strength2", "Brechung", -300, 300, 40, " %"),
-        Param.Slider("angle2", "Winkel", 0, 179, 90, "°"),
-        Param.Heading("glassHeading", "Glas"),
+        Param.Heading("pattern1Heading", "Pattern 1"),
+        Param.Choice("pattern1", "Glass", patterns, REEDED, PATTERN_TIP),
+        Param.Slider("size1", "Size", 4, 1000, 24, " px", canvasMax = true),
+        Param.Slider("strength1", "Refraction", -300, 300, 100, " %", "How far the slope shifts the picture – negative: curved the other way"),
+        Param.Slider("angle1", "Angle", 0, 179, 0, "°"),
+        Param.Heading("pattern2Heading", "Pattern 2"),
+        Param.Choice("pattern2", "Glass", patterns, NONE, "Laid over pattern 1 – the slopes add up. $PATTERN_TIP"),
+        Param.Slider("size2", "Size", 4, 1000, 12, " px", canvasMax = true),
+        Param.Slider("strength2", "Refraction", -300, 300, 40, " %"),
+        Param.Slider("angle2", "Angle", 0, 179, 90, "°"),
+        Param.Heading("glassHeading", "Glass"),
         Param.Slider(
-            "offset", "Versatz", 0, 1000, 0, " px",
-            "Jedes Glasstück zeigt das Bild zufällig verschoben – vor allem entlang der Streifen, wie bei Architekturglas", canvasMax = true,
+            "offset", "Offset", 0, 1000, 0, " px",
+            "Every piece of glass shows the picture randomly shifted – mostly along the stripes, as with architectural glass", canvasMax = true,
         ),
-        Param.Slider("dispersion", "Dispersion", 0, 100, 20, " %", "Die Farben werden verschieden stark gebrochen – Regenbogensäume an steilen Stellen"),
-        Param.Slider("frost", "Mattierung", 0, 100, 0, " %", "Streut das Licht – das Bild dahinter wird milchig unscharf"),
-        Param.Color("tint", "Glasfarbe", 0xD6F2EC),
-        Param.Slider("tintAmount", "Tönung", 0, 100, 15, " %"),
-        Param.Slider("lineWidth", "Fugen Stärke", 0, 200, 20, tip = "Linien zwischen Bausteinen, Facetten und Zellen, in Zehntelpixeln: 20 = 2 px"),
-        Param.Slider("lines", "Fugen hell/dunkel", -100, 100, -40, " %", "Positiv: die Fugen leuchten hell · negativ: sie sind dunkel"),
-        Param.Heading("paneHeading", "Farbglas"),
+        Param.Slider("dispersion", "Dispersion", 0, 100, 20, " %", "The colors are refracted differently – rainbow fringes at steep spots"),
+        Param.Slider("frost", "Frosting", 0, 100, 0, " %", "Scatters the light – the picture behind becomes milky and blurred"),
+        Param.Color("tint", "Glass color", 0xD6F2EC),
+        Param.Slider("tintAmount", "Tint", 0, 100, 15, " %"),
+        Param.Slider("lineWidth", "Joint width", 0, 200, 20, tip = "Lines between blocks, facets and cells, in tenths of a pixel: 20 = 2 px"),
+        Param.Slider("lines", "Joints light/dark", -100, 100, -40, " %", "Positive: the joints glow bright · negative: they are dark"),
+        Param.Heading("paneHeading", "Colored glass"),
         Param.Ramp(
-            "paneColors", "Glasfarben", PANE_COLORS,
-            "Jedes Glasstück – Scheibe, Baustein, Stab, Wabe, Facette – bekommt eine Farbe aus diesem Verlauf; überlappende mischen sich",
+            "paneColors", "Glass colors", PANE_COLORS,
+            "Every piece of glass – pane, block, rod, cell, facet – gets a color from this gradient; overlapping ones mix",
         ),
-        Param.Slider("paneColor", "Farbigkeit", 0, 100, 0, " %", "Mischt jedem Glasstück seine Farbe bei – wie Architektur-Farbglas"),
-        Param.Slider("paneGlow", "Kantenleuchten", 0, 100, 0, " %", "Die Kanten der Glasstücke leuchten in ihrer Farbe"),
-        Param.Slider("reflection", "Spiegelung", 0, 100, 0, " %", "Schräge Lichtreflexe, je Glasstück verschieden"),
-        Param.Heading("lightHeading", "Licht"),
-        Param.Slider("lightAngle", "Lichtrichtung", 0, 359, 225, "°"),
-        Param.Slider("lightHeight", "Lichthöhe", 5, 90, 45, "°"),
-        Param.Slider("shading", "Schattierung", 0, 100, 35, " %"),
-        Param.Slider("gloss", "Glanz", 0, 100, 40, " %"),
-        Param.Slider("glossSize", "Glanzgrösse", 1, 100, 40, " %"),
-        Param.Heading("outHeading", "Ausgabe"),
-        Param.Choice("antialias", "Kantenglättung", listOf("Aus", "2 × 2", "4 × 4"), 2, "An Fugen und Facettenkanten wird mehrfach abgetastet"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("paneColor", "Colorfulness", 0, 100, 0, " %", "Mixes its color into every piece of glass – like architectural colored glass"),
+        Param.Slider("paneGlow", "Edge glow", 0, 100, 0, " %", "The edges of the pieces of glass glow in their color"),
+        Param.Slider("reflection", "Reflection", 0, 100, 0, " %", "Slanted light reflections, different for every piece of glass"),
+        Param.Heading("lightHeading", "Light"),
+        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°"),
+        Param.Slider("lightHeight", "Light height", 5, 90, 45, "°"),
+        Param.Slider("shading", "Shading", 0, 100, 35, " %"),
+        Param.Slider("gloss", "Gloss", 0, 100, 40, " %"),
+        Param.Slider("glossSize", "Gloss size", 1, 100, 40, " %"),
+        Param.Heading("outHeading", "Output"),
+        Param.Choice("antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 2, "Joints and facet edges are sampled several times"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     /** One pattern as set up: kind, size, refraction, direction. */

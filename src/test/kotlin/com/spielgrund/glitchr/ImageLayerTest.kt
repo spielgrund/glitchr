@@ -23,7 +23,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /** Makes every pixel pure blue and counts its runs. */
-private class Blue : Effect("blue", "Blau", "") {
+private class Blue : Effect("blue", "Blue", "") {
     var calls = 0
     override val params = listOf(Param.Slider("dummy", "Dummy", 0, 10, 0))
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -62,21 +62,21 @@ class ImageLayerTest {
         val blue = EffectLayer(Blue())
         val top = ImageLayer(solid(10, 10, green)).apply { x = 0.0; y = 0.0 }
         val out = render(Renderer(), bottom, blue, top)
-        assertEquals(green, out[5, 5], "obere Bildebene bleibt unverändert")
-        assertEquals(argb(255, 0, 0, 255), out[50, 50], "untere Ebene mit ihrem Effekt")
+        assertEquals(green, out[5, 5], "upper image layer stays unchanged")
+        assertEquals(argb(255, 0, 0, 255), out[50, 50], "lower layer with its effect")
     }
 
     @Test
     fun `transparent canvas outside all pictures and opacity mixes`() {
         val small = ImageLayer(solid(10, 10, red)).apply { x = 0.0; y = 0.0 }
         val out = render(Renderer(), small)
-        assertEquals(0, alpha(out[50, 50]), "ausserhalb der Bilder ist die Leinwand durchsichtig")
+        assertEquals(0, alpha(out[50, 50]), "outside the images the canvas is transparent")
 
         val bottom = ImageLayer(solid(w, h, green))
         val half = ImageLayer(solid(w, h, red)).apply { opacity = 50 }
         val mixed = render(Renderer(), bottom, half)
         assertEquals(255, alpha(mixed[10, 10]))
-        assertTrue(red(mixed[10, 10]) in 120..135, "halbe Deckkraft: ${red(mixed[10, 10])}")
+        assertTrue(red(mixed[10, 10]) in 120..135, "half opacity: ${red(mixed[10, 10])}")
     }
 
     @Test
@@ -91,11 +91,11 @@ class ImageLayerTest {
         render(renderer, bottom, lowerFx, top, upperFx)
         top.x = 30.0
         render(renderer, bottom, lowerFx, top, upperFx)
-        assertEquals(1, lowerEffect.calls, "untere Gruppe unverändert")
-        assertEquals(2, upperEffect.calls, "verschobenes Bild wird neu bearbeitet")
+        assertEquals(1, lowerEffect.calls, "lower group unchanged")
+        assertEquals(2, upperEffect.calls, "moved image is processed again")
         top.opacity = 40
         render(renderer, bottom, lowerFx, top, upperFx)
-        assertEquals(2, upperEffect.calls, "Deckkraft braucht den Effekt nicht neu")
+        assertEquals(2, upperEffect.calls, "opacity doesn't need the effect again")
     }
 
     @Test
@@ -125,20 +125,20 @@ class ImageLayerTest {
         layer.fitInto(100, 80, cover = true)
         assertEquals(0.8, layer.scale)
         layer.fitInto(1000, 800, onlyShrink = true)
-        assertEquals(1.0, layer.scale, "kleine Bilder werden nicht vergrössert")
+        assertEquals(1.0, layer.scale, "small images are not enlarged")
     }
 
     @Test
     fun `projects store several image layers and share identical pictures`() {
         val picture = solid(30, 20, green)
-        val bottom = ImageLayer(solid(w, h, red)).apply { name = "Hintergrund" }
+        val bottom = ImageLayer(solid(w, h, red)).apply { name = "Background" }
         val a = ImageLayer(picture).apply { x = 5.0; y = 6.0; scale = 1.5; smooth = false }
         val b = a.duplicate()
         val state = DocState(w, h, "stapel", listOf(bottom, a, EffectLayer(com.spielgrund.glitchr.effects.Effects.byId("rgb")), b).map { it.memento() })
-        val file = File("target/test-output/stapel.glitchr")
+        val file = File("target/test-output/stack.glitchr")
         ProjectFile.save(state, file)
         val images = ZipFile(file).use { zip -> zip.entries().toList().count { it.name.startsWith("images/") } }
-        assertEquals(2, images, "gleiches Bild wird nur einmal gespeichert")
+        assertEquals(2, images, "the same image is stored only once")
 
         val loaded = ProjectFile.load(file)
         assertEquals(w, loaded.width)
@@ -148,6 +148,6 @@ class ImageLayerTest {
         assertEquals(1.5, la.scale)
         assertEquals(false, la.smooth)
         assertSame(la.image, (loaded.layers[3] as ImageMemento).image)
-        assertEquals("Hintergrund", loaded.layers[0].name)
+        assertEquals("Background", loaded.layers[0].name)
     }
 }

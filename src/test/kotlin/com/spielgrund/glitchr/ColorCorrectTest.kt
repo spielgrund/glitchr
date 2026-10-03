@@ -78,8 +78,8 @@ class ColorCorrectTest {
         // overflow starts again from gray (0.25 of the way), mirror runs back (0.75 of the way)
         val wrapped = one(pale, mapOf("saturation" to 665, "saturationEdge" to 1))
         val mirrored = one(pale, mapOf("saturation" to 665, "saturationEdge" to 2))
-        assertTrue(abs(red(wrapped) - 158) <= 3, "Überlauf ${red(wrapped)}")
-        assertTrue(abs(red(mirrored) - 223) <= 3, "Spiegeln ${red(mirrored)}")
+        assertTrue(abs(red(wrapped) - 158) <= 3, "overflow ${red(wrapped)}")
+        assertTrue(abs(red(mirrored) - 223) <= 3, "mirror ${red(mirrored)}")
         // the hue stays: red strongest, blue weakest
         for (c in listOf(wrapped, mirrored)) assertTrue(red(c) > green(c) && green(c) > blue(c))
         // below the full saturation all three behave the same
@@ -95,8 +95,8 @@ class ColorCorrectTest {
         assertEquals(255, red(one(light, mapOf("lightness" to 80))))
         val wrappedL = red(one(light, mapOf("lightness" to 80, "lightnessEdge" to 1)))
         val mirroredL = red(one(light, mapOf("lightness" to 80, "lightnessEdge" to 2)))
-        assertTrue(wrappedL < 150, "Überlauf $wrappedL")
-        assertTrue(mirroredL in 100..240 && mirroredL != wrappedL, "gespiegelt $mirroredL")
+        assertTrue(wrappedL < 150, "overflow $wrappedL")
+        assertTrue(mirroredL in 100..240 && mirroredL != wrappedL, "mirrored $mirroredL")
     }
 
     @Test
@@ -111,9 +111,9 @@ class ColorCorrectTest {
         // just above the knee a little brighter, well above it blown out
         val slight = one(argb(255, 170, 160, 140), mapOf("highlightCompression" to -80))
         val up = one(argb(255, 210, 200, 180), mapOf("highlightCompression" to -80))
-        assertTrue(red(down) < 200, "heruntergeregelt ${red(down)}")
-        assertTrue(red(slight) > 185, "etwas heller ${red(slight)}")
-        assertTrue(red(up) >= 254, "ausgebrannt ${red(up)}")
+        assertTrue(red(down) < 200, "pulled down ${red(down)}")
+        assertTrue(red(slight) > 185, "a little brighter ${red(slight)}")
+        assertTrue(red(up) >= 254, "burnt out ${red(up)}")
         // the dark pixel below the knee stays
         assertEquals(dark, one(dark, mapOf("highlightCompression" to -80)))
         // per channel, so the hues tip: compressed, the channels move closer together (paler);

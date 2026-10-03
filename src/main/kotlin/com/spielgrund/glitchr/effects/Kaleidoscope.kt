@@ -20,23 +20,23 @@ import kotlin.math.sin
  * center on the segment's middle line, around which it is folded again (fold within
  * the fold), optionally turned and scaled from level to level.
  */
-object Kaleidoscope : Effect("kaleido", "Kaleidoskop", "Faltet das Bild mehrfach wie in einem Kaleidoskop") {
+object Kaleidoscope : Effect("kaleido", "Kaleidoscope", "Folds the picture several times as in a kaleidoscope") {
     override val params = listOf(
-        Param.Slider("segments", "Faltungen", 2, 32, 6, tip = "In wie viele Segmente der Kreis geteilt wird"),
-        Param.Slider("rotation", "Drehung", 0, 359, 0, "°", "Dreht das ganze Kaleidoskop"),
-        Param.Slider("sourceAngle", "Quellwinkel", 0, 359, 0, "°", "Welcher Ausschnitt des Bilds in die Segmente gefaltet wird"),
-        Param.Slider("offsetX", "Versatz X", -100, 100, 0, " %", "Verschiebt den Ausschnitt, der gespiegelt wird"),
-        Param.Slider("offsetY", "Versatz Y", -100, 100, 0, " %"),
-        Param.Slider("centerX", "Mitte X", 0, 100, 50, " %"),
-        Param.Slider("centerY", "Mitte Y", 0, 100, 50, " %"),
+        Param.Slider("segments", "Folds", 2, 32, 6, tip = "How many segments the circle is divided into"),
+        Param.Slider("rotation", "Rotation", 0, 359, 0, "°", "Rotates the whole kaleidoscope"),
+        Param.Slider("sourceAngle", "Source angle", 0, 359, 0, "°", "Which part of the picture is folded into the segments"),
+        Param.Slider("offsetX", "Offset X", -100, 100, 0, " %", "Shifts the part that is mirrored"),
+        Param.Slider("offsetY", "Offset Y", -100, 100, 0, " %"),
+        Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
+        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
         Param.Slider("zoom", "Zoom", 10, 400, 100, " %"),
-        Param.Slider("levels", "Stufen", 1, 6, 1, tip = "Faltung in der Faltung: wie oft jedes Segment noch einmal gefaltet wird. 1 = einfaches Kaleidoskop"),
-        Param.Slider("innerSegments", "Innere Faltungen", 2, 32, 6, tip = "Segmente jeder inneren Faltung (ab Stufe 2)"),
-        Param.Slider("innerDistance", "Innerer Abstand", 0, 100, 35, " %", "Wie weit der Mittelpunkt der inneren Faltung vom äusseren entfernt liegt (bezogen auf die halbe kürzere Bildseite)"),
-        Param.Slider("innerRotation", "Innere Drehung", 0, 359, 0, "°", "Dreht jede innere Faltung gegenüber der vorigen"),
-        Param.Slider("innerScale", "Innere Skalierung", 25, 400, 100, " %", "Vergrössert (über 100 %) oder verkleinert jede innere Stufe"),
-        Param.Toggle("mirror", "Segmente spiegeln", true, "Aus: alle Segmente gleich gedreht statt abwechselnd gespiegelt – mit sichtbaren Nähten"),
-        Param.Choice("edge", "Rand", Edge.labels, default = Edge.MIRROR.ordinal),
+        Param.Slider("levels", "Levels", 1, 6, 1, tip = "Fold within the fold: how often every segment is folded once more. 1 = simple kaleidoscope"),
+        Param.Slider("innerSegments", "Inner folds", 2, 32, 6, tip = "Segments of every inner fold (from level 2)"),
+        Param.Slider("innerDistance", "Inner distance", 0, 100, 35, " %", "How far the center of the inner fold lies from the outer one (relative to half the shorter side of the picture)"),
+        Param.Slider("innerRotation", "Inner rotation", 0, 359, 0, "°", "Rotates every inner fold against the previous one"),
+        Param.Slider("innerScale", "Inner scale", 25, 400, 100, " %", "Enlarges (above 100 %) or shrinks every inner level"),
+        Param.Toggle("mirror", "Mirror segments", true, "Off: all segments rotated the same instead of alternately mirrored – with visible seams"),
+        Param.Choice("edge", "Edge", Edge.labels, default = Edge.MIRROR.ordinal),
     )
 
     override val random = false

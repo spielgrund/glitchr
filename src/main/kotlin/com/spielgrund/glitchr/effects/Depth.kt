@@ -22,17 +22,17 @@ import kotlin.math.roundToInt
  */
 internal object Depth {
     val params = listOf(
-        Param.Heading("depthHeading", "Tiefe (geschätzt)"),
-        Param.Slider("depthSharp", "Schärfe", -100, 100, 60, " %", "Scharfe, detailreiche Stellen sind nah (Fotos mit Unschärfe im Hintergrund)"),
-        Param.Slider("depthLow", "Unten ist nah", -100, 100, 40, " %", "Wie ein Boden: was weiter unten liegt, ist näher"),
-        Param.Slider("depthLight", "Hell ist nah", -100, 100, 0, " %", "Negativ: dunkel ist nah"),
-        Param.Slider("depthSat", "Farbig ist nah", -100, 100, 20, " %", "Ferne Dinge sind blasser (Dunst)"),
-        Param.Slider("depthCenter", "Mitte ist nah", -100, 100, 20, " %", "Das Motiv in der Mitte ist nah"),
-        Param.Slider("depthSmooth", "Glätten", 1, 300, 24, " px", "Wie weit die Tiefe geglättet wird – sie folgt dabei den Kanten im Bild"),
-        Param.Slider("depthEdges", "Kantentreue", 0, 100, 60, " %", "Wie genau die Tiefe den Kanten im Bild folgt"),
-        Param.Slider("depthContrast", "Tiefenkontrast", 10, 400, 100, " %", "Mehr: die Tiefe trennt deutlicher zwischen nah und fern"),
-        Param.Toggle("depthInvert", "Tiefe umkehren", false),
-        Param.Toggle("depthShow", "Z-Map zeigen", false, "Zeigt die geschätzte Tiefe: weiss ist nah, schwarz ist fern"),
+        Param.Heading("depthHeading", "Depth (estimated)"),
+        Param.Slider("depthSharp", "Sharpness", -100, 100, 60, " %", "Sharp, detailed areas are near (photos with a blurred background)"),
+        Param.Slider("depthLow", "Low is near", -100, 100, 40, " %", "Like a floor: what lies further down is nearer"),
+        Param.Slider("depthLight", "Bright is near", -100, 100, 0, " %", "Negative: dark is near"),
+        Param.Slider("depthSat", "Colorful is near", -100, 100, 20, " %", "Distant things are paler (haze)"),
+        Param.Slider("depthCenter", "Middle is near", -100, 100, 20, " %", "The subject in the middle is near"),
+        Param.Slider("depthSmooth", "Smooth", 1, 300, 24, " px", "How far the depth is smoothed – it follows the edges in the picture"),
+        Param.Slider("depthEdges", "Edge fidelity", 0, 100, 60, " %", "How closely the depth follows the edges in the picture"),
+        Param.Slider("depthContrast", "Depth contrast", 10, 400, 100, " %", "More: the depth separates near and far more clearly"),
+        Param.Toggle("depthInvert", "Invert depth", false),
+        Param.Toggle("depthShow", "Show Z-map", false, "Shows the estimated depth: white is near, black is far"),
     )
 
     /** How near every pixel is, 0..1. */
@@ -127,7 +127,7 @@ internal object Depth {
 }
 
 /** Shows the guessed depth as a grey picture: a Z-map, white near, black far. */
-object ZMap : Effect("zmap", "Z-Map", "Schätzt aus dem Bild eine Tiefenkarte: weiss ist nah, schwarz ist fern") {
+object ZMap : Effect("zmap", "Z-Map", "Estimates a depth map from the picture: white is near, black is far") {
     override val params = Depth.params.filter { it.key != "depthShow" }
     override val random = false
 

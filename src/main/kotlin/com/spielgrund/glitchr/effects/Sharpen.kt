@@ -16,25 +16,25 @@ import kotlin.math.sign
  * sharpened edges the brightness blows out, colors explode, values overflow or the
  * channels split into colored halos.
  */
-object Sharpen : Effect("sharpen", "Scharfzeichnen", "Schärfen, Unscharf maskieren und Clarity – mit Übersteuerung für glitchige Kanten") {
-    private val modes = listOf("Schärfen", "Unscharf maskieren", "Clarity")
-    private val overTypes = listOf("Helligkeit", "Sättigung", "Überlauf", "Farbkanäle")
+object Sharpen : Effect("sharpen", "Sharpen", "Sharpen, unsharp mask and clarity – with overdrive for glitchy edges") {
+    private val modes = listOf("Sharpen", "Unsharp mask", "Clarity")
+    private val overTypes = listOf("Brightness", "Saturation", "Overflow", "Color channels")
 
     override val params = listOf(
         Param.Choice(
-            "mode", "Art", modes, 1,
-            "Schärfen: feine Details (fester kleiner Radius) · Unscharf maskieren: klassisch mit Radius und Schwelle · " +
-                "Clarity: lokaler Kontrast in den Mitteltönen, grossflächig",
+            "mode", "Type", modes, 1,
+            "Sharpen: fine details (fixed small radius) · Unsharp mask: classic with radius and threshold · " +
+                "Clarity: local contrast in the midtones, over large areas",
         ),
-        Param.Slider("amount", "Stärke", -300, 500, 150, " %", "Negativ: die Details werden abgeschwächt statt verstärkt, unter −100 % kehren sie sich um"),
-        Param.Slider("radius", "Radius", 3, 2000, 20, tip = "In Zehntelpixeln: 20 = 2 px; bei Clarity wirkt er achtfach"),
-        Param.Slider("threshold", "Schwelle", 0, 128, 0, "", "Kleinere Helligkeitsunterschiede bleiben ungeschärft, z. B. Rauschen"),
-        Param.Choice("channels", "Kanäle", listOf("RGB", "Nur Helligkeit"), tip = "Nur Helligkeit schärft ohne Farbsäume; Clarity wirkt immer auf die Helligkeit"),
-        Param.Slider("over", "Übersteuern", 0, 100, 0, " %", "Treibt die Schärfung weit über das Sinnvolle hinaus: an den Kanten entstehen Glitches"),
+        Param.Slider("amount", "Strength", -300, 500, 150, " %", "Negative: the details are weakened instead of strengthened, below −100 % they invert"),
+        Param.Slider("radius", "Radius", 3, 2000, 20, tip = "In tenths of a pixel: 20 = 2 px; for clarity it works eightfold"),
+        Param.Slider("threshold", "Threshold", 0, 128, 0, "", "Smaller brightness differences stay unsharpened, e.g. noise"),
+        Param.Choice("channels", "Channels", listOf("RGB", "Brightness only"), tip = "Brightness only sharpens without color fringes; clarity always works on the brightness"),
+        Param.Slider("over", "Overdrive", 0, 100, 0, " %", "Drives the sharpening far beyond what is sensible: glitches appear at the edges"),
         Param.Choice(
-            "overType", "Übersteuerung", overTypes,
-            tip = "Helligkeit: die Kanten brennen hell und dunkel aus · Sättigung: an den Kanten explodieren die Farben · " +
-                "Überlauf: die Werte laufen über und springen um · Farbkanäle: Rot und Blau schiessen gegenläufig, bunte Säume",
+            "overType", "Overdrive mode", overTypes,
+            tip = "Brightness: the edges burn out bright and dark · Saturation: the colors explode at the edges · " +
+                "Overflow: the values overflow and wrap around · Color channels: red and blue shoot in opposite directions, colorful fringes",
         ),
     )
 

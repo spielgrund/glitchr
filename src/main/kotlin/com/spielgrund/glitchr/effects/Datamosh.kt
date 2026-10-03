@@ -18,17 +18,17 @@ import kotlin.random.Random
  * vector, and over several "frames" each block keeps pulling in pixels from where its
  * vector points, so content smears along in blocky trails.
  */
-object Datamosh : Effect("datamosh", "Datamosh", "Makroblöcke werden wie in einem Video ohne Keyframes verschleppt") {
-    private val motions = listOf("Fluss", "Zufällig", "Entlang der Helligkeit", "Eine Richtung")
+object Datamosh : Effect("datamosh", "Datamosh", "Macroblocks are dragged along as in a video without keyframes") {
+    private val motions = listOf("Flow", "Random", "Along the brightness", "One direction")
 
     override val params = listOf(
-        Param.Choice("motion", "Bewegung", motions, tip = "Woher die Bewegungsvektoren der Blöcke kommen"),
-        Param.Slider("block", "Blockgrösse", 4, 64, 16, " px"),
-        Param.Slider("frames", "Frames", 1, 60, 12, tip = "Wie oft die Bewegung angewendet wird; mehr = längere Spuren"),
-        Param.Slider("speed", "Geschwindigkeit", 0, 40, 5, " px", "Verschiebung pro Frame"),
-        Param.Slider("angle", "Richtung", 0, 359, 0, "°", "Nur für „Eine Richtung“: 0° nach rechts, 90° nach unten"),
-        Param.Slider("moving", "Bewegte Blöcke", 0, 100, 70, " %"),
-        Param.Slider("residual", "Restbild", 0, 100, 0, " %", "Mischt in jedem Frame etwas Original zurück, wie Korrekturdaten"),
+        Param.Choice("motion", "Motion", motions, tip = "Where the blocks' motion vectors come from"),
+        Param.Slider("block", "Block size", 4, 64, 16, " px"),
+        Param.Slider("frames", "Frames", 1, 60, 12, tip = "How often the motion is applied; more = longer trails"),
+        Param.Slider("speed", "Speed", 0, 40, 5, " px", "Shift per frame"),
+        Param.Slider("angle", "Direction", 0, 359, 0, "°", "Only for “One direction”: 0° to the right, 90° downwards"),
+        Param.Slider("moving", "Moving blocks", 0, 100, 70, " %"),
+        Param.Slider("residual", "Residual", 0, 100, 0, " %", "Mixes some of the original back in every frame, like correction data"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

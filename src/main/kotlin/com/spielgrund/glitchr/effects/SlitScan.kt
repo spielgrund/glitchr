@@ -17,19 +17,19 @@ import kotlin.math.sin
  * slides along itself. How far grows across the picture – evenly, exponentially or at random.
  * At 0° the lines are the picture's rows and they slide sideways.
  */
-object SlitScan : Effect("slitscan", "Slitscan", "Schneidet das Bild in Zeilen und verschiebt sie zunehmend gegeneinander") {
-    private val curves = listOf("Linear", "Exponentiell", "Zufall")
+object SlitScan : Effect("slitscan", "Slitscan", "Cuts the picture into rows and shifts them increasingly against each other") {
+    private val curves = listOf("Linear", "Exponential", "Random")
 
     override val params = listOf(
-        Param.Slider("angle", "Winkel", 0, 359, 0, "°", "Richtung der Zeilen; 0° = waagrechte Bildzeilen"),
-        Param.Slider("size", "Zeilengrösse", 1, 500, 4, " px", "Breite einer Zeile quer zu ihrer Richtung"),
-        Param.Slider("offset", "Versatz", -3000, 3000, 300, " px", "Verschiebung der letzten Zeile; negativ in die Gegenrichtung"),
-        Param.Slider("offsetY", "Versatz Y", -3000, 3000, 0, " px", "Verschiebung quer zu den Zeilen: das Bild läuft durch die Zeilen durch (bei 0° auf der Y-Achse); negativ in die Gegenrichtung"),
-        Param.Choice("curve", "Verlauf", curves, tip = "Wie der Versatz von der ersten zur letzten Zeile zunimmt"),
-        Param.Slider("exponent", "Kurve", 110, 800, 300, " %", "Für „Exponentiell“: je höher, desto länger bleiben die ersten Zeilen ruhig"),
-        Param.Choice("edge", "Rand", Edge.labels),
-        Param.Slider("shiftX", "Bild verschieben X", -3000, 3000, 0, " px", "Verschiebt das Bild vor dem Slitscan; am Rand wiederholt es sich"),
-        Param.Slider("shiftY", "Bild verschieben Y", -3000, 3000, 0, " px", "Verschiebt das Bild vor dem Slitscan; am Rand wiederholt es sich"),
+        Param.Slider("angle", "Angle", 0, 359, 0, "°", "Direction of the rows; 0° = horizontal picture rows"),
+        Param.Slider("size", "Row size", 1, 500, 4, " px", "Width of a row across its direction"),
+        Param.Slider("offset", "Offset", -3000, 3000, 300, " px", "Shift of the last row; negative in the opposite direction"),
+        Param.Slider("offsetY", "Offset Y", -3000, 3000, 0, " px", "Shift across the rows: the picture runs through the rows (at 0° on the Y axis); negative in the opposite direction"),
+        Param.Choice("curve", "Gradient", curves, tip = "How the offset grows from the first to the last row"),
+        Param.Slider("exponent", "Curve", 110, 800, 300, " %", "For “Exponential”: the higher, the longer the first rows stay calm"),
+        Param.Choice("edge", "Edge", Edge.labels),
+        Param.Slider("shiftX", "Shift picture X", -3000, 3000, 0, " px", "Shifts the picture before the slit scan; it repeats at the edge"),
+        Param.Slider("shiftY", "Shift picture Y", -3000, 3000, 0, " px", "Shifts the picture before the slit scan; it repeats at the edge"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

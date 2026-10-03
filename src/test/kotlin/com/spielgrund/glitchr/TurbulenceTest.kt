@@ -28,7 +28,7 @@ class TurbulenceTest {
         val out = Turbulence.apply(stripes, v, 3L)
         assertContentEquals(out.data, Turbulence.apply(stripes, v, 3L).data)
         val moved = (0 until 160 * 120).count { out.data[it] != stripes.data[it] }
-        assertTrue(moved > 5000, "bewegt $moved")
+        assertTrue(moved > 5000, "moved $moved")
     }
 
     @Test
@@ -50,6 +50,6 @@ class TurbulenceTest {
             for (y in 0 until 120) for (x in 0 until 159) sum += kotlin.math.abs(p[x + 1, y] and 0xFF - (p[x, y] and 0xFF))
             return sum
         }
-        assertTrue(roughness(2) < roughness(0), "glatt ${roughness(2)}, hart ${roughness(0)}")
+        assertTrue(roughness(2) < roughness(0), "smooth ${roughness(2)}, hard ${roughness(0)}")
     }
 }

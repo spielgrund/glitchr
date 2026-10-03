@@ -38,7 +38,7 @@ class HornsTest {
         val outside = (0 until 160 * 120).count { i ->
             hypot(i % 160 + 0.5 - 80, i / 160 + 0.5 - 60) > 10 && red(out.data[i]) > 120
         }
-        assertTrue(outside > 100, "Hörner aussen $outside")
+        assertTrue(outside > 100, "horns outside $outside")
         // far away nothing
         assertEquals(dark, out[2, 2])
     }
@@ -51,7 +51,7 @@ class HornsTest {
         assertContentEquals(fan.data, Horns.apply(spot, v, 3L).data)
         // a fan covers much more than a horn of the same length and root width
         val horn = Horns.apply(spot, Horns.defaultValues(base + ("hornShape" to 0)), 3L)
-        assertTrue(grown(fan) > grown(horn) * 2, "Fächer ${grown(fan)}, Horn ${grown(horn)}")
+        assertTrue(grown(fan) > grown(horn) * 2, "fan ${grown(fan)}, horn ${grown(horn)}")
         // the gills: without them the fan is smoother
         val plain = Horns.apply(spot, Horns.defaultValues(base + ("gills" to 0)), 3L)
         assertTrue(!plain.data.contentEquals(fan.data))
@@ -69,11 +69,11 @@ class HornsTest {
         val out = Horns.apply(spot, v, 3L)
         assertContentEquals(out.data, Horns.apply(spot, v, 3L).data)
         // above and below the area its bright spot shows up again
-        assertTrue((0 until 40).any { y -> (60 until 100).any { x -> red(out[x, y]) > 150 } }, "oben nichts")
-        assertTrue((80 until 120).any { y -> (60 until 100).any { x -> red(out[x, y]) > 150 } }, "unten nichts")
+        assertTrue((0 until 40).any { y -> (60 until 100).any { x -> red(out[x, y]) > 150 } }, "nothing at the top")
+        assertTrue((80 until 120).any { y -> (60 until 100).any { x -> red(out[x, y]) > 150 } }, "nothing at the bottom")
         // more levels reach further
         val one = Horns.apply(spot, Horns.defaultValues(mapOf("hornShape" to 2, "region" to 1, "regionW" to 120, "regionH" to 160, "direction" to 270, "hornLength" to 30, "splitLevels" to 1)), 3L)
-        assertTrue(grown(out) > grown(one), "zwei Stufen ${grown(out)}, eine ${grown(one)}")
+        assertTrue(grown(out) > grown(one), "two levels ${grown(out)}, one ${grown(one)}")
     }
 
     @Test
@@ -90,7 +90,7 @@ class HornsTest {
         val v = Horns.defaultValues(base + mapOf("splitStems" to 40, "splitSpread" to 1))
         val many = Horns.apply(spot, v, 3L)
         assertContentEquals(many.data, Horns.apply(spot, v, 3L).data)
-        assertTrue(grown(many) > grown(few) * 2, "viele ${grown(many)}, wenige ${grown(few)}")
+        assertTrue(grown(many) > grown(few) * 2, "many ${grown(many)}, few ${grown(few)}")
     }
 
     @Test
@@ -116,14 +116,14 @@ class HornsTest {
         val plain = Horns.apply(halves, Horns.defaultValues(base), 3L)
         val turned = Horns.apply(halves, Horns.defaultValues(base + ("splitTilt" to 45)), 3L)
         val mirrored = Horns.apply(halves, Horns.defaultValues(base + ("splitMirror" to 1)), 3L)
-        assertTrue(!plain.data.contentEquals(turned.data), "drehen ändert nichts")
-        assertTrue(!plain.data.contentEquals(mirrored.data), "spiegeln ändert nichts")
+        assertTrue(!plain.data.contentEquals(turned.data), "rotating changes nothing")
+        assertTrue(!plain.data.contentEquals(mirrored.data), "mirroring changes nothing")
         // mirrored sideways: where red was, blue is now (above the spot)
         val redPlain = (0 until 40).sumOf { y -> (60 until 100).count { x -> red(plain[x, y]) > 150 && plain[x, y] and 0xFF < 100 } }
         val redMirrored = (0 until 40).sumOf { y -> (60 until 100).count { x -> red(mirrored[x, y]) > 150 && mirrored[x, y] and 0xFF < 100 } }
         val leftRedPlain = (0 until 40).sumOf { y -> (60 until 80).count { x -> red(plain[x, y]) > 150 && plain[x, y] and 0xFF < 100 } }
         val leftRedMirrored = (0 until 40).sumOf { y -> (60 until 80).count { x -> red(mirrored[x, y]) > 150 && mirrored[x, y] and 0xFF < 100 } }
-        assertTrue(redPlain > 0 && redMirrored > 0, "rot $redPlain / $redMirrored")
-        assertTrue(leftRedPlain != leftRedMirrored, "links rot $leftRedPlain / $leftRedMirrored")
+        assertTrue(redPlain > 0 && redMirrored > 0, "red $redPlain / $redMirrored")
+        assertTrue(leftRedPlain != leftRedMirrored, "left red $leftRedPlain / $leftRedMirrored")
     }
 }

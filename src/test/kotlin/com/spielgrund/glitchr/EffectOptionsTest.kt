@@ -31,9 +31,9 @@ class EffectOptionsTest {
             val cells = (0 until n * n).map { (by * n + it / n) * src.width + bx * n + it % n }
             if (cells.none { out.data[it] != src.data[it] }) continue
             changedBlocks++
-            assertTrue(cells.all { out.data[it] == out.data[cells[0]] }, "$name: Block ($bx, $by) ist nicht einfarbig")
+            assertTrue(cells.all { out.data[it] == out.data[cells[0]] }, "$name: block ($bx, $by) is not one color")
         }
-        assertTrue(changedBlocks > 0, "$name ändert nichts")
+        assertTrue(changedBlocks > 0, "$name changes nothing")
     }
 
     @Test
@@ -64,7 +64,7 @@ class EffectOptionsTest {
         val big = run(BlockGlitch, "mode" to 4, "count" to 1, "minSize" to 40, "maxSize" to 40)
         val changed = big.data.indices.filter { big.data[it] != src.data[it] }
         assertTrue(changed.isNotEmpty())
-        assertEquals(1, changed.map { big.data[it] }.toSet().size, "grosser Pixel hat mehrere Farben")
+        assertEquals(1, changed.map { big.data[it] }.toSet().size, "big pixel has several colors")
 
         val median = run(BlockGlitch, "mode" to 5, "count" to 30, "radius" to 8)
         assertFalse(median.data.contentEquals(src.data))
@@ -75,8 +75,8 @@ class EffectOptionsTest {
     @Test
     fun `jpeg options change the result`() {
         val base = run(JpegArtifacts, "quality" to 20, "blocks" to 4)
-        assertFalse(base.data.contentEquals(run(JpegArtifacts, "quality" to 20, "blocks" to 4, "scaling" to 1).data), "Skalierung")
+        assertFalse(base.data.contentEquals(run(JpegArtifacts, "quality" to 20, "blocks" to 4, "scaling" to 1).data), "Scale")
         assertFalse(base.data.contentEquals(run(JpegArtifacts, "quality" to 20, "blocks" to 4, "fullChroma" to 1).data), "4:4:4")
-        assertFalse(base.data.contentEquals(run(JpegArtifacts, "quality" to 20, "blocks" to 4, "sharpen" to 150).data), "Schärfen")
+        assertFalse(base.data.contentEquals(run(JpegArtifacts, "quality" to 20, "blocks" to 4, "sharpen" to 150).data), "Sharpen")
     }
 }

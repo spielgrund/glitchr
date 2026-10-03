@@ -26,18 +26,18 @@ import kotlin.random.Random
  * optionally several times (generation loss), at a reduced size (bigger blocks)
  * and with random bytes of the compressed data overwritten (data corruption).
  */
-object JpegArtifacts : Effect("jpeg", "JPEG-Artefakte", "Echte JPEG-Kompression, auf Wunsch mit kaputten Daten") {
+object JpegArtifacts : Effect("jpeg", "JPEG artifacts", "Real JPEG compression, with broken data if you like") {
     override val params = listOf(
-        Param.Slider("quality", "Qualität", 1, 100, 8, " %"),
-        Param.Slider("passes", "Durchgänge", 1, 30, 1, tip = "Mehrfach speichern mit leicht wechselnder Qualität (Generationsverlust)"),
-        Param.Slider("blocks", "Blockgrösse", 1, 16, 1, "×", "Verkleinert vor dem Komprimieren; die 8×8-Blöcke werden grösser"),
-        Param.Slider("corrupt", "Datenfehler", 0, 200, 0, tip = "Anzahl zufällig überschriebener Bytes in den Bilddaten"),
+        Param.Slider("quality", "Quality", 1, 100, 8, " %"),
+        Param.Slider("passes", "Passes", 1, 30, 1, tip = "Save several times with slightly changing quality (generation loss)"),
+        Param.Slider("blocks", "Block size", 1, 16, 1, "×", "Shrinks before compressing; the 8×8 blocks get bigger"),
+        Param.Slider("corrupt", "Data errors", 0, 200, 0, tip = "Number of randomly overwritten bytes in the image data"),
         Param.Choice(
-            "scaling", "Skalierung", listOf("Nearest Neighbour (scharf)", "Bilinear (weich)"),
-            tip = "Wie für die Blockgrösse verkleinert wird: Nearest nimmt einzelne Pixel und bleibt hart",
+            "scaling", "Scale", listOf("Nearest neighbor (sharp)", "Bilinear (soft)"),
+            tip = "How it is shrunk for the block size: nearest takes single pixels and stays hard",
         ),
-        Param.Toggle("fullChroma", "Volle Farbauflösung (4:4:4)", false, "JPEG speichert Farben sonst in halber Auflösung; das verwischt Farbkanten"),
-        Param.Slider("sharpen", "Nachschärfen", 0, 300, 0, " %", "Schärft das komprimierte Bild, bevor es wieder vergrössert wird"),
+        Param.Toggle("fullChroma", "Full color resolution (4:4:4)", false, "Otherwise JPEG stores colors at half resolution; that blurs color edges"),
+        Param.Slider("sharpen", "Resharpen", 0, 300, 0, " %", "Sharpens the compressed picture before it is enlarged again"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

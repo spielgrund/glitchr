@@ -15,25 +15,25 @@ import kotlin.math.sin
  * What comes in from beyond the picture's edge is transparent, repeated, mirrored or the
  * stretched edge; sampling is smooth (bilinear) or hard (nearest pixel).
  */
-object Transform : Effect("transform", "Transformieren", "Verschieben, skalieren, drehen und spiegeln um eine wählbare Mitte") {
+object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mirror around a chosen center") {
     /** Edge choices, shared with the generators' position. */
-    internal val edgeOptions = listOf("Transparent", "Wiederholen", "Spiegeln", "Rand strecken")
+    internal val edgeOptions = listOf("Transparent", "Repeat", "Mirror", "Stretch edge")
 
     internal fun edgeOf(choice: Int) = when (choice) { 1 -> Edge.WRAP; 2 -> Edge.MIRROR; 3 -> Edge.CLAMP; else -> null }
 
     override val params = listOf(
-        Param.Slider("offsetX", "Verschieben X", -50000, 50000, 0, " px", decimals = 1),
-        Param.Slider("offsetY", "Verschieben Y", -50000, 50000, 0, " px", decimals = 1),
-        Param.Slider("scale", "Skalierung", 10, 10000, 1000, " %", decimals = 1),
-        Param.Slider("stretchX", "Stretch X", 10, 10000, 1000, " %", decimals = 1, tip = "Zusätzlich nur in X skalieren"),
-        Param.Slider("stretchY", "Stretch Y", 10, 10000, 1000, " %", decimals = 1, tip = "Zusätzlich nur in Y skalieren"),
-        Param.Slider("rotation", "Drehung", -1800, 1800, 150, "°", decimals = 1),
-        Param.Slider("centerX", "Mitte X", -1000, 2000, 500, " %", decimals = 1, tip = "Um diesen Punkt wird skaliert und gedreht"),
-        Param.Slider("centerY", "Mitte Y", -1000, 2000, 500, " %", decimals = 1),
-        Param.Toggle("mirrorX", "Spiegeln X", false, "Links und rechts vertauschen"),
-        Param.Toggle("mirrorY", "Spiegeln Y", false, "Oben und unten vertauschen"),
-        Param.Choice("edge", "Rand", edgeOptions, tip = "Was ausserhalb des Bilds hereinkommt"),
-        Param.Toggle("smooth", "Glatt", true, "Aus: harte Pixel (nächster Nachbar) statt weich interpoliert"),
+        Param.Slider("offsetX", "Shift X", -50000, 50000, 0, " px", decimals = 1),
+        Param.Slider("offsetY", "Shift Y", -50000, 50000, 0, " px", decimals = 1),
+        Param.Slider("scale", "Scale", 10, 10000, 1000, " %", decimals = 1),
+        Param.Slider("stretchX", "Stretch X", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in X"),
+        Param.Slider("stretchY", "Stretch Y", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in Y"),
+        Param.Slider("rotation", "Rotation", -1800, 1800, 150, "°", decimals = 1),
+        Param.Slider("centerX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Scaling and rotation happen around this point"),
+        Param.Slider("centerY", "Center Y", -1000, 2000, 500, " %", decimals = 1),
+        Param.Toggle("mirrorX", "Mirror X", false, "Swap left and right"),
+        Param.Toggle("mirrorY", "Mirror Y", false, "Swap top and bottom"),
+        Param.Choice("edge", "Edge", edgeOptions, tip = "What comes in from outside the picture"),
+        Param.Toggle("smooth", "Smooth", true, "Off: hard pixels (nearest neighbor) instead of smooth interpolation"),
     )
 
     override val random = false

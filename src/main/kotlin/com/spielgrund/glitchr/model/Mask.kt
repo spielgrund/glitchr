@@ -10,7 +10,7 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 enum class MaskMode(val label: String) {
-    OFF("Keine"), BRUSH("Pinsel / Auswahl"), LINEAR("Linearer Verlauf"), RADIAL("Radialer Verlauf");
+    OFF("None"), BRUSH("Brush / selection"), LINEAR("Linear gradient"), RADIAL("Radial gradient");
 
     val isGradient get() = this == LINEAR || this == RADIAL
 

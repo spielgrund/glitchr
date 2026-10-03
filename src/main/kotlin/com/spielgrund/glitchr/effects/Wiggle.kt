@@ -26,25 +26,25 @@ import kotlin.math.sin
  * camera's direction, from the nearest possible depth to the farthest, and the first
  * place whose own shift brings it here wins – so the nearest surface covers the others.
  */
-object Wiggle : Effect("wiggle", "Kamera wackeln", "2.5D: die Kamera bewegt sich, Nahes verschiebt sich mehr als Fernes – Wackelbild, Kreisen oder Rot/Cyan") {
-    private val modes = listOf("Versetzt", "Wackeln", "Kreisen", "Anaglyph (Rot/Cyan)")
+object Wiggle : Effect("wiggle", "Camera wiggle", "2.5D: the camera moves, near things shift more than far ones – wigglegram, orbit or red/cyan") {
+    private val modes = listOf("Offset", "Wiggle", "Orbit", "Anaglyph (red/cyan)")
     private const val SHIFTED = 0
     private const val WIGGLE = 1
     private const val ORBIT = 2
     private const val ANAGLYPH = 3
 
     override val params = listOf(
-        Param.Heading("cameraHeading", "Kamera"),
+        Param.Heading("cameraHeading", "Camera"),
         Param.Choice(
-            "mode", "Art", modes, WIGGLE,
-            tip = "Versetzt: eine verschobene Ansicht · Wackeln: mehrere Ansichten entlang einer Linie übereinander · " +
-                "Kreisen: Ansichten rund um einen Kreis · Anaglyph: zwei Ansichten für eine Rot/Cyan-Brille",
+            "mode", "Type", modes, WIGGLE,
+            tip = "Offset: one shifted view · Wiggle: several views along a line over each other · " +
+                "Orbit: views around a circle · Anaglyph: two views for red/cyan glasses",
         ),
-        Param.Slider("camX", "Kamera X", -500, 500, 24, " px", "Wie weit und wohin sich die Kamera bewegt – auch mit dem Anfasser im Bild zu ziehen"),
-        Param.Slider("camY", "Kamera Y", -500, 500, 0, " px"),
-        Param.Slider("focus", "Fokusebene", 0, 100, 50, " %", "Diese Tiefe bleibt stehen (0 % fern, 100 % nah); davor und dahinter bewegt es sich gegenläufig"),
-        Param.Slider("views", "Ansichten", 2, 32, 6, tip = "Wackeln und Kreisen: so viele Ansichten werden übereinandergelegt"),
-        Param.Slider("trail", "Nachzieher", 0, 100, 0, " %", "Wackeln: die Ansichten zur Mitte hin zählen mehr – der Rest wird zu Geisterbildern"),
+        Param.Slider("camX", "Camera X", -500, 500, 24, " px", "How far and where the camera moves – can also be dragged with the handle in the picture"),
+        Param.Slider("camY", "Camera Y", -500, 500, 0, " px"),
+        Param.Slider("focus", "Focal plane", 0, 100, 50, " %", "This depth stays still (0 % far, 100 % near); in front and behind it moves in opposite directions"),
+        Param.Slider("views", "Views", 2, 32, 6, tip = "Wiggle and orbit: this many views are laid over each other"),
+        Param.Slider("trail", "Trail", 0, 100, 0, " %", "Wiggle: the views towards the middle count more – the rest turns into ghosts"),
     ) + Depth.params
 
     override val random = false

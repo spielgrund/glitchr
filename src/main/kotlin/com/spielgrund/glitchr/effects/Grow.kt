@@ -39,64 +39,64 @@ import kotlin.math.sin
  * transported pixels (each takes the content of its infector), the growth time through
  * a color ramp (optionally as rings), or the picture revealed along the front.
  */
-object Grow : Effect("grow", "Grow", "Ausbreitung wie eine Infektion: die Startpixel wachsen organisch und kristallin ins Bild hinein") {
-    private val contents = listOf("Verschmieren", "Bild aufdehnen", "Transportierte Pixel", "Wachstumszeit als Verlauf", "Bild enthüllen")
+object Grow : Effect("grow", "Grow", "Spreading like an infection: the start pixels grow organically and crystalline into the picture") {
+    private val contents = listOf("Smear", "Stretch picture", "Carried pixels", "Growth time as gradient", "Reveal picture")
     private const val SMUDGE = 0
     private const val STRETCH = 1
     private const val TRANSPORT = 2
     private const val TIME = 3
 
     override val params = listOf(
-        Param.Heading("startHeading", "Startmaske"),
-        Param.Choice("source", "Wert", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("lower", "Untere Schwelle", 0, 255, 140, tip = "Beim Farbton darf sie über der oberen liegen (Bereich über Rot hinweg)"),
-        Param.Slider("upper", "Obere Schwelle", 0, 255, 255),
-        Param.Toggle("invert", "Bereich umkehren", false),
-        Param.Toggle("showMask", "Startmaske zeigen", false, "Zeigt schwarzweiss, wo die Ausbreitung beginnt"),
-        Param.Heading("spreadHeading", "Ausbreitung"),
-        Param.Slider("steps", "Schritte", 1, 1000, 200, tip = "Wie lange es wächst"),
-        Param.Slider("radius", "Radius", 1, 8, 2, " px", "Wie weit ein Pixel seine Nachbarn spürt – grösser: runder und schneller"),
-        Param.Slider("speed", "Tempo", 1, 100, 50, " %", "Wie schnell sich die Ansteckung in einem Pixel ansammelt"),
+        Param.Heading("startHeading", "Start mask"),
+        Param.Choice("source", "Value", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("lower", "Lower threshold", 0, 255, 140, tip = "For hue it may lie above the upper one (a range across red)"),
+        Param.Slider("upper", "Upper threshold", 0, 255, 255),
+        Param.Toggle("invert", "Invert range", false),
+        Param.Toggle("showMask", "Show start mask", false, "Shows in black and white where the spreading starts"),
+        Param.Heading("spreadHeading", "Spreading"),
+        Param.Slider("steps", "Steps", 1, 1000, 200, tip = "How long it grows"),
+        Param.Slider("radius", "Radius", 1, 8, 2, " px", "How far a pixel feels its neighbors – larger: rounder and faster"),
+        Param.Slider("speed", "Pace", 1, 100, 50, " %", "How fast the infection builds up in a pixel"),
         Param.Slider(
-            "form", "Form", -100, 100, 0, " %",
-            "Negativ: rund, Buchten füllen sich zuerst. Positiv: verästelt – wo schon viel angesteckt ist, wird gebremst, nur die Spitzen wachsen weiter",
+            "form", "Shape", -100, 100, 0, " %",
+            "Negative: round, bays fill first. Positive: branching – where much is already infected it slows down, only the tips keep growing",
         ),
-        Param.Slider("immunity", "Immunität", 0, 100, 40, " %", "Zufällige Widerstandskraft je Pixel – macht die Front zerklüftet"),
-        Param.Slider("noise", "Noise", 0, 200, 60, " %", "Ein Noise-Feld macht Gebiete leichter oder schwerer ansteckbar"),
-        Param.Slider("noiseSize", "Noise-Grösse", 2, 500, 40, " px"),
-        Param.Choice("imageValue", "Bild wirkt über", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("imageInfluence", "Bildeinfluss", -200, 200, 0, " %", "Positiv: hohe Werte (z. B. helle Stellen) stecken sich leichter an, negativ: schwerer"),
-        Param.Slider("direction", "Richtung", 0, 359, 0, "°", "In diese Richtung breitet es sich bevorzugt aus"),
-        Param.Slider("directionStrength", "Richtungsstärke", 0, 100, 0, " %"),
-        Param.Heading("showHeading", "Darstellung"),
+        Param.Slider("immunity", "Immunity", 0, 100, 40, " %", "Random resistance per pixel – makes the front ragged"),
+        Param.Slider("noise", "Noise", 0, 200, 60, " %", "A noise field makes regions easier or harder to infect"),
+        Param.Slider("noiseSize", "Noise size", 2, 500, 40, " px"),
+        Param.Choice("imageValue", "Picture works via", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("imageInfluence", "Picture influence", -200, 200, 0, " %", "Positive: high values (e.g. bright spots) get infected more easily, negative: less easily"),
+        Param.Slider("direction", "Direction", 0, 359, 0, "°", "It prefers to spread in this direction"),
+        Param.Slider("directionStrength", "Direction strength", 0, 100, 0, " %"),
+        Param.Heading("showHeading", "Display"),
         Param.Choice(
-            "content", "Inhalt", contents,
-            tip = "Verschmieren: wie mit dem Wischfinger zieht das Wachstum das ganze Bild in seine Richtung, weich auslaufend. " +
-                "Bild aufdehnen: das Bild der Startmaske wird entlang der Wachstumswege auf die neue Fläche gezogen. " +
-                "Transportierte Pixel: jeder angesteckte Pixel übernimmt den Inhalt dessen, der ihn angesteckt hat",
+            "content", "Content", contents,
+            tip = "Smear: like a smudge finger the growth drags the whole picture in its direction, fading out softly. " +
+                "Stretch picture: the start mask's picture is pulled along the growth paths onto the new area. " +
+                "Carried pixels: every infected pixel takes over the content of the one that infected it",
         ),
-        Param.Slider("push", "Verschiebung", 0, 400, 200, " %", "Verschmieren: wie weit das Bild in Wachstumsrichtung gezogen wird"),
-        Param.Slider("reach", "Reichweite", 4, 1000, 120, " px", "Verschmieren: wie weit um das Wachstum herum das Bild mitgezogen wird – weich auslaufend", canvasMax = true),
-        Param.Slider("smear", "Wischspuren", 0, 100, 20, " %", "Verschmieren: Spuren entlang der Zugrichtung; 0 % bleibt ganz scharf"),
+        Param.Slider("push", "Displacement", 0, 400, 200, " %", "Smear: how far the picture is dragged in the growth direction"),
+        Param.Slider("reach", "Reach", 4, 1000, 120, " px", "Smear: how far around the growth the picture is dragged along – fading out softly", canvasMax = true),
+        Param.Slider("smear", "Smudge streaks", 0, 100, 20, " %", "Smear: streaks along the drag direction; 0 % stays fully sharp"),
         Param.Slider(
-            "stretch", "Dehnung", 0, 100, 100, " %",
-            "Bild aufdehnen: 100 % zieht das Bild der Startmaske bis an die Front, weniger verschiebt es nur ein Stück in Wachstumsrichtung",
-        ),
-        Param.Slider(
-            "smooth", "Glätte", 0, 300, 30, " px",
-            "Bild aufdehnen: wie weich die Verschiebung ist – wenig: kristalline Facetten entlang der Wachstumswege, viel: fliessend wie Gummi",
+            "stretch", "Stretch", 0, 100, 100, " %",
+            "Stretch picture: 100 % pulls the start mask's picture all the way to the front, less only shifts it a bit in the growth direction",
         ),
         Param.Slider(
-            "texture", "Textur", 0, 100, 0, " %",
-            "Transportierte Pixel: 0 % zieht die Startpixel zu Kristallschlieren, mehr lässt ihre Textur mitwandern (innerhalb der Startmaske)",
+            "smooth", "Smoothness", 0, 300, 30, " px",
+            "Stretch picture: how soft the displacement is – little: crystalline facets along the growth paths, much: flowing like rubber",
         ),
-        Param.Ramp("ramp", "Verlauf", RampPalette.THERMAL.ramp.format(), "Wachstumszeit: von den Startpixeln (links) bis zur Front (rechts)"),
-        Param.Slider("rings", "Ringe", 1, 50, 1, tip = "Wachstumszeit: der Verlauf läuft so oft durch – Wachstumsringe"),
-        Param.Choice("background", "Nicht gewachsen", listOf("Bild", "Schwarz", "Transparent")),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider(
+            "texture", "Texture", 0, 100, 0, " %",
+            "Carried pixels: 0 % pulls the start pixels into crystal streaks, more lets their texture travel along (inside the start mask)",
+        ),
+        Param.Ramp("ramp", "Gradient", RampPalette.THERMAL.ramp.format(), "Growth time: from the start pixels (left) to the front (right)"),
+        Param.Slider("rings", "Rings", 1, 50, 1, tip = "Growth time: the gradient runs through this many times – growth rings"),
+        Param.Choice("background", "Not grown", listOf("Picture", "Black", "Transparent")),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
         Param.Choice(
-            "precision", "Rechengenauigkeit", listOf("1 px (voll)", "2 px", "4 px"), 1,
-            "Gröber ist schneller, wächst in gleich vielen Schritten weiter und gibt dickere Äste",
+            "precision", "Precision", listOf("1 px (full)", "2 px", "4 px"), 1,
+            "Coarser is faster, grows further in the same number of steps and gives thicker branches",
         ),
     )
 
@@ -133,7 +133,7 @@ object Grow : Effect("grow", "Grow", "Ausbreitung wie eine Infektion: die Startp
 
     /**
      * The solver. Every not yet infected cell collects infection from its infected
-     * neighbours (their weighted share, shaped by "Form", times its susceptibility); at 1
+     * neighbours (their weighted share, shaped by "Shape", times its susceptibility); at 1
      * it is infected. Each step reads the previous one only, so it runs in
      * parallel and stays reproducible; only the box around the infection is visited.
      */

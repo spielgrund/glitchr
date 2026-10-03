@@ -51,7 +51,7 @@ import kotlin.math.roundToInt
 /** Brush settings for painting masks; size in image pixels, the others in percent. */
 /** Tools for the painted mask. */
 enum class MaskTool(val label: String) {
-    BRUSH("Pinsel"), RECT("Rechteck"), ELLIPSE("Ellipse"), LASSO("Lasso"), WAND("Zauberstab");
+    BRUSH("Brush"), RECT("Rectangle"), ELLIPSE("Ellipse"), LASSO("Lasso"), WAND("Magic wand");
 
     override fun toString() = label
 }
@@ -309,7 +309,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
         g.color = Color(0x8C8F94)
         g.font = font.deriveFont(15f)
-        val lines = listOf("Bild öffnen (Strg+O), einfügen (Strg+V)", "oder hierher ziehen")
+        val lines = listOf("Open an image (Ctrl+O), paste one (Ctrl+V)", "or drag it here")
         val fm = g.fontMetrics
         var y = height / 2 - fm.height * lines.size / 2 + fm.ascent
         for (line in lines) {

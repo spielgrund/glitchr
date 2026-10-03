@@ -26,33 +26,33 @@ import kotlin.math.sin
  * and optionally with the pen in another hole, as one would with the stencil.
  * Only used as a generator.
  */
-object Spirograph : Effect("spirograph", "Spirograph", "Ein Rad rollt in einem Zahnring, ein Stift im Loch zeichnet Spiralmuster") {
+object Spirograph : Effect("spirograph", "Spirograph", "A wheel rolls inside a toothed ring, a pen in a hole draws spiral patterns") {
     override val params = listOf(
-        Param.Heading("gearHeading", "Schablone"),
-        Param.Choice("mode", "Rad rollt", listOf("Innen im Ring", "Aussen um den Ring")),
-        Param.Slider("ring", "Zähne Ring", 12, 240, 96, tip = "Grösse des festen Rings (bzw. der Scheibe, um die das Rad rollt)"),
-        Param.Slider("wheel", "Zähne Rad", 3, 200, 63, tip = "Grösse des rollenden Rads. Je kleiner der gemeinsame Teiler mit dem Ring, desto mehr Schlaufen"),
-        Param.Slider("hole", "Loch", 0, 150, 90, " %", "Wo der Stift im Rad steckt: 0 % in der Mitte, 100 % am Rand, darüber ausserhalb (Schlaufen)"),
-        Param.Slider("portion", "Gezeichnet", 1, 100, 100, " %", "Nur einen Teil der geschlossenen Kurve zeichnen"),
-        Param.Heading("passHeading", "Durchgänge"),
-        Param.Slider("passes", "Durchgänge", 1, 24, 1, tip = "Mehrere Kurven übereinander, wie mehrmals mit der Schablone gezeichnet"),
-        Param.Slider("passTurn", "Versatz je Durchgang", 0, 36000, 1000, "°", decimals = 2, tip = "Um wie viel der nächste Durchgang weitergedreht beginnt"),
-        Param.Slider("passHole", "Loch je Durchgang", -50, 50, 0, " %", "Der Stift wandert von Durchgang zu Durchgang in ein anderes Loch"),
-        Param.Heading("styleHeading", "Darstellung"),
-        Param.Slider("size", "Grösse", 5, 150, 92, " %", "Radius im Verhältnis zur halben kürzeren Seite"),
-        Param.Slider("rotation", "Drehung", 0, 359, 0, "°"),
-        Param.Slider("centerX", "Mitte X", 0, 100, 50, " %"),
-        Param.Slider("centerY", "Mitte Y", 0, 100, 50, " %"),
-        Param.Slider("lineWidth", "Strichstärke", 1, 200, 12, " px", decimals = 1),
-        Param.Slider("lineOpacity", "Deckkraft der Linien", 5, 100, 90, " %", "Geringer: die Durchgänge scheinen durcheinander durch"),
+        Param.Heading("gearHeading", "Stencil"),
+        Param.Choice("mode", "Wheel rolls", listOf("Inside the ring", "Around the outside of the ring")),
+        Param.Slider("ring", "Ring teeth", 12, 240, 96, tip = "Size of the fixed ring (or the disc the wheel rolls around)"),
+        Param.Slider("wheel", "Wheel teeth", 3, 200, 63, tip = "Size of the rolling wheel. The smaller the common divisor with the ring, the more loops"),
+        Param.Slider("hole", "Hole", 0, 150, 90, " %", "Where the pen sits in the wheel: 0 % in the middle, 100 % at the edge, above that outside (loops)"),
+        Param.Slider("portion", "Drawn", 1, 100, 100, " %", "Draw only part of the closed curve"),
+        Param.Heading("passHeading", "Passes"),
+        Param.Slider("passes", "Passes", 1, 24, 1, tip = "Several curves over each other, as if drawn several times with the stencil"),
+        Param.Slider("passTurn", "Offset per pass", 0, 36000, 1000, "°", decimals = 2, tip = "How much further rotated the next pass starts"),
+        Param.Slider("passHole", "Hole per pass", -50, 50, 0, " %", "The pen moves to a different hole from pass to pass"),
+        Param.Heading("styleHeading", "Display"),
+        Param.Slider("size", "Size", 5, 150, 92, " %", "Radius relative to half the shorter side"),
+        Param.Slider("rotation", "Rotation", 0, 359, 0, "°"),
+        Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
+        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Slider("lineWidth", "Line width", 1, 200, 12, " px", decimals = 1),
+        Param.Slider("lineOpacity", "Line opacity", 5, 100, 90, " %", "Lower: the passes show through each other"),
         Param.Choice(
-            "colorMode", "Farben",
-            listOf("Eine Farbe", "Verlauf je Durchgang", "Regenbogen je Durchgang", "Regenbogen entlang der Kurve", "Verlauf entlang der Kurve"),
+            "colorMode", "Colors",
+            listOf("One color", "Gradient per pass", "Rainbow per pass", "Rainbow along the curve", "Gradient along the curve"),
         ),
-        Param.Color("color1", "Farbe 1", 0x2A6FDB),
-        Param.Color("color2", "Farbe 2", 0xE8457A),
-        Param.Color("background", "Hintergrund", 0xFAF7F0),
-        Param.Toggle("transparent", "Hintergrund transparent", false),
+        Param.Color("color1", "Color 1", 0x2A6FDB),
+        Param.Color("color2", "Color 2", 0xE8457A),
+        Param.Color("background", "Background", 0xFAF7F0),
+        Param.Toggle("transparent", "Transparent background", false),
     )
 
     override val random = false

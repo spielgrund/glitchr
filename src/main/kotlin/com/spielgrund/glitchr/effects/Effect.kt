@@ -46,7 +46,7 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
 
 /** Read access to the settings of one layer: numbers, and texts for [Param.Text]. */
 class Values(private val map: Map<String, Int>, private val texts: Map<String, String> = emptyMap()) {
-    operator fun get(key: String): Int = map[key] ?: error("Unbekannter Parameter $key")
+    operator fun get(key: String): Int = map[key] ?: error("Unknown parameter $key")
     fun bool(key: String) = get(key) != 0
     fun text(key: String): String = texts[key] ?: ""
 }
@@ -58,7 +58,7 @@ class Values(private val map: Map<String, Int>, private val texts: Map<String, S
 abstract class Effect(val id: String, val name: String, val description: String) {
     abstract val params: List<Param>
 
-    /** Whether [apply] uses the seed, i.e. whether "Neu würfeln" makes sense. */
+    /** Whether [apply] uses the seed, i.e. whether "Reroll" makes sense. */
     open val random = true
 
     /**
@@ -84,18 +84,28 @@ abstract class Effect(val id: String, val name: String, val description: String)
 /** Two slider settings ([xKey], [yKey], in pixels from the canvas middle) that a handle on the canvas moves. */
 data class CanvasHandle(val xKey: String, val yKey: String)
 
-/** All available effects, in menu order. */
+/** A group of effects in the menu. */
+class EffectCategory(val name: String, val effects: List<Effect>)
+
+/** All available effects, grouped and in menu order. */
 object Effects {
-    val all: List<Effect> = listOf(
-        PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, RgbDistort, SliceShift, SlitScan, Offset, Transform, Blur, Sharpen, BlockGlitch, Bitcrush, ColorCorrect, Ramp, LabColor, Filler,
-        Particles, BlobEcho, Displace, UvTexture, Flow, Erosion, ErosionFast, Grow, Horns, Bubbles, Turbulence, DiffGrowth, NoiseField, ColorPattern, Geometric, MoireFilter, Kaleidoscope, Feedback, Generative, GridModules, Characters, Ridgelines, Lens, Glass, Metal, ZMap, Fog, Wiggle, Hologram, Television,
+    val categories: List<EffectCategory> = listOf(
+        EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Displace, Flow, Turbulence, Kaleidoscope, Feedback, BlobEcho)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, Filler, Blur, Sharpen)),
+        EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
+        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, Ridgelines, Particles, UvTexture)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, Television)),
+        EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
     )
+
+    val all: List<Effect> = categories.flatMap { it.effects }
 
     fun byId(id: String) = all.first { it.id == id }
 }
 
 /** Channel choice shared by several effects. */
-internal val channelOptions = listOf("Alle Kanäle", "Rot", "Grün", "Blau", "Zufälliger Kanal")
+internal val channelOptions = listOf("All channels", "Red", "Green", "Blue", "Random channel")
 
 /**
  * Writes the [bits] (see [channelBits]) of [moved] into [target]. All channels copy the

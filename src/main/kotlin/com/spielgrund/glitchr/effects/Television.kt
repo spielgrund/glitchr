@@ -21,30 +21,30 @@ import kotlin.random.Random
  * stays sharp. Then the tube: the picture bulges, gets scanlines, a phosphor mask, color fringes
  * towards the edges, grain and a vignette.
  */
-object Television : Effect("tv", "TV", "Röhrenfernseher mit VHS-Band: Wölbung, Scanlines, Pixelraster, Rauschen und Bandfehler") {
-    private val masks = listOf("Aus", "Streifenmaske", "Lochmaske", "Schlitzmaske")
+object Television : Effect("tv", "TV", "CRT television with VHS tape: curvature, scanlines, pixel grid, noise and tape errors") {
+    private val masks = listOf("Off", "Aperture grille", "Shadow mask", "Slot mask")
 
     override val params = listOf(
-        Param.Slider("curvature", "Wölbung", 0, 100, 30, " %", "Wölbt das Bild wie eine Bildröhre"),
-        Param.Slider("corner", "Ecken rund", 0, 100, 25, " %"),
-        Param.Slider("vignette", "Vignette", 0, 100, 40, " %", "Dunkelt die Ränder ab"),
-        Param.Choice("border", "Rand", listOf("Schwarz", "Transparent"), tip = "Was ausserhalb der gewölbten Röhre liegt"),
+        Param.Slider("curvature", "Bulge", 0, 100, 30, " %", "Curves the picture like a picture tube"),
+        Param.Slider("corner", "Rounded corners", 0, 100, 25, " %"),
+        Param.Slider("vignette", "Vignette", 0, 100, 40, " %", "Darkens the borders"),
+        Param.Choice("border", "Edge", listOf("Black", "Transparent"), tip = "What lies outside the curved tube"),
         Param.Slider("scanlines", "Scanlines", 0, 100, 55, " %"),
-        Param.Slider("lineSpacing", "Zeilenabstand", 2, 40, 4, " px"),
-        Param.Choice("mask", "Pixelraster", masks, 1, "Die Leuchtpunkte der Röhre: Streifen (Trinitron), Löcher oder Schlitze"),
-        Param.Slider("maskStrength", "Raster Stärke", 0, 100, 45, " %"),
-        Param.Slider("maskSize", "Raster Grösse", 3, 60, 3, " px", "Breite eines Rot-Grün-Blau-Tripels"),
-        Param.Slider("aberration", "Farbsaum", 0, 50, 3, " px", "Rot und Blau laufen zum Rand hin auseinander"),
-        Param.Slider("glow", "Leuchten", 0, 100, 40, " %", "Helle Stellen überstrahlen Scanlines und Raster"),
-        Param.Slider("saturation", "Sättigung", 0, 200, 110, " %"),
-        Param.Slider("noise", "Rauschen", 0, 100, 15, " %"),
-        Param.Slider("blur", "Unschärfe", 0, 20, 1, " px", "Horizontale Unschärfe des Signals"),
-        Param.Slider("chromaSmear", "VHS Farbbluten", 0, 80, 8, " px", "Die Farbe verschmiert zur Seite, die Helligkeit bleibt scharf"),
-        Param.Slider("jitter", "VHS Zeilenzittern", 0, 40, 1, " px"),
-        Param.Slider("wobble", "VHS Wellen", 0, 100, 3, " px", "Langsames seitliches Schwanken des Bildes"),
-        Param.Slider("tracking", "VHS Trackingfehler", 0, 12, 2, "", "Anzahl gestörter Bänder mit Versatz und Schnee"),
-        Param.Slider("trackingStrength", "Tracking Stärke", 0, 400, 40, " px"),
-        Param.Slider("headSwitch", "VHS Kopfumschaltung", 0, 300, 16, " px", "Höhe der verzerrten Zeilen am unteren Bildrand"),
+        Param.Slider("lineSpacing", "Line spacing", 2, 40, 4, " px"),
+        Param.Choice("mask", "Pixel grid", masks, 1, "The tube's phosphor dots: stripes (Trinitron), holes or slots"),
+        Param.Slider("maskStrength", "Grid strength", 0, 100, 45, " %"),
+        Param.Slider("maskSize", "Grid size", 3, 60, 3, " px", "Width of one red-green-blue triad"),
+        Param.Slider("aberration", "Color fringe", 0, 50, 3, " px", "Red and blue drift apart towards the edge"),
+        Param.Slider("glow", "Bloom", 0, 100, 40, " %", "Bright spots outshine scanlines and grid"),
+        Param.Slider("saturation", "Saturation", 0, 200, 110, " %"),
+        Param.Slider("noise", "Noise", 0, 100, 15, " %"),
+        Param.Slider("blur", "Blur", 0, 20, 1, " px", "Horizontal blur of the signal"),
+        Param.Slider("chromaSmear", "VHS color bleed", 0, 80, 8, " px", "The color smears sideways, the brightness stays sharp"),
+        Param.Slider("jitter", "VHS line jitter", 0, 40, 1, " px"),
+        Param.Slider("wobble", "VHS waves", 0, 100, 3, " px", "Slow sideways wobble of the picture"),
+        Param.Slider("tracking", "VHS tracking errors", 0, 12, 2, "", "Number of disturbed bands with offset and snow"),
+        Param.Slider("trackingStrength", "Tracking strength", 0, 400, 40, " px"),
+        Param.Slider("headSwitch", "VHS head switching", 0, 300, 16, " px", "Height of the distorted rows at the bottom edge"),
     )
 
     private class Band(val center: Double, val height: Double, val phase: Double)

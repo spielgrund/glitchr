@@ -26,40 +26,40 @@ import kotlin.math.sqrt
  * by ghost reflections. Where the glass breaks, bright lines show, with split colors and
  * blur around them.
  */
-object Lens : Effect("lens", "Optik", "Objektivfehler: Wölbung, Vignette, chromatische Aberration, Randunschärfe und kaputte Linsen") {
-    private val glitches = listOf("Aus", "Scherben", "Fresnel-Ringe", "Facetten", "Geisterbilder", "Risse")
+object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chromatic aberration, edge blur and broken lenses") {
+    private val glitches = listOf("Off", "Shards", "Fresnel rings", "Facets", "Ghosts", "Cracks")
 
     override val params = listOf(
-        Param.Slider("distortion", "Wölbung", -100, 100, 30, " %", "Positiv: tonnenförmig nach aussen gewölbt · negativ: kissenförmig nach innen gezogen"),
-        Param.Toggle("fit", "Bild füllen", true, "Skaliert so, dass keine leeren Ränder entstehen; aus: was ausserhalb liegt, wird transparent"),
-        Param.Slider("centerX", "Mitte X", 0, 100, 50, " %", "Optische Mitte, bei „Risse“ auch der Einschlag"),
-        Param.Slider("centerY", "Mitte Y", 0, 100, 50, " %"),
-        Param.Slider("aberration", "Chromatische Aberration", 0, 150, 8, " px", "Farbsäume, die zum Rand hin wachsen (Verschiebung an den Ecken)"),
-        Param.Toggle("spectral", "Spektral", false, "Regenbogensaum über das ganze Spektrum statt Rot/Cyan"),
-        Param.Slider("edgeBlur", "Randunschärfe", 0, 150, 0, " px", "Unschärfe, die zum Rand hin wächst"),
+        Param.Slider("distortion", "Bulge", -100, 100, 30, " %", "Positive: barrel distortion bulging outwards · negative: pincushion pulled inwards"),
+        Param.Toggle("fit", "Fill picture", true, "Scales so that no empty borders appear; off: whatever lies outside becomes transparent"),
+        Param.Slider("centerX", "Center X", 0, 100, 50, " %", "Optical center, for “Cracks” also the impact"),
+        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Slider("aberration", "Chromatic aberration", 0, 150, 8, " px", "Color fringes that grow towards the edge (shift at the corners)"),
+        Param.Toggle("spectral", "Spectral", false, "Rainbow fringe across the whole spectrum instead of red/cyan"),
+        Param.Slider("edgeBlur", "Edge blur", 0, 150, 0, " px", "Blur that grows towards the edge"),
         Param.Slider("vignette", "Vignette", 0, 100, 40, " %"),
-        Param.Slider("vignetteSize", "Vignette Grösse", 0, 100, 55, " %", "Wo die Abdunklung beginnt"),
-        Param.Slider("vignetteSoft", "Vignette Weichheit", 1, 100, 60, " %"),
+        Param.Slider("vignetteSize", "Vignette size", 0, 100, 55, " %", "Where the darkening starts"),
+        Param.Slider("vignetteSoft", "Vignette softness", 1, 100, 60, " %"),
         Param.Choice(
             "glitch", "Glitch", glitches,
-            tip = "Scherben: zersprungene Linse, jede Scherbe verrutscht · Fresnel-Ringe: Ringe mit eigener Vergrösserung · " +
-                "Facetten: viele kleine Linsen wie ein Insektenauge · Geisterbilder: Spiegelungen heller Stellen quer durch die Mitte · " +
-                "Risse: ein Einschlag in der Mitte mit Sprüngen wie ein Spinnennetz",
+            tip = "Shards: shattered lens, every shard slips · Fresnel rings: rings with their own magnification · " +
+                "Facets: many small lenses like an insect's eye · Ghosts: reflections of bright spots across the middle · " +
+                "Cracks: an impact in the middle with cracks like a spider's web",
         ),
-        Param.Slider("glitchAmount", "Glitch Stärke", 0, 100, 50, " %"),
-        Param.Slider("glitchSize", "Glitch Grösse", 8, 1000, 140, " px", "Grösse der Scherben, Ringe oder Facetten; bei Rissen der Abstand der Ringsprünge"),
-        Param.Slider("lineWidth", "Bruchkanten Stärke", 1, 200, 16, tip = "Strichstärke der Trennlinien in Zehntelpixeln: 16 = 1,6 px"),
-        Param.Slider("glitchLines", "Bruchkanten hell/dunkel", -100, 100, 70, " %", "Positiv: die Trennlinien zwischen Scherben, Ringen, Facetten und Rissen leuchten hell · negativ: sie werden dunkel"),
-        Param.Slider("glitchFringe", "Kanten-Artefakte", 0, 100, 60, " %", "RGB-Verschiebung und Unschärfe, die zu den Bruchkanten hin zunehmen"),
-        Param.Slider("elementGradient", "Element-Verlauf", -100, 100, 0, " %", "Verlauf in jedem Glasstück von innen nach aussen: positiv hellt zu den Kanten hin auf, negativ dunkelt ab"),
-        Param.Slider("gradientWidth", "Verlauf Breite", 1, 100, 40, " %", "Wie weit der Verlauf von der Kante ins Stück reicht (Anteil der Glitch Grösse)"),
-        Param.Slider("tilt", "Neigung", 0, 100, 0, " %", "Jedes Glasstück bekommt eine zufällige Neigung (Normale); sie steuert Beleuchtung und Brechung"),
-        Param.Slider("light", "Beleuchtung", 0, 100, 50, " %", "Wie stark die geneigten Stücke vom Licht aufgehellt oder abgedunkelt werden"),
-        Param.Slider("lightAngle", "Lichtrichtung", 0, 359, 225, "°", "Woher das Licht kommt; 225° = von oben links"),
-        Param.Slider("refraction", "Brechung", 0, 200, 20, " px", "Wie weit jedes geneigte Stück das Bild in seine Neigungsrichtung verschiebt"),
-        Param.Slider("crackDirection", "Risse: Vertikal → Radial", 0, 100, 100, " %", "0 %: die Risse laufen von oben nach unten · 100 %: sie laufen vom Einschlag strahlenförmig nach aussen"),
-        Param.Slider("crackJag", "Risse: Zackigkeit", 0, 100, 70, " %"),
-        Param.Slider("crackBranch", "Risse: Verzweigung", 0, 100, 50, " %", "Wie oft sich die Risse wie Blitze verästeln"),
+        Param.Slider("glitchAmount", "Glitch strength", 0, 100, 50, " %"),
+        Param.Slider("glitchSize", "Glitch size", 8, 1000, 140, " px", "Size of the shards, rings or facets; for cracks the spacing of the ring cracks"),
+        Param.Slider("lineWidth", "Break line width", 1, 200, 16, tip = "Width of the dividing lines in tenths of a pixel: 16 = 1.6 px"),
+        Param.Slider("glitchLines", "Break lines light/dark", -100, 100, 70, " %", "Positive: the dividing lines between shards, rings, facets and cracks glow bright · negative: they turn dark"),
+        Param.Slider("glitchFringe", "Edge artifacts", 0, 100, 60, " %", "RGB shift and blur increasing towards the break lines"),
+        Param.Slider("elementGradient", "Element gradient", -100, 100, 0, " %", "Gradient in every piece of glass from inside to outside: positive brightens towards the edges, negative darkens"),
+        Param.Slider("gradientWidth", "Gradient width", 1, 100, 40, " %", "How far the gradient reaches from the edge into the piece (share of the glitch size)"),
+        Param.Slider("tilt", "Tilt", 0, 100, 0, " %", "Every piece of glass gets a random tilt (normal); it controls lighting and refraction"),
+        Param.Slider("light", "Lighting", 0, 100, 50, " %", "How much the tilted pieces are brightened or darkened by the light"),
+        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "Where the light comes from; 225° = from the top left"),
+        Param.Slider("refraction", "Refraction", 0, 200, 20, " px", "How far every tilted piece shifts the picture in its tilt direction"),
+        Param.Slider("crackDirection", "Cracks: vertical → radial", 0, 100, 100, " %", "0 %: the cracks run from top to bottom · 100 %: they radiate outwards from the impact"),
+        Param.Slider("crackJag", "Cracks: jaggedness", 0, 100, 70, " %"),
+        Param.Slider("crackBranch", "Cracks: branching", 0, 100, 50, " %", "How often the cracks branch like lightning"),
     )
 
     private const val SHARDS = 1

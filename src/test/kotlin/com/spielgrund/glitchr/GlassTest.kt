@@ -23,9 +23,9 @@ class GlassTest {
         for (p1 in 1..8) for (p2 in listOf(0, 2, 6)) {
             val v = Glass.defaultValues(mapOf("pattern1" to p1, "pattern2" to p2, "size1" to 30, "size2" to 10))
             val out = Glass.apply(stripes, v, 3L)
-            assertContentEquals(out.data, Glass.apply(stripes, v, 3L).data, "Muster $p1 + $p2")
+            assertContentEquals(out.data, Glass.apply(stripes, v, 3L).data, "pattern $p1 + $p2")
             val changed = (0 until 120 * 90).count { out.data[it] != stripes.data[it] }
-            assertTrue(changed > 2000, "Muster $p1 + $p2: $changed")
+            assertTrue(changed > 2000, "pattern $p1 + $p2: $changed")
         }
     }
 
@@ -45,7 +45,7 @@ class GlassTest {
         val c = out[30, 15]
         assertTrue(maxOf(c shr 16 and 0xFF, c shr 8 and 0xFF, c and 0xFF) < 60, Integer.toHexString(c))
         fun colors(aa: Int) = Glass.apply(stripes, Glass.defaultValues(base + ("antialias" to aa)), 3L).data.toSet().size
-        assertTrue(colors(2) > colors(0), "glatt ${colors(2)}, hart ${colors(0)}")
+        assertTrue(colors(2) > colors(0), "smooth ${colors(2)}, hard ${colors(0)}")
     }
 
     @Test
@@ -54,6 +54,6 @@ class GlassTest {
         val still = Glass.apply(stripes, Glass.defaultValues(base), 3L)
         val shifted = Glass.apply(stripes, Glass.defaultValues(base + ("offset" to 30)), 3L)
         val changed = (0 until 120 * 90).count { shifted.data[it] != still.data[it] }
-        assertTrue(changed > 3000, "versetzt $changed")
+        assertTrue(changed > 3000, "offset $changed")
     }
 }

@@ -33,9 +33,9 @@ class GeneratorTest {
             assertEquals(160, out.width, g.name)
             assertEquals(120, out.height, g.name)
             ImageIO.write(out.toImage(), "png", File(dir, "${g.id}.png"))
-            assertTrue(out.data.all { alpha(it) == 255 }, "${g.name} ist nicht deckend")
+            assertTrue(out.data.all { alpha(it) == 255 }, "${g.name} is not opaque")
             val colors = out.data.toSet().size
-            if (g.effect == null) assertEquals(1, colors) else assertTrue(colors > 2, "${g.name} ist einfarbig")
+            if (g.effect == null) assertEquals(1, colors) else assertTrue(colors > 2, "${g.name} is a single color")
         }
     }
 
@@ -71,7 +71,7 @@ class GeneratorTest {
         assertEquals(4, stepped.data.toSet().size)
         for (type in 0..5) {
             val shape = g.generate(60, 40, g.defaultValues(mapOf("type" to type, "repeats" to 3)), 0)
-            assertTrue(shape.data.toSet().size > 10, "Art $type")
+            assertTrue(shape.data.toSet().size > 10, "type $type")
         }
     }
 
@@ -81,7 +81,7 @@ class GeneratorTest {
         assertTrue(g.params.none { it.key == Generator.BASE })
         for (type in 0..7) {
             val out = g.generate(80, 60, g.defaultValues(mapOf("aType" to type, "bType" to type)), 0)
-            assertTrue(out.data.toSet().size > 2, "Muster $type")
+            assertTrue(out.data.toSet().size > 2, "pattern $type")
         }
         // blurred until only the moire is left: still clearly light and dark areas
         val bands = g.generate(300, 200, g.defaultValues(mapOf("blur" to 6)), 0)
@@ -123,11 +123,11 @@ class GeneratorTest {
         for (style in 0..2) for (motif in 0..7) {
             val v = g.defaultValues(mapOf("style" to style, "motif" to motif, "symmetry" to 8, "rotation" to 0))
             val out = g.generate(201, 201, v, 5L)
-            assertTrue(out.data.toSet().size > 2, "Stil $style, Motiv $motif")
+            assertTrue(out.data.toSet().size > 2, "style $style, motif $motif")
             // 8-fold: turned by 90° it is the same picture (up to antialiasing)
             var diff = 0L
             for (y in 0 until 201) for (x in 0 until 201) diff += kotlin.math.abs(red(out[x, y]) - red(out[200 - y, x]))
-            assertTrue(diff / (201 * 201) < 6, "Stil $style, Motiv $motif: $diff")
+            assertTrue(diff / (201 * 201) < 6, "style $style, motif $motif: $diff")
         }
         val a = g.generate(120, 120, g.defaultValues(), 1L)
         val b = g.generate(120, 120, g.defaultValues(), 2L)
@@ -140,7 +140,7 @@ class GeneratorTest {
         for (mode in 0..1) for (colorMode in 0..4) {
             val out = g.generate(160, 160, g.defaultValues(mapOf("mode" to mode, "colorMode" to colorMode, "passes" to 3)), 0)
             val background = out.data.count { it == 0xFFFAF7F0.toInt() }
-            assertTrue(background in 1 until out.data.size * 95 / 100, "Art $mode, Farben $colorMode")
+            assertTrue(background in 1 until out.data.size * 95 / 100, "type $mode, colors $colorMode")
         }
         // 96 and 63 teeth share 3: the wheel goes round 21 times (63 / 3) until the curve closes;
         // half of it is clearly less ink
@@ -193,18 +193,18 @@ class GeneratorTest {
             name = "Text"
             values["cell"] = 24
             values[Generator.BASE] = 0x102030
-            texts["text"] = "HALLO"
+            texts["text"] = "HELLO"
             opacity = 80
         }
         val file = File(dir, "generator.glitchr")
-        ProjectFile.save(DocState(120, 80, "ohne bild", listOf(gen.memento())), file)
+        ProjectFile.save(DocState(120, 80, "without image", listOf(gen.memento())), file)
         val loaded = ProjectFile.load(file)
         assertEquals(120, loaded.width)
         val m = loaded.layers.single() as GeneratorMemento
         assertSame(gen.generator, m.generator)
         assertEquals("Text", m.name)
         assertEquals(gen.values, m.values)
-        assertEquals("HALLO", m.texts["text"])
+        assertEquals("HELLO", m.texts["text"])
         assertEquals(gen.seed, m.seed)
         assertEquals(80, m.opacity)
 

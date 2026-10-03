@@ -15,6 +15,6 @@ class CanvasMaxTest {
         assertEquals(768, slider(PixelSort, "maxLength").maxFor(768, 620))
         assertEquals(4000, slider(PixelBleed, "length").maxFor(3000, 4000))
         assertEquals(620, slider(PixelSort, "overhang").maxFor(400, 620))
-        assertEquals(255, slider(PixelSort, "lower").maxFor(4000, 4000), "andere Regler bleiben fest")
+        assertEquals(255, slider(PixelSort, "lower").maxFor(4000, 4000), "other sliders stay fixed")
     }
 }

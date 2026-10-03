@@ -55,7 +55,7 @@ class ColorField(rgb: Int, private val title: String, private val onChange: (Int
 
     init {
         horizontalAlignment = LEFT
-        toolTipText = "Klicken, um die Farbe zu wählen"
+        toolTipText = "Click to choose the color"
         update()
         addActionListener {
             val chosen = javax.swing.JColorChooser.showDialog(this, title, java.awt.Color(this.rgb)) ?: return@addActionListener
@@ -118,7 +118,7 @@ class SliderField(
                 if (e.clickCount == 2 && SwingUtilities.isLeftMouseButton(e)) slider.value = default
             }
         })
-        slider.toolTipText = "Doppelklick: Standardwert"
+        slider.toolTipText = "Double-click: default value"
         add(slider, GridBagConstraints().apply { weightx = 1.0; fill = GridBagConstraints.HORIZONTAL })
         add(spinner, GridBagConstraints().apply { insets = Insets(0, 4, 0, 0) })
         if (unit.isNotBlank()) add(JLabel(unit.trim()), GridBagConstraints().apply { insets = Insets(0, 3, 0, 0) })

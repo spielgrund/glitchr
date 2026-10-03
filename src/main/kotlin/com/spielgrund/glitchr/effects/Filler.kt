@@ -23,15 +23,15 @@ import kotlin.math.roundToInt
  * ramp, a ramp color by its size or brightness, or its own average color – replacing,
  * multiplying or only coloring the picture, optionally with outlines.
  */
-object Filler : Effect("filler", "Flächen füllen", "Findet Flächen – Kacheln, Farbflächen, Helligkeitsstufen, Blobs – und füllt jede anders") {
-    private val finders = listOf("Gleiche Farbe", "Helligkeitsstufen", "Farbton (HSL)", "Blobs (Schwelle)", "Kanten")
+object Filler : Effect("filler", "Fill areas", "Finds areas – tiles, color areas, brightness levels, blobs – and fills each one differently") {
+    private val finders = listOf("Same color", "Brightness levels", "Hue (HSL)", "Blobs (threshold)", "Edges")
     private const val SAME = 0
     private const val LEVELS = 1
     private const val HUE = 2
     private const val BLOBS = 3
     private const val EDGES = 4
 
-    private val fills = listOf("Zufällige Grauwerte", "Zufällige Farben", "Zufällig aus Verlauf", "Verlauf nach Grösse", "Verlauf nach Helligkeit", "Mittelwert der Fläche")
+    private val fills = listOf("Random greys", "Random colors", "Random from gradient", "Gradient by size", "Gradient by brightness", "Area average")
     private const val GREY = 0
     private const val COLOR = 1
     private const val RAMP = 2
@@ -39,7 +39,7 @@ object Filler : Effect("filler", "Flächen füllen", "Findet Flächen – Kachel
     private const val BY_LIGHT = 4
     private const val MEAN = 5
 
-    private val cutouts = listOf("Keine", "Grösste Fläche", "Flächen am Bildrand", "Nach Farbe", "Hellste Fläche", "Dunkelste Fläche", "Zufällig")
+    private val cutouts = listOf("None", "Largest area", "Areas at the picture edge", "By color", "Brightest area", "Darkest area", "Random")
     private const val CUT_LARGEST = 1
     private const val CUT_BORDER = 2
     private const val CUT_COLOR = 3
@@ -54,57 +54,57 @@ object Filler : Effect("filler", "Flächen füllen", "Findet Flächen – Kachel
     private const val LOOSE = -2
 
     override val params = listOf(
-        Param.Heading("findHeading", "Flächen finden"),
+        Param.Heading("findHeading", "Find areas"),
         Param.Choice(
-            "finder", "Verfahren", finders,
-            tip = "Gleiche Farbe: zusammenhängende Pixel mit ähnlicher Farbe – erkennt Kacheln und Farbflächen · Helligkeitsstufen: gleich hell nach Stufen · " +
-                "Farbton: gleiches Farbband, Graues für sich · Blobs: zusammenhängende Stücke im Schwellenbereich · Kanten: was zwischen den Umrissen liegt",
+            "finder", "Method", finders,
+            tip = "Same color: connected pixels of similar color – detects tiles and color areas · Brightness levels: equally bright, in levels · " +
+                "Hue: the same color band, greys on their own · Blobs: connected pieces in the threshold range · Edges: what lies between the outlines",
         ),
-        Param.Slider("tolerance", "Toleranz", 0, 255, 16, tip = "Gleiche Farbe: so viel darf ein Kanal abweichen"),
+        Param.Slider("tolerance", "Tolerance", 0, 255, 16, tip = "Same color: a channel may differ this much"),
         Param.Choice(
-            "compare", "Vergleichen mit", listOf("Nachbarpixel", "Startfarbe"),
-            tip = "Gleiche Farbe – Nachbarpixel: Verläufe innerhalb einer Kachel bleiben eine Fläche, nur Sprünge trennen · " +
-                "Startfarbe: jeder Pixel muss der ersten Farbe der Fläche ähneln (bei Fotos weniger Auslaufen)",
+            "compare", "Compare with", listOf("Neighbor pixel", "Start color"),
+            tip = "Same color – neighbor pixel: gradients within a tile stay one area, only jumps separate · " +
+                "Start color: every pixel has to resemble the area's first color (less bleeding in photos)",
         ),
-        Param.Slider("levels", "Stufen", 2, 64, 6, tip = "Helligkeitsstufen und Farbton: in so viele Bänder wird geteilt"),
-        Param.Toggle("hueLight", "Farbton auch nach Helligkeit", false, "Farbton: hell und dunkel desselben Farbtons werden getrennt"),
-        Param.Choice("source", "Blobs: Wert", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("lower", "Blobs: untere Schwelle", 0, 255, 128),
-        Param.Slider("upper", "Blobs: obere Schwelle", 0, 255, 255),
-        Param.Toggle("invert", "Blobs: umkehren", false),
-        Param.Slider("edge", "Kantenschwelle", 1, 255, 40, tip = "Kanten: ab diesem Helligkeitssprung ist eine Grenze"),
-        Param.Toggle("diagonal", "Diagonal verbunden", false, "Auch schräg benachbarte Pixel gehören zur selben Fläche"),
-        Param.Slider("minArea", "Min. Fläche", 1, 100000, 20, " px", "Kleinere Flächen gelten nicht als eigene Fläche"),
+        Param.Slider("levels", "Levels", 2, 64, 6, tip = "Brightness levels and hue: split into this many bands"),
+        Param.Toggle("hueLight", "Hue also by brightness", false, "Hue: light and dark of the same hue are separated"),
+        Param.Choice("source", "Blobs: value", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("lower", "Blobs: lower threshold", 0, 255, 128),
+        Param.Slider("upper", "Blobs: upper threshold", 0, 255, 255),
+        Param.Toggle("invert", "Blobs: invert", false),
+        Param.Slider("edge", "Edge threshold", 1, 255, 40, tip = "Edges: a jump in brightness this big is a border"),
+        Param.Toggle("diagonal", "Diagonally connected", false, "Diagonally neighboring pixels belong to the same area too"),
+        Param.Slider("minArea", "Min. area", 1, 100000, 20, " px", "Smaller areas don't count as an area of their own"),
         Param.Choice(
-            "small", "Kleine Flächen", listOf("Unverändert", "Zur Nachbarfläche"), 1,
-            "Was mit zu kleinen Flächen (und Kantenpixeln) geschieht",
+            "small", "Small areas", listOf("Unchanged", "To the neighboring area"), 1,
+            "What happens to areas that are too small (and edge pixels)",
         ),
-        Param.Heading("fillHeading", "Füllen"),
-        Param.Choice("fill", "Füllung", fills, RAMP),
-        Param.Ramp("ramp", "Verlauf", RampPalette.RAINBOW.ramp.format(), "Für die Füllungen aus dem Verlauf"),
-        Param.Slider("saturation", "Sättigung", 0, 100, 70, " %", "Zufällige Farben: wie bunt"),
-        Param.Slider("lightFrom", "Helligkeit von", 0, 100, 20, " %", "Zufällige Grauwerte und Farben: dunkelste Füllung"),
-        Param.Slider("lightTo", "Helligkeit bis", 0, 100, 85, " %", "Zufällige Grauwerte und Farben: hellste Füllung"),
+        Param.Heading("fillHeading", "Fill"),
+        Param.Choice("fill", "Filling", fills, RAMP),
+        Param.Ramp("ramp", "Gradient", RampPalette.RAINBOW.ramp.format(), "For the fillings from the gradient"),
+        Param.Slider("saturation", "Saturation", 0, 100, 70, " %", "Random colors: how colorful"),
+        Param.Slider("lightFrom", "Brightness from", 0, 100, 20, " %", "Random greys and colors: darkest filling"),
+        Param.Slider("lightTo", "Brightness to", 0, 100, 85, " %", "Random greys and colors: brightest filling"),
         Param.Choice(
-            "blend", "Mischen", listOf("Ersetzen", "Multiplizieren", "Nur Farbe"),
-            tip = "Nur Farbe: die Fläche bekommt die Farbe, die Helligkeit des Bilds bleibt",
+            "blend", "Mix", listOf("Replace", "Multiply", "Color only"),
+            tip = "Color only: the area gets the color, the picture's brightness stays",
         ),
-        Param.Toggle("outline", "Umrisse zeichnen", false, "Schwarze Linien zwischen den Flächen"),
-        Param.Heading("cutHeading", "Freistellen"),
+        Param.Toggle("outline", "Draw outlines", false, "Black lines between the areas"),
+        Param.Heading("cutHeading", "Cut out"),
         Param.Choice(
             "cutout", "Transparent", cutouts,
-            tip = "Welche Flächen durchsichtig werden – z. B. der Hintergrund: meist die grösste Fläche oder was am Bildrand liegt",
+            tip = "Which areas become transparent – e.g. the background: usually the largest area or whatever touches the picture edge",
         ),
-        Param.Color("cutColor", "Farbe", 0xFFFFFF, "Nach Farbe: Flächen, deren Mittelwert dieser Farbe ähnelt"),
-        Param.Slider("cutTolerance", "Farbtoleranz", 0, 255, 40, tip = "Nach Farbe: so viel darf ein Kanal abweichen"),
-        Param.Slider("cutShare", "Anteil", 0, 100, 30, " %", "Zufällig: so viele Flächen werden durchsichtig"),
-        Param.Toggle("cutInvert", "Auswahl umkehren", false, "Nur die gewählten Flächen bleiben, alles andere wird durchsichtig"),
-        Param.Heading("outHeading", "Ausgabe"),
+        Param.Color("cutColor", "Color", 0xFFFFFF, "By color: areas whose average resembles this color"),
+        Param.Slider("cutTolerance", "Color tolerance", 0, 255, 40, tip = "By color: a channel may differ this much"),
+        Param.Slider("cutShare", "Share", 0, 100, 30, " %", "Random: this many areas become transparent"),
+        Param.Toggle("cutInvert", "Invert selection", false, "Only the chosen areas remain, everything else becomes transparent"),
+        Param.Heading("outHeading", "Output"),
         Param.Choice(
-            "antialias", "Kantenglättung", listOf("Aus", "2 × 2", "4 × 4"), 2,
-            "An den Grenzen zwischen den Flächen – auch an freigestellten Rändern – wird mehrfach abgetastet und gemittelt",
+            "antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 2,
+            "Along the borders between the areas – also at cut-out edges – it is sampled several times and averaged",
         ),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

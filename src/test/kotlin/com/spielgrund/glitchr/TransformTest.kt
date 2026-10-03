@@ -48,7 +48,7 @@ class TransformTest {
         assertEquals(red, turned[35, 10])
         // mirrored in X: the same
         assertContentEquals(turned.data, transform(halves, mapOf("mirrorX" to 1)).data)
-        // halved: the picture sits in the middle, repeated around it with "Wiederholen"
+        // halved: the picture sits in the middle, repeated around it with "Repeat"
         val small = transform(halves, mapOf("scale" to 500, "edge" to 1))
         assertEquals(red, small[12, 10])
         assertEquals(blue, small[25, 10])
@@ -125,7 +125,7 @@ class TransformTest {
         val top = row[50]
         linear.mask.shape().row(65, 100, 100, row, space)
         val bottom = row[50]
-        assertTrue(top > 0.8f && bottom < 0.2f, "oben $top, unten $bottom")
+        assertTrue(top > 0.8f && bottom < 0.2f, "top $top, bottom $bottom")
         // and effect masks of the group lie on the turned picture as well
         val fx = EffectLayer(Transform).apply {
             values.putAll(mapOf("rotation" to 0, "mirrorX" to 1))

@@ -38,44 +38,44 @@ import kotlin.math.sin
  * saturation against the threshold, with the noise roughening that edge) – or, if
  * wanted, by the noise alone.
  */
-object NoiseField : Effect("noisefield", "Noise", "Gerichteter Noise mit vielen Arten, ihn ins Bild zu mischen") {
-    private val types = listOf("Perlin", "Fraktal (fBm)", "Ridged", "Zellen (Worley)", "Wert-Noise", "Weisses Rauschen", "Voronoi")
+object NoiseField : Effect("noisefield", "Noise", "Directional noise with many ways to mix it into the picture") {
+    private val types = listOf("Perlin", "Fractal (fBm)", "Ridged", "Cells (Worley)", "Value noise", "White noise", "Voronoi")
     private val mixes = listOf(
-        "Überblenden", "Schwelle", "Schwelle ausschneiden", "Farbton (HSL)", "Sättigung (HSL)", "Helligkeit (HSL)",
-        "Overlay", "Differenz", "Kanäle tauschen", "Zufallswerte", "RGB-Werte", "Invertieren", "Farbstufen",
+        "Blend", "Threshold", "Threshold cut-out", "Hue (HSL)", "Saturation (HSL)", "Lightness (HSL)",
+        "Overlay", "Difference", "Swap channels", "Random values", "RGB values", "Invert", "Color steps",
     )
 
     override val params = listOf(
         Param.Choice("type", "Noise", types, default = 4), // Wert-Noise
-        Param.Slider("direction", "Richtung", 0, 359, 0, "°", "Richtung des Noise; entlang dieser Richtung ändern sich die Anfang-/Ende-Werte"),
-        Param.Slider("scaleStart", "Grösse Anfang", 2, 1000, 2, " px"),
-        Param.Slider("scaleEnd", "Grösse Ende", 2, 1000, 120, " px"),
-        Param.Slider("stretchStart", "Streckung Anfang", 100, 1500, 100, " %", "Zieht den Noise in Richtung zu Schlieren"),
-        Param.Slider("stretchEnd", "Streckung Ende", 100, 1500, 100, " %"),
-        Param.Slider("detailStart", "Detail Anfang", 1, 8, 3, tip = "Feinere Lagen (Fraktal, Ridged)"),
-        Param.Slider("detailEnd", "Detail Ende", 1, 8, 3),
-        Param.Slider("contrastStart", "Kontrast Anfang", 0, 400, 100, " %"),
-        Param.Slider("contrastEnd", "Kontrast Ende", 0, 400, 100, " %"),
-        Param.Slider("offset", "Versatz", 0, 2000, 0, " px", "Schiebt den Noise entlang der Richtung"),
+        Param.Slider("direction", "Direction", 0, 359, 0, "°", "Direction of the noise; along this direction the start/end values change"),
+        Param.Slider("scaleStart", "Size start", 2, 1000, 2, " px"),
+        Param.Slider("scaleEnd", "Size end", 2, 1000, 120, " px"),
+        Param.Slider("stretchStart", "Stretch start", 100, 1500, 100, " %", "Pulls the noise into streaks along the direction"),
+        Param.Slider("stretchEnd", "Stretch end", 100, 1500, 100, " %"),
+        Param.Slider("detailStart", "Detail start", 1, 8, 3, tip = "Finer layers (fractal, ridged)"),
+        Param.Slider("detailEnd", "Detail end", 1, 8, 3),
+        Param.Slider("contrastStart", "Contrast start", 0, 400, 100, " %"),
+        Param.Slider("contrastEnd", "Contrast end", 0, 400, 100, " %"),
+        Param.Slider("offset", "Offset", 0, 2000, 0, " px", "Shifts the noise along the direction"),
         Param.Slider(
-            "imageShape", "Bild formt Noise", 0, 100, 50, " %",
-            "Die Helligkeitsformen des Bilds verbiegen den Noise und fliessen in ihn ein – er wächst aus dem Motiv statt darüber zu liegen",
+            "imageShape", "Picture shapes noise", 0, 100, 50, " %",
+            "The brightness shapes of the picture bend the noise and flow into it – it grows out of the subject instead of lying on top",
         ),
         Param.Choice(
-            "colorMode", "Noise-Farbe", listOf("Graustufen", "Zwei Farben", "Bildpalette", "Bildfarbe"), 3,
-            tip = "Bildfarbe: jeder Pixel behält seine Farbe und wird vom Noise nur heller oder dunkler",
+            "colorMode", "Noise color", listOf("Greyscale", "Two colors", "Picture palette", "Picture color"), 3,
+            tip = "Picture color: every pixel keeps its color and is only made lighter or darker by the noise",
         ),
-        Param.Color("color1", "Farbe 1", 0x0B0B2E, "Für „Zwei Farben“: Farbe der dunklen Stellen"),
-        Param.Color("color2", "Farbe 2", 0xFF4FA3, "Für „Zwei Farben“: Farbe der hellen Stellen"),
-        Param.Choice("mix", "Mischen", mixes, default = 1, tip = "Wie der Noise mit dem Bild verrechnet wird"), // Schwelle
+        Param.Color("color1", "Color 1", 0x0B0B2E, "For “Two colors”: color of the dark spots"),
+        Param.Color("color2", "Color 2", 0xFF4FA3, "For “Two colors”: color of the bright spots"),
+        Param.Choice("mix", "Mix", mixes, default = 1, tip = "How the noise is combined with the picture"), // Schwelle
         Param.Choice(
-            "control", "Steuerung", listOf("Bildhelligkeit", "Bild dunkel", "Bildsättigung", "Noise"),
-            tip = "Was entscheidet, wo gemischt wird: das Bild darunter (hell, dunkel oder farbig über der Schwelle) oder der Noise selbst",
+            "control", "Control", listOf("Picture brightness", "Picture darkness", "Picture saturation", "Noise"),
+            tip = "What decides where it is mixed: the picture below (bright, dark or colorful above the threshold) or the noise itself",
         ),
-        Param.Slider("noiseInfluence", "Noise-Einfluss", 0, 100, 30, " %", "Bei Steuerung durch das Bild: wie stark der Noise die Kante der Schwelle aufraut"),
-        Param.Slider("amount", "Mischstärke", 0, 100, 100, " %"),
-        Param.Slider("threshold", "Schwelle", 0, 100, 0, " %", "Ab welchem Wert der Steuerung gemischt wird"),
-        Param.Slider("softness", "Weiche Kante", 0, 50, 5, " %", "Übergang an der Schwelle"),
+        Param.Slider("noiseInfluence", "Noise influence", 0, 100, 30, " %", "When controlled by the picture: how much the noise roughens the edge of the threshold"),
+        Param.Slider("amount", "Mix strength", 0, 100, 100, " %"),
+        Param.Slider("threshold", "Threshold", 0, 100, 0, " %", "The control value from which it is mixed"),
+        Param.Slider("softness", "Soft edge", 0, 50, 5, " %", "Transition at the threshold"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

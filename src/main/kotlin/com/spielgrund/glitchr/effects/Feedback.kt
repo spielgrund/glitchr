@@ -29,14 +29,14 @@ import kotlin.math.sin
  * – so the shifts are scaled and turned along and copies spiral inwards or outwards –
  * and moves its hue, saturation and lightness a bit further.
  *
- * What is copied ("Quelle"):
- * - Bild: the picture itself.
- * - Kanten: its edges (Sobel), colored by the picture, one color or their direction.
- * - Blobs: the picture is first cut into color areas (as for Hologramm and Partikel);
+ * What is copied ("Source"):
+ * - Picture: the picture itself.
+ * - Edges: its edges (Sobel), colored by the picture, one color or their direction.
+ * - Blobs: the picture is first cut into color areas (as for Hologram and Particles);
  *   every blob gets its own feedback around its own middle, as outline, flat area or
  *   picture content – with scaling above 100 % the copies grow out of the blobs, below
  *   they run into them.
- * - Alphakante: only a stroke along the picture's edge – its transparent parts and the
+ * - Alpha edge: only a stroke along the picture's edge – its transparent parts and the
  *   canvas border – outside, centered or inside, in a width and color. The picture
  *   layer's mask is part of it, because the renderer cuts the picture out by its mask
  *   before any effect runs.
@@ -49,8 +49,8 @@ import kotlin.math.sin
  * At the end the first copy or the original can be laid over everything once more, so
  * the motif stays visible as the core of its echoes.
  */
-object Feedback : Effect("feedback", "Feedback", "Kopien des Bilds, seiner Kanten oder Blobs immer wieder übereinander – grösser, kleiner, gedreht, versetzt, mit Farbverschiebung") {
-    private val edges = listOf("Transparent", "Wiederholen", "Spiegeln", "Rand strecken")
+object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edges or blobs over each other again and again – larger, smaller, rotated, offset, with color shift") {
+    private val edges = listOf("Transparent", "Repeat", "Mirror", "Stretch edge")
 
     private const val SOURCE_IMAGE = 0
     private const val SOURCE_EDGES = 1
@@ -59,65 +59,65 @@ object Feedback : Effect("feedback", "Feedback", "Kopien des Bilds, seiner Kante
 
     override val params = listOf(
         Param.Choice(
-            "source", "Quelle", listOf("Bild", "Kanten", "Blobs", "Alphakante"),
-            tip = "Kanten: die Kanten des Bilds werden kopiert. Blobs: das Bild wird in Farbflächen zerlegt, " +
-                "jede bekommt ihr eigenes Feedback um ihre Mitte – über 100 % wächst es heraus, darunter läuft es hinein. " +
-                "Alphakante: eine Kontur um die durchsichtigen Stellen des Bilds, samt der Maske der Bildebene",
+            "source", "Source", listOf("Picture", "Edges", "Blobs", "Alpha edge"),
+            tip = "Edges: the picture's edges are copied. Blobs: the picture is split into color areas, " +
+                "each gets its own feedback around its middle – above 100 % it grows outwards, below it runs inwards. " +
+                "Alpha edge: an outline around the transparent parts of the picture, including the picture layer's mask",
         ),
-        Param.Slider("steps", "Schritte", 1, 100, 12, tip = "Wie viele Kopien übereinander gelegt werden"),
-        Param.Heading("transformHeading", "Je Schritt"),
-        Param.Slider("scale", "Skalierung", 500, 2000, 920, " %", decimals = 1, tip = "Unter 100 %: jede Kopie kleiner (Tunnel, in die Blobs hinein), darüber grösser (aus ihnen heraus)"),
-        Param.Slider("rotation", "Drehung", -1800, 1800, 0, "°", decimals = 1),
-        Param.Slider("offsetX", "Versatz X", -5000, 5000, 0, " px", decimals = 1, tip = "Wird mit skaliert und gedreht – zusammen mit einer Drehung entstehen Spiralen"),
-        Param.Slider("offsetY", "Versatz Y", -5000, 5000, 0, " px", decimals = 1),
-        Param.Slider("centerX", "Mitte X", 0, 100, 50, " %", "Um diesen Punkt wird skaliert und gedreht (Blobs: jeder um seine eigene Mitte)"),
-        Param.Slider("centerY", "Mitte Y", 0, 100, 50, " %"),
-        Param.Choice("edge", "Rand", edges, tip = "Was ausserhalb einer verkleinerten oder verschobenen Kopie liegt (nicht bei Blobs)"),
-        Param.Heading("hslHeading", "Farbe je Schritt (HSL)"),
-        Param.Slider("hue", "Farbton", -180, 180, 0, "°"),
-        Param.Slider("saturation", "Sättigung", -50, 50, 0, " %"),
-        Param.Slider("lightness", "Helligkeit", -50, 50, 0, " %"),
-        Param.Heading("linesHeading", "Kanten und Blobs"),
+        Param.Slider("steps", "Steps", 1, 100, 12, tip = "How many copies are laid over each other"),
+        Param.Heading("transformHeading", "Per step"),
+        Param.Slider("scale", "Scale", 500, 2000, 920, " %", decimals = 1, tip = "Below 100 %: every copy smaller (a tunnel, into the blobs), above it larger (out of them)"),
+        Param.Slider("rotation", "Rotation", -1800, 1800, 0, "°", decimals = 1),
+        Param.Slider("offsetX", "Offset X", -5000, 5000, 0, " px", decimals = 1, tip = "Is scaled and rotated too – together with a rotation, spirals appear"),
+        Param.Slider("offsetY", "Offset Y", -5000, 5000, 0, " px", decimals = 1),
+        Param.Slider("centerX", "Center X", 0, 100, 50, " %", "Scaling and rotation happen around this point (blobs: each around its own middle)"),
+        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Choice("edge", "Edge", edges, tip = "What lies outside a shrunken or shifted copy (not for blobs)"),
+        Param.Heading("hslHeading", "Color per step (HSL)"),
+        Param.Slider("hue", "Hue", -180, 180, 0, "°"),
+        Param.Slider("saturation", "Saturation", -50, 50, 0, " %"),
+        Param.Slider("lightness", "Brightness", -50, 50, 0, " %"),
+        Param.Heading("linesHeading", "Edges and blobs"),
         Param.Choice(
-            "ground", "Untergrund", listOf("Bild", "Schwarz", "Weiss", "Transparent"),
-            tip = "Worauf Kanten oder Blobs und ihre Kopien liegen",
+            "ground", "Base", listOf("Picture", "Black", "White", "Transparent"),
+            tip = "What the edges or blobs and their copies lie on",
         ),
         Param.Choice(
-            "lineColor", "Färbung", listOf("Bildfarbe", "Eine Farbe", "Farbton aus Richtung"),
-            tip = "Farbe der Kanten und Blob-Konturen: aus dem Bild (bei Blobs: die Blobfarbe), eine Farbe, " +
-                "oder der Farbton aus der Kantenrichtung (bei Blobs: aus der Richtung zur Blobmitte)",
+            "lineColor", "Coloring", listOf("Picture color", "One color", "Hue from direction"),
+            tip = "Color of the edges and blob outlines: from the picture (for blobs: the blob color), one color, " +
+                "or the hue from the edge direction (for blobs: from the direction to the blob middle)",
         ),
-        Param.Color("color", "Farbe", 0x00FFCC, "Für „Eine Farbe“"),
-        Param.Slider("lineWidth", "Linienbreite", 1, 12, 2, " px"),
-        Param.Slider("edgeThreshold", "Kantenschwelle", 0, 100, 12, " %", "Nur Kanten: schwächere Kanten werden weggelassen"),
-        Param.Slider("edgeGain", "Kantenstärke", 10, 1000, 300, " %", "Nur Kanten: wie deckend die Kanten werden"),
-        Param.Slider("abstraction", "Abstraktion", 0, 100, 50, " %", "Nur Blobs: wie grob das Bild in Flächen zerlegt wird"),
-        Param.Slider("minBlob", "Min. Blobgrösse", 0, 20000, 400, " px", "Nur Blobs: kleinere Flächen bekommen kein Feedback"),
-        Param.Choice("blobDraw", "Blob-Darstellung", listOf("Kontur", "Fläche", "Bildinhalt"), tip = "Nur Blobs: was von jedem Blob kopiert wird"),
-        Param.Heading("alphaHeading", "Alphakante"),
+        Param.Color("color", "Color", 0x00FFCC, "For “One color”"),
+        Param.Slider("lineWidth", "Line width", 1, 12, 2, " px"),
+        Param.Slider("edgeThreshold", "Edge threshold", 0, 100, 12, " %", "Edges only: weaker edges are left out"),
+        Param.Slider("edgeGain", "Edge strength", 10, 1000, 300, " %", "Edges only: how opaque the edges become"),
+        Param.Slider("abstraction", "Abstraction", 0, 100, 50, " %", "Blobs only: how coarsely the picture is split into areas"),
+        Param.Slider("minBlob", "Min. blob size", 0, 20000, 400, " px", "Blobs only: smaller areas get no feedback"),
+        Param.Choice("blobDraw", "Blob display", listOf("Outline", "Area", "Picture content"), tip = "Blobs only: what is copied from every blob"),
+        Param.Heading("alphaHeading", "Alpha edge"),
         Param.Toggle(
-            "alphaFrame", "Alphakante zeichnen", false,
-            "Rahmt das Bild (bei Kanten: die Kanten) entlang seiner durchsichtigen Stellen und des Bildrands – jede Kopie bekommt ihn mit. " +
-                "Bei Quelle „Alphakante“ immer an; bei Blobs nur am Original",
+            "alphaFrame", "Draw alpha edge", false,
+            "Frames the picture (for edges: the edges) along its transparent parts and the picture edge – every copy gets it too. " +
+                "Always on with source “Alpha edge”; for blobs only on the original",
         ),
-        Param.Slider("alphaWidth", "Strichstärke", 5, 2000, 40, " px", decimals = 1),
+        Param.Slider("alphaWidth", "Line width", 5, 2000, 40, " px", decimals = 1),
         Param.Choice(
-            "alphaPosition", "Lage", listOf("Aussen", "Mitte", "Innen"), 2,
-            "Ob die Kontur ausserhalb, auf oder innerhalb der Kante liegt – am Bildrand ist nur der innere Teil zu sehen",
+            "alphaPosition", "Placement", listOf("Outside", "Middle", "Inside"), 2,
+            "Whether the outline lies outside, on or inside the edge – at the picture edge only the inner part is visible",
         ),
-        Param.Choice("alphaColorMode", "Färbung", listOf("Eine Farbe", "Bildfarbe", "Farbton aus Richtung"), tip = "Bildfarbe: die Farbe des Bilds an der nächsten Stelle der Kante"),
-        Param.Color("alphaColor", "Farbe", 0xFFFFFF),
-        Param.Heading("mixHeading", "Überlagerung"),
-        Param.Choice("order", "Reihenfolge", listOf("Kopien über dem Bild", "Bild über den Kopien"), tip = "Oben liegt die neueste Kopie – oder das Bild (die Kanten, die Blobs) selbst"),
-        Param.Choice("blend", "Mischmodus", BlendMode.entries.map { it.label }),
-        Param.Slider("opacity", "Deckkraft der Kopien", 0, 100, 100, " %"),
-        Param.Slider("fade", "Abklingen", 0, 50, 0, " %", "Jede weitere Kopie wird um so viel durchsichtiger"),
+        Param.Choice("alphaColorMode", "Coloring", listOf("One color", "Picture color", "Hue from direction"), tip = "Picture color: the picture's color at the nearest point of the edge"),
+        Param.Color("alphaColor", "Color", 0xFFFFFF),
+        Param.Heading("mixHeading", "Compositing"),
+        Param.Choice("order", "Order", listOf("Copies above the picture", "Picture above the copies"), tip = "On top lies the newest copy – or the picture (the edges, the blobs) itself"),
+        Param.Choice("blend", "Blend mode", BlendMode.entries.map { it.label }),
+        Param.Slider("opacity", "Opacity of the copies", 0, 100, 100, " %"),
+        Param.Slider("fade", "Decay", 0, 50, 0, " %", "Every further copy becomes this much more transparent"),
         Param.Choice(
-            "finish", "Zum Schluss darüber", listOf("Nichts", "Erste Kopie", "Original (Bild, Kanten oder Blobs)"),
-            tip = "Legt zuletzt noch einmal die erste Kopie oder das Original über alles, im Mischmodus der Kopien – " +
-                "etwa damit wachsende Kopien das Motiv nicht zudecken",
+            "finish", "Finally on top", listOf("Nothing", "First copy", "Original (picture, edges or blobs)"),
+            tip = "Finally lays the first copy or the original over everything once more, in the copies' blend mode – " +
+                "e.g. so that growing copies don't cover the subject",
         ),
-        Param.Slider("finishOpacity", "Deckkraft zum Schluss", 0, 100, 100, " %"),
+        Param.Slider("finishOpacity", "Final opacity", 0, 100, 100, " %"),
     )
 
     override val random = false

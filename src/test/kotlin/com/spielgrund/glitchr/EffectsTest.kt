@@ -51,12 +51,20 @@ class EffectsTest {
             val b = effect.apply(src, values, 42L)
             assertEquals(src.width, a.width, effect.name)
             assertEquals(src.height, a.height, effect.name)
-            assertContentEquals(a.data, b.data, "${effect.name} ist nicht deterministisch")
+            assertContentEquals(a.data, b.data, "${effect.name} is not deterministic")
             // Flow starts at 0 % offset on purpose: first the direction is drawn, then the picture moves;
             // the color correction starts neutral, every change is the user's
-            if (effect.id !in setOf("flow", "colorcorrect")) assertFalse(a.data.contentEquals(src.data), "${effect.name} ändert nichts")
+            if (effect.id !in setOf("flow", "colorcorrect")) assertFalse(a.data.contentEquals(src.data), "${effect.name} changes nothing")
             ImageIO.write(a.toImage(), "png", File(outDir, "${effect.id}.png"))
         }
+    }
+
+    @Test
+    fun `every effect sits in exactly one category`() {
+        val ids = Effects.all.map { it.id }
+        assertEquals(ids.size, ids.toSet().size, "duplicate: ${ids.groupBy { it }.filter { it.value.size > 1 }.keys}")
+        assertEquals(48, ids.size)
+        for (category in Effects.categories) assertFalse(category.effects.isEmpty(), category.name)
     }
 
     @Test

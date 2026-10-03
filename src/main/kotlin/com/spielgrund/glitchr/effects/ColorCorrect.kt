@@ -29,47 +29,47 @@ import kotlin.math.roundToInt
  *
  * Coloring through a gradient is its own effect, [Ramp].
  */
-object ColorCorrect : Effect("colorcorrect", "Farbkorrektur", "Belichtung, Tonemapping, Tonwerte, HSL mit Überlauf, Kurven") {
-    private val tonemaps = listOf("Aus", "Reinhard", "Filmisch (ACES)", "Hable")
-    private val edges = listOf("Abschneiden", "Überlauf", "Spiegeln")
+object ColorCorrect : Effect("colorcorrect", "Color correction", "Exposure, tone mapping, levels, HSL with overflow, curves") {
+    private val tonemaps = listOf("Off", "Reinhard", "Filmic (ACES)", "Hable")
+    private val edges = listOf("Clip", "Overflow", "Mirror")
 
     override val params = listOf(
-        Param.Heading("toneHeading", "Belichtung und Tonemapping"),
-        Param.Slider("exposure", "Belichtung", -500, 500, 0, " EV", decimals = 2, tip = "In Blendenstufen, im linearen Licht"),
-        Param.Choice("tonemap", "Tonemapping", tonemaps, tip = "Holt überbelichtete Lichter weich zurück, statt sie abzuschneiden"),
+        Param.Heading("toneHeading", "Exposure and tone mapping"),
+        Param.Slider("exposure", "Exposure", -500, 500, 0, " EV", decimals = 2, tip = "In stops, in linear light"),
+        Param.Choice("tonemap", "Tone mapping", tonemaps, tip = "Brings overexposed highlights back softly instead of clipping them"),
         Param.Slider(
-            "highlightCompression", "Highlight-Kompression", -200, 200, 0, " %",
-            "Positiv: die Lichter über dem Knie werden weich zusammengedrückt und heruntergeregelt. " +
-                "Negativ: sie werden gedehnt, brennen heller aus und der Kontrast steigt stark. Wirkt auf jeden Kanal – die Farbtöne kippen",
+            "highlightCompression", "Highlight compression", -200, 200, 0, " %",
+            "Positive: the highlights above the knee are softly compressed and pulled down. " +
+                "Negative: they are stretched, burn out brighter and the contrast rises sharply. Works on every channel – the hues shift",
         ),
-        Param.Slider("highlightKnee", "Knie", 0, 95, 50, " %", "Ab dieser Helligkeit wirkt die Highlight-Kompression"),
-        Param.Slider("blackPoint", "Schwarzpunkt", 0, 254, 0, tip = "Tonwerte: was so dunkel ist, wird schwarz"),
-        Param.Slider("whitePoint", "Weisspunkt", 1, 255, 255, tip = "Tonwerte: was so hell ist, wird weiss"),
-        Param.Slider("gamma", "Gamma", 10, 1000, 100, decimals = 2, tip = "Über 1 hellt die Mitten auf, darunter dunkelt es sie ab"),
-        Param.Slider("contrast", "Kontrast", 0, 400, 100, " %"),
-        Param.Slider("highlights", "Lichter", -100, 100, 0, " %", "Negativ holt helle Stellen zurück"),
-        Param.Slider("shadows", "Tiefen", -100, 100, 0, " %", "Positiv hellt dunkle Stellen auf"),
+        Param.Slider("highlightKnee", "Knee", 0, 95, 50, " %", "The highlight compression works from this brightness up"),
+        Param.Slider("blackPoint", "Black point", 0, 254, 0, tip = "Levels: whatever is this dark becomes black"),
+        Param.Slider("whitePoint", "White point", 1, 255, 255, tip = "Levels: whatever is this bright becomes white"),
+        Param.Slider("gamma", "Gamma", 10, 1000, 100, decimals = 2, tip = "Above 1 brightens the midtones, below darkens them"),
+        Param.Slider("contrast", "Contrast", 0, 400, 100, " %"),
+        Param.Slider("highlights", "Highlights", -100, 100, 0, " %", "Negative brings bright areas back"),
+        Param.Slider("shadows", "Shadows", -100, 100, 0, " %", "Positive brightens dark areas"),
         Param.Heading("hslHeading", "HSL"),
-        Param.Slider("hue", "Farbton", -180, 180, 0, "°"),
+        Param.Slider("hue", "Hue", -180, 180, 0, "°"),
         Param.Slider(
-            "saturation", "Sättigung", 0, 1000, 100, " %",
-            "Schiebt jeden Kanal vom Grau des Pixels weg – hohe Werte übersteuern wie früher in Photoshop",
+            "saturation", "Saturation", 0, 1000, 100, " %",
+            "Pushes every channel away from the pixel's grey – high values overdrive like old Photoshop",
         ),
         Param.Choice(
-            "saturationEdge", "Sättigung ausserhalb", edges,
-            tip = "Abschneiden: die Kanäle schlagen hart an (knallige, ausbrennende Farben). Überlauf: über die volle Sättigung hinaus " +
-                "beginnt sie wieder bei Grau (Farbbänder). Spiegeln: sie läuft von der vollen Sättigung zurück Richtung Grau",
+            "saturationEdge", "Saturation beyond", edges,
+            tip = "Clip: the channels hit their limit hard (garish, burning colors). Overflow: beyond full saturation " +
+                "it starts again at grey (color bands). Mirror: it runs back from full saturation towards grey",
         ),
-        Param.Slider("lightness", "Helligkeit", -100, 100, 0, " %"),
+        Param.Slider("lightness", "Brightness", -100, 100, 0, " %"),
         Param.Choice(
-            "lightnessEdge", "Helligkeit ausserhalb", edges,
-            tip = "Was mit Helligkeit über Weiss oder unter Schwarz passiert: abschneiden, von vorn beginnen (Hell springt nach Dunkel) oder zurückspiegeln",
+            "lightnessEdge", "Brightness beyond", edges,
+            tip = "What happens to brightness above white or below black: clip, start over (bright jumps to dark) or mirror back",
         ),
-        Param.Slider("vibrance", "Dynamik", -100, 100, 0, " %", "Sättigt vor allem die blassen Farben, schont die schon kräftigen"),
-        Param.Heading("curvesHeading", "Kurven"),
-        Param.Curve("curves", "Kurven", "Klicken setzt einen Punkt, Ziehen verschiebt ihn, Rechtsklick entfernt ihn"),
-        Param.Heading("mixHeading", "Mischen"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("vibrance", "Vibrance", -100, 100, 0, " %", "Saturates mainly the pale colors, spares the already strong ones"),
+        Param.Heading("curvesHeading", "Curves"),
+        Param.Curve("curves", "Curves", "Click sets a point, dragging moves it, right-click removes it"),
+        Param.Heading("mixHeading", "Mix"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override val random = false

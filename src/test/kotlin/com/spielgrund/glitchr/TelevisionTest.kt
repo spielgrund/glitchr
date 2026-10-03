@@ -39,13 +39,13 @@ class TelevisionTest {
         val out = run(mapOf("scanlines" to 100, "lineSpacing" to 4, "glow" to 0))
         fun rowSum(y: Int) = (0 until 240).sumOf { x -> out[x, y] shr 8 and 0xFF }
         val sums = (40 until 80).map { rowSum(it) }
-        assertTrue(sums.max() > 2 * sums.min() + 100, "Zeilen: ${sums.take(8)}")
+        assertTrue(sums.max() > 2 * sums.min() + 100, "rows: ${sums.take(8)}")
     }
 
     @Test
     fun `tracking errors shift rows`() {
         val out = run(mapOf("tracking" to 6, "trackingStrength" to 200))
         val changed = (0 until 160).count { y -> (0 until 240).any { x -> abs((out[x, y] shr 8 and 0xFF) - (src[x, y] shr 8 and 0xFF)) > 20 } }
-        assertTrue(changed in 5 until 160, "gestörte Zeilen: $changed")
+        assertTrue(changed in 5 until 160, "disturbed rows: $changed")
     }
 }

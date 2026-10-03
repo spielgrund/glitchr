@@ -21,38 +21,38 @@ import kotlin.math.roundToInt
  * character. With a character set, the cell's brightness picks the character; with
  * your own text, the letters run through the cells in reading order and the brightness
  * sets their color and, if wanted, size. On a black background bright areas get the
- * dense characters, on a light one dark areas ("Umkehren" swaps that). The brightness
+ * dense characters, on a light one dark areas ("Invert" swaps that). The brightness
  * is stretched to the picture's own range, and picture colors are lifted accordingly,
  * so dark photos stay readable.
  */
-object Characters : Effect("chars", "Zeichen", "Baut das Bild aus ASCII-Zeichen, Glyphen oder eigenem Text auf") {
+object Characters : Effect("chars", "Characters", "Builds the picture from ASCII characters, glyphs or your own text") {
     /** Character sets from light (sparse) to dark (dense). */
     private val sets = listOf(
-        "ASCII fein" to " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
-        "ASCII einfach" to " .:-=+*#%@",
-        "Blöcke" to " ░▒▓█",
-        "Punkte" to " ·∙•●",
-        "Striche" to " .-/|\\+x#",
-        "Binär" to " 01",
+        "ASCII fine" to " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+        "ASCII simple" to " .:-=+*#%@",
+        "Blocks" to " ░▒▓█",
+        "Dots" to " ·∙•●",
+        "Strokes" to " .-/|\\+x#",
+        "Binary" to " 01",
         "Matrix" to " ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ",
-        "Eigener Text" to "",
+        "Custom text" to "",
     )
     internal const val OWN_TEXT = 7
     private val fonts = listOf(Font.MONOSPACED, Font.SANS_SERIF, Font.SERIF)
 
     override val params = listOf(
-        Param.Choice("set", "Zeichensatz", sets.map { it.first }),
-        Param.Text("text", "Eigener Text", "GLITCH", "Für „Eigener Text“: die Buchstaben laufen der Reihe nach über das Bild"),
-        Param.Slider("cell", "Zellgrösse", 3, 120, 10, " px", "Höhe einer Zeichenzeile"),
-        Param.Slider("letterSpacing", "Zeichenabstand", -60, 400, 0, " %", "Abstand zwischen den Zeichen (Kerning), in Prozent der Zeichenbreite; negativ rücken sie zusammen"),
-        Param.Slider("lineSpacing", "Zeilenabstand", 40, 500, 100, " %", "Abstand der Zeilen in Prozent der Zellgrösse; unter 100 % überlappen sie"),
-        Param.Toggle("invert", "Umkehren", false, "Auf schwarzem Hintergrund bekommen helle Stellen die dichten Zeichen, sonst dunkle – das hier dreht es um"),
-        Param.Toggle("scaleByBrightness", "Grösse nach Helligkeit", false, "Stellen mit viel „Tinte“ bekommen grössere Zeichen"),
-        Param.Choice("font", "Schrift", listOf("Monospace", "Serifenlos", "Serif")),
-        Param.Toggle("bold", "Fett", true),
-        Param.Choice("colorMode", "Farbe", listOf("Aus dem Bild", "Eine Farbe")),
-        Param.Color("color", "Zeichenfarbe", 0x33FF66, "Für „Eine Farbe“"),
-        Param.Choice("background", "Hintergrund", listOf("Schwarz", "Weiss", "Transparent", "Originalbild")),
+        Param.Choice("set", "Character set", sets.map { it.first }),
+        Param.Text("text", "Custom text", "GLITCH", "For “Custom text”: the letters run across the picture in order"),
+        Param.Slider("cell", "Cell size", 3, 120, 10, " px", "Height of a character row"),
+        Param.Slider("letterSpacing", "Letter spacing", -60, 400, 0, " %", "Space between the characters (kerning), in percent of the character width; negative moves them closer"),
+        Param.Slider("lineSpacing", "Line spacing", 40, 500, 100, " %", "Space between the rows in percent of the cell size; below 100 % they overlap"),
+        Param.Toggle("invert", "Invert", false, "On a black background bright spots get the dense characters, otherwise dark ones – this turns it around"),
+        Param.Toggle("scaleByBrightness", "Size by brightness", false, "Spots with a lot of “ink” get larger characters"),
+        Param.Choice("font", "Font", listOf("Monospace", "Sans serif", "Serif")),
+        Param.Toggle("bold", "Bold", true),
+        Param.Choice("colorMode", "Color", listOf("From the picture", "One color")),
+        Param.Color("color", "Character color", 0x33FF66, "For “One color”"),
+        Param.Choice("background", "Background", listOf("Black", "White", "Transparent", "Original picture")),
     )
 
     override val random = false

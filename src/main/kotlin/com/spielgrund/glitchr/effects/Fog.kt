@@ -18,19 +18,19 @@ import kotlin.math.roundToInt
  * near the ground if asked, with drifting wisps. Far away the picture also gets soft
  * (haze) and loses its colors (aerial perspective).
  */
-object Fog : Effect("fog", "Nebel", "Nebel nach der geschätzten Tiefe: je weiter weg, desto mehr verschwindet das Bild im Dunst") {
+object Fog : Effect("fog", "Fog", "Fog by the estimated depth: the further away, the more the picture vanishes into the haze") {
     override val params = listOf(
-        Param.Heading("fogHeading", "Nebel"),
-        Param.Color("fogColor", "Nebelfarbe", 0xC9D3DC),
-        Param.Slider("density", "Dichte", 0, 100, 70, " %"),
-        Param.Choice("falloff", "Verlauf", listOf("Linear", "Exponentiell"), 1, "Exponentiell: wie echter Nebel, zuerst schnell, dann langsam dichter"),
-        Param.Slider("fogStart", "Beginn", 0, 100, 20, " %", "Ab dieser Ferne beginnt der Nebel (0 % = ganz nah)"),
-        Param.Slider("fogEnd", "Ende", 0, 100, 100, " %", "Hier ist er am dichtesten"),
-        Param.Slider("ground", "Bodennebel", -100, 100, 0, " %", "Positiv: unten dichter, wie Nebel über dem Boden · negativ: oben dichter"),
-        Param.Slider("wisps", "Schwaden", 0, 100, 25, " %", "Der Nebel ist ungleich dicht"),
-        Param.Slider("wispSize", "Schwadengrösse", 4, 1000, 160, " px", canvasMax = true),
-        Param.Slider("haze", "Dunst-Unschärfe", 0, 100, 20, " px", "Im Nebel wird das Bild weich"),
-        Param.Slider("aerial", "Luftperspektive", 0, 100, 40, " %", "Ferne Dinge verlieren ihre Farbe"),
+        Param.Heading("fogHeading", "Fog"),
+        Param.Color("fogColor", "Fog color", 0xC9D3DC),
+        Param.Slider("density", "Density", 0, 100, 70, " %"),
+        Param.Choice("falloff", "Gradient", listOf("Linear", "Exponential"), 1, "Exponential: like real fog, first quickly, then slowly denser"),
+        Param.Slider("fogStart", "Start", 0, 100, 20, " %", "The fog starts at this distance (0 % = very near)"),
+        Param.Slider("fogEnd", "End", 0, 100, 100, " %", "This is where it is densest"),
+        Param.Slider("ground", "Ground fog", -100, 100, 0, " %", "Positive: denser at the bottom, like fog above the ground · negative: denser at the top"),
+        Param.Slider("wisps", "Wisps", 0, 100, 25, " %", "The fog is unevenly dense"),
+        Param.Slider("wispSize", "Wisp size", 4, 1000, 160, " px", canvasMax = true),
+        Param.Slider("haze", "Haze blur", 0, 100, 20, " px", "The picture gets soft in the fog"),
+        Param.Slider("aerial", "Aerial perspective", 0, 100, 40, " %", "Distant things lose their color"),
     ) + Depth.params
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

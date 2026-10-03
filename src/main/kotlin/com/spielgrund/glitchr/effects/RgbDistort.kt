@@ -11,21 +11,21 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /** Shifts the red, green and blue channels independently, with an optional per-row wave, and can reorder them. */
-object RgbDistort : Effect("rgb", "RGB-Distort", "Verschiebt und verbiegt die Farbkanäle gegeneinander") {
+object RgbDistort : Effect("rgb", "RGB-Distort", "Shifts and bends the color channels against each other") {
     private val orders = listOf("RGB", "RBG", "GRB", "GBR", "BRG", "BGR")
 
     override val params = listOf(
-        Param.Slider("rx", "Rot X", -300, 300, 12, " px"),
-        Param.Slider("ry", "Rot Y", -300, 300, 0, " px"),
-        Param.Slider("gx", "Grün X", -300, 300, 0, " px"),
-        Param.Slider("gy", "Grün Y", -300, 300, 0, " px"),
-        Param.Slider("bx", "Blau X", -300, 300, -12, " px"),
-        Param.Slider("by", "Blau Y", -300, 300, 0, " px"),
-        Param.Slider("waveAmp", "Welle Stärke", 0, 300, 0, " px", "Verschiebt jede Zeile sinusförmig zur Seite"),
-        Param.Slider("waveLength", "Welle Länge", 2, 2000, 120, " px"),
-        Param.Toggle("wavePhase", "Welle je Kanal versetzt", true),
-        Param.Choice("order", "Kanalreihenfolge", orders),
-        Param.Choice("edge", "Rand", Edge.labels),
+        Param.Slider("rx", "Red X", -300, 300, 12, " px"),
+        Param.Slider("ry", "Red Y", -300, 300, 0, " px"),
+        Param.Slider("gx", "Green X", -300, 300, 0, " px"),
+        Param.Slider("gy", "Green Y", -300, 300, 0, " px"),
+        Param.Slider("bx", "Blue X", -300, 300, -12, " px"),
+        Param.Slider("by", "Blue Y", -300, 300, 0, " px"),
+        Param.Slider("waveAmp", "Wave strength", 0, 300, 0, " px", "Shifts every row sideways in a sine wave"),
+        Param.Slider("waveLength", "Wave length", 2, 2000, 120, " px"),
+        Param.Toggle("wavePhase", "Wave offset per channel", true),
+        Param.Choice("order", "Channel order", orders),
+        Param.Choice("edge", "Edge", Edge.labels),
     )
 
     override val random = false

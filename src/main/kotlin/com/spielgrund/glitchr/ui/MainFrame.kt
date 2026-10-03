@@ -84,11 +84,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private val editorBox = WidthTrackingPanel()
     private val status = JLabel(" ")
     private val originalButton = JToggleButton("Original")
-    private val showMaskItem = JCheckBoxMenuItem("Maske anzeigen")
-    private val showMaskButton = JToggleButton("Maske zeigen")
+    private val showMaskItem = JCheckBoxMenuItem("Show mask")
+    private val showMaskButton = JToggleButton("Show mask")
     private val editorScroll = JScrollPane(editorBox)
-    private val undoItem = item("Rückgängig", KeyEvent.VK_Z) { undo() }
-    private val redoItem = item("Wiederholen", KeyEvent.VK_Y) { redo() }
+    private val undoItem = item("Undo", KeyEvent.VK_Z) { undo() }
+    private val redoItem = item("Redo", KeyEvent.VK_Y) { redo() }
 
     private val history = History()
 
@@ -102,7 +102,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     /** Canvas size; 0 while no document is open. */
     private var docWidth = 0
     private var docHeight = 0
-    private var docName = "bild"
+    private var docName = "image"
     private val hasDocument get() = docWidth > 0
 
     private var result: Pixels? = null
@@ -229,41 +229,43 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         add(toolbarLeft(), BorderLayout.CENTER)
         // copying sits apart on the far right
         add(JPanel(FlowLayout(FlowLayout.RIGHT, 6, 4)).apply {
-            add(small("Kopieren", "Aktuelles Bild mit Transparenz in die Zwischenablage kopieren (Strg+Umschalt+C)") { copy() })
+            add(small("Copy", "Copy the current picture with transparency to the clipboard (Ctrl+Shift+C)") { copy() })
         }, BorderLayout.EAST)
     }
 
     private fun toolbarLeft() = JPanel(FlowLayout(FlowLayout.LEFT, 6, 4)).apply {
-        add(small("Neu…", "Leere Leinwand in beliebiger Grösse, ohne Bild (Strg+N)") { newDialog() })
-        add(small("Öffnen…", "Bild oder Projekt öffnen (Strg+O)") { openDialog() })
-        add(small("+ Bild…", "Bild als neue Ebene einfügen (Strg+I) – oder einfach ins Fenster ziehen") { insertImageDialog() })
-        add(small("Speichern", "Projekt mit allen Ebenen und Masken speichern (Strg+S)") { save() })
-        add(small("Exportieren…", "Ergebnis als Bild speichern (Strg+E)") { exportDialog() })
-        add(small("Einpassen", "Ganzes Bild zeigen (Strg+0)") { canvas.setZoom(canvas.fitZoom()) })
+        add(small("New…", "Empty canvas of any size, without an image (Ctrl+N)") { newDialog() })
+        add(small("Open…", "Open an image or project (Ctrl+O)") { openDialog() })
+        add(small("+ Image…", "Insert an image as a new layer (Ctrl+I) – or just drag it into the window") { insertImageDialog() })
+        add(small("Save", "Save the project with all layers and masks (Ctrl+S)") { save() })
+        add(small("Export…", "Save the result as an image (Ctrl+E)") { exportDialog() })
+        add(small("Fit", "Show the whole picture (Ctrl+0)") { canvas.setZoom(canvas.fitZoom()) })
         add(originalButton.apply {
             isFocusable = false
-            toolTipText = "Zeigt die Bildebenen ohne Effekte (Strg+B)"
+            toolTipText = "Shows the image layers without effects (Ctrl+B)"
             addActionListener { requestRender() }
         })
         add(showMaskButton.apply {
             isFocusable = false
-            toolTipText = "Rote Markierung der Maske ein-/ausblenden; die Maske wirkt trotzdem (Strg+M)"
+            toolTipText = "Show/hide the mask's red overlay; the mask works either way (Ctrl+M)"
             addActionListener { showMask = isSelected; rebuildEditor() }
         })
     }
 
     private fun layerPanel(): JPanel {
-        val addButton = JButton("+ Effekt ▾").apply { isFocusable = false }
+        val addButton = JButton("+ Effect ▾").apply { isFocusable = false }
         val popup = JPopupMenu().apply {
-            for (effect in Effects.all) add(JMenuItem(effect.name).apply {
-                toolTipText = effect.description
-                addActionListener { addLayer(effect) }
+            for (category in Effects.categories) add(JMenu(category.name).apply {
+                for (effect in category.effects) add(JMenuItem(effect.name).apply {
+                    toolTipText = effect.description
+                    addActionListener { addLayer(effect) }
+                })
             })
         }
         addButton.addActionListener { popup.show(addButton, 0, addButton.height) }
         val generatorButton = JButton("+ Generator ▾").apply {
             isFocusable = false
-            toolTipText = "Neue Ebene, die ohne Bild ein Muster oder Noise erzeugt – Effekte darüber wirken darauf"
+            toolTipText = "New layer that creates a pattern or noise without an image – effects above work on it"
         }
         val generatorPopup = JPopupMenu().apply {
             for (generator in Generators.all) add(JMenuItem(generator.name).apply {
@@ -276,13 +278,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 4, 4)).apply {
             add(generatorButton)
             add(addButton)
-            add(small("▲", "Ebene nach oben (Strg+Bild↑)") { moveSelected(1) })
-            add(small("▼", "Ebene nach unten (Strg+Bild↓)") { moveSelected(-1) })
-            add(small("⧉", "Ebene duplizieren (Strg+J)") { duplicateSelected() })
-            add(small("✕", "Ebene löschen (Entf)") { deleteSelected() })
+            add(small("▲", "Layer up (Ctrl+PgUp)") { moveSelected(1) })
+            add(small("▼", "Layer down (Ctrl+PgDn)") { moveSelected(-1) })
+            add(small("⧉", "Duplicate layer (Ctrl+J)") { duplicateSelected() })
+            add(small("✕", "Delete layer (Del)") { deleteSelected() })
         }
         return JPanel(BorderLayout()).apply {
-            add(JLabel("Ebenen").apply {
+            add(JLabel("Layers").apply {
                 font = font.deriveFont(java.awt.Font.BOLD)
                 border = BorderFactory.createEmptyBorder(8, 10, 4, 10)
             }, BorderLayout.NORTH)
@@ -301,60 +303,65 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     }
 
     private fun menus() = JMenuBar().apply {
-        add(JMenu("Datei").apply {
-            add(item("Neu…", KeyEvent.VK_N) { newDialog() })
-            add(item("Öffnen…", KeyEvent.VK_O) { openDialog() })
-            add(item("Bild als Ebene einfügen…", KeyEvent.VK_I) { insertImageDialog() })
-            add(item("Aus Zwischenablage einfügen", KeyEvent.VK_V) { paste() })
+        add(JMenu("File").apply {
+            add(item("New…", KeyEvent.VK_N) { newDialog() })
+            add(item("Open…", KeyEvent.VK_O) { openDialog() })
+            add(item("Insert image as layer…", KeyEvent.VK_I) { insertImageDialog() })
+            add(item("Paste from clipboard", KeyEvent.VK_V) { paste() })
             addSeparator()
-            add(item("Projekt speichern", KeyEvent.VK_S) { save() })
-            add(item("Projekt speichern unter…", KeyEvent.VK_S, InputEvent.SHIFT_DOWN_MASK) { saveAs() })
+            add(item("Save project", KeyEvent.VK_S) { save() })
+            add(item("Save project as…", KeyEvent.VK_S, InputEvent.SHIFT_DOWN_MASK) { saveAs() })
             addSeparator()
-            add(item("Bild exportieren…", KeyEvent.VK_E) { exportDialog() })
-            add(item("Ergebnis kopieren", KeyEvent.VK_C, InputEvent.SHIFT_DOWN_MASK) { copy() })
+            add(item("Export image…", KeyEvent.VK_E) { exportDialog() })
+            add(item("Copy result", KeyEvent.VK_C, InputEvent.SHIFT_DOWN_MASK) { copy() })
             addSeparator()
-            add(JMenuItem("Beenden").apply { addActionListener { if (confirmDiscard()) exitProcess(0) } })
+            add(JMenuItem("Quit").apply { addActionListener { if (confirmDiscard()) exitProcess(0) } })
         })
-        add(JMenu("Bearbeiten").apply {
+        add(JMenu("Edit").apply {
             add(undoItem)
             add(redoItem)
         })
-        add(JMenu("Ebene").apply {
-            add(JMenuItem("Bild als Ebene einfügen…").apply { addActionListener { insertImageDialog() } })
-            add(JMenu("Generator hinzufügen").apply {
+        add(JMenu("Layer").apply {
+            add(JMenuItem("Insert image as layer…").apply { addActionListener { insertImageDialog() } })
+            add(JMenu("Add generator").apply {
                 for (generator in Generators.all) add(JMenuItem(generator.name).apply {
                     toolTipText = generator.description
                     addActionListener { addGenerator(generator) }
                 })
             })
-            add(JMenu("Effekt hinzufügen").apply {
-                for (effect in Effects.all) add(JMenuItem(effect.name).apply { addActionListener { addLayer(effect) } })
+            add(JMenu("Add effect").apply {
+                for (category in Effects.categories) add(JMenu(category.name).apply {
+                    for (effect in category.effects) add(JMenuItem(effect.name).apply {
+                        toolTipText = effect.description
+                        addActionListener { addLayer(effect) }
+                    })
+                })
             })
-            add(item("Duplizieren", KeyEvent.VK_J) { duplicateSelected() })
-            add(JMenuItem("Löschen").apply {
+            add(item("Duplicate", KeyEvent.VK_J) { duplicateSelected() })
+            add(JMenuItem("Delete").apply {
                 accelerator = KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0)
                 addActionListener { deleteSelected() }
             })
             addSeparator()
-            add(item("Nach oben", KeyEvent.VK_PAGE_UP) { moveSelected(1) })
-            add(item("Nach unten", KeyEvent.VK_PAGE_DOWN) { moveSelected(-1) })
+            add(item("Up", KeyEvent.VK_PAGE_UP) { moveSelected(1) })
+            add(item("Down", KeyEvent.VK_PAGE_DOWN) { moveSelected(-1) })
             addSeparator()
-            add(JMenuItem("Alle Ebenen aufs Bild anwenden").apply {
-                toolTipText = "Das Ergebnis wird zu einer einzigen Bildebene, alle Ebenen werden ersetzt"
+            add(JMenuItem("Apply all layers to the image").apply {
+                toolTipText = "The result becomes a single image layer, all layers are replaced"
                 addActionListener { flatten() }
             })
         })
-        add(JMenu("Ansicht").apply {
-            add(item("Einpassen", KeyEvent.VK_0) { canvas.setZoom(canvas.fitZoom()) })
+        add(JMenu("View").apply {
+            add(item("Fit", KeyEvent.VK_0) { canvas.setZoom(canvas.fitZoom()) })
             add(item("100 %", KeyEvent.VK_1) { canvas.setZoom(1.0) })
-            add(item("Vergrössern", KeyEvent.VK_PLUS) { canvas.zoomIn() })
-            add(item("Verkleinern", KeyEvent.VK_MINUS) { canvas.zoomOut() })
+            add(item("Zoom in", KeyEvent.VK_PLUS) { canvas.zoomIn() })
+            add(item("Zoom out", KeyEvent.VK_MINUS) { canvas.zoomOut() })
             addSeparator()
             add(showMaskItem.apply {
                 accelerator = KeyStroke.getKeyStroke(KeyEvent.VK_M, SHORTCUT)
                 addActionListener { showMask = isSelected; rebuildEditor() }
             })
-            add(item("Original zeigen", KeyEvent.VK_B) {
+            add(item("Show original", KeyEvent.VK_B) {
                 originalButton.isSelected = !originalButton.isSelected
                 requestRender()
             })
@@ -386,7 +393,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         layers.add(index, layer)
         select(layer)
         changed()
-        status.text = "Bildebene „${shortName(name)}“ eingefügt"
+        status.text = "Image layer “${shortName(name)}” inserted"
     }
 
     /**
@@ -403,7 +410,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         layers.add(index, layer)
         select(layer)
         changed()
-        status.text = "Generator „${generator.name}“ eingefügt"
+        status.text = "Generator “${generator.name}” inserted"
     }
 
     /** The selected layer's index range: for a source layer its whole group (with its effects). */
@@ -477,7 +484,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         val r = result ?: return
         if (layers.size <= 1 || originalButton.isSelected) return
         layers.clear()
-        val merged = ImageLayer(r).apply { name = "Zusammengefügt" }
+        val merged = ImageLayer(r).apply { name = "Merged" }
         layers.add(merged)
         select(merged)
         changed()
@@ -585,7 +592,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         val height = docHeight
         val gen = generation.incrementAndGet()
         val states = (if (originalButton.isSelected) layers.filterIsInstance<SourceLayer>() else layers).map { it.state() }
-        status.text = "Berechne…"
+        status.text = "Rendering…"
         renderExecutor.execute {
             if (generation.get() != gen) return@execute
             val start = System.nanoTime()
@@ -598,13 +605,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
                     resultImage = image
                     showCurrentImage()
                     refreshGeneratorThumbnails()
-                    updateStatus(if (generation.get() == gen) "$ms ms" else "Berechne…")
+                    updateStatus(if (generation.get() == gen) "$ms ms" else "Rendering…")
                 }
             } catch (e: OutOfMemoryError) {
-                SwingUtilities.invokeLater { status.text = "Zu wenig Speicher – GlitchR mit mehr Speicher starten (java -Xmx8g -jar …)" }
+                SwingUtilities.invokeLater { status.text = "Out of memory – start GlitchR with more memory (java -Xmx8g -jar …)" }
             } catch (e: Exception) {
                 e.printStackTrace()
-                SwingUtilities.invokeLater { status.text = "Fehler beim Berechnen: ${e.message}" }
+                SwingUtilities.invokeLater { status.text = "Error while rendering: ${e.message}" }
             }
         }
     }
@@ -626,7 +633,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private fun updateStatus(extra: String? = null) {
         status.text = if (!hasDocument) " " else buildString {
             append("${shortName(docName, 48)}  ·  $docWidth × $docHeight px  ·  ${(canvas.zoom * 100).toInt()} %")
-            append("  ·  ${layers.size} Ebene${if (layers.size == 1) "" else "n"}")
+            append("  ·  ${layers.size} layer${if (layers.size == 1) "" else "s"}")
             if (extra != null) append("  ·  $extra")
         }
     }
@@ -647,11 +654,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     }
 
     private fun readImage(file: File): BufferedImage? = try {
-        (ImageIO.read(file) ?: throw IllegalArgumentException("Unbekanntes Bildformat")).also {
+        (ImageIO.read(file) ?: throw IllegalArgumentException("Unknown image format")).also {
             prefs.put(PREF_DIR, file.parent ?: "")
         }
     } catch (e: Exception) {
-        JOptionPane.showMessageDialog(this, "„${file.name}“ konnte nicht geöffnet werden:\n${e.message}", "Öffnen", JOptionPane.ERROR_MESSAGE)
+        JOptionPane.showMessageDialog(this, "“${file.name}” could not be opened:\n${e.message}", "Open", JOptionPane.ERROR_MESSAGE)
         null
     }
 
@@ -695,16 +702,16 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         val width = spinner(prefs.getInt(PREF_NEW_WIDTH, 1920))
         val height = spinner(prefs.getInt(PREF_NEW_HEIGHT, 1080))
         val sizes = listOf(
-            "Eigene Grösse" to null, "HD 1920 × 1080" to (1920 to 1080), "4K 3840 × 2160" to (3840 to 2160),
-            "Quadrat 1080 × 1080" to (1080 to 1080), "Quadrat 2048 × 2048" to (2048 to 2048),
-            "Hochformat 1080 × 1920" to (1080 to 1920), "A4 300 dpi 2480 × 3508" to (2480 to 3508),
+            "Custom size" to null, "HD 1920 × 1080" to (1920 to 1080), "4K 3840 × 2160" to (3840 to 2160),
+            "Square 1080 × 1080" to (1080 to 1080), "Square 2048 × 2048" to (2048 to 2048),
+            "Portrait 1080 × 1920" to (1080 to 1920), "A4 300 dpi 2480 × 3508" to (2480 to 3508),
         )
         val sizeBox = javax.swing.JComboBox(sizes.map { it.first }.toTypedArray()).apply {
             addActionListener {
                 sizes[selectedIndex].second?.let { (w, h) -> width.value = w; height.value = h }
             }
         }
-        val contents = listOf("Leer (transparent)") + Generators.all.map { it.name }
+        val contents = listOf("Empty (transparent)") + Generators.all.map { it.name }
         val contentBox = javax.swing.JComboBox(contents.toTypedArray()).apply {
             selectedIndex = preset?.let { Generators.all.indexOf(it) + 1 } ?: 0
         }
@@ -714,7 +721,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             anchor = java.awt.GridBagConstraints.WEST
             fill = java.awt.GridBagConstraints.HORIZONTAL
         }
-        val rows = listOf("Vorlage" to sizeBox, "Breite (px)" to width, "Höhe (px)" to height, "Inhalt" to contentBox)
+        val rows = listOf("Preset" to sizeBox, "Width (px)" to width, "Height (px)" to height, "Content" to contentBox)
         for ((row, pair) in rows.withIndex()) {
             c.gridy = row
             c.gridx = 0
@@ -724,31 +731,31 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             c.weightx = 1.0
             form.add(pair.second, c)
         }
-        val answer = JOptionPane.showConfirmDialog(this, form, "Neue Leinwand", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+        val answer = JOptionPane.showConfirmDialog(this, form, "New canvas", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
         if (answer != JOptionPane.OK_OPTION || !confirmDiscard()) return
         val w = width.value as Int
         val h = height.value as Int
         prefs.putInt(PREF_NEW_WIDTH, w)
         prefs.putInt(PREF_NEW_HEIGHT, h)
         val generator = Generators.all.getOrNull(contentBox.selectedIndex - 1)
-        newDocument(w, h, generator?.name?.lowercase() ?: "neu", generator?.let(::GeneratorLayer))
+        newDocument(w, h, generator?.name?.lowercase() ?: "new", generator?.let(::GeneratorLayer))
     }
 
     private fun imageChooser(title: String, withProjects: Boolean) = JFileChooser(prefs.get(PREF_DIR, null)).apply {
         dialogTitle = title
         val suffixes = ImageIO.getReaderFileSuffixes()
         if (withProjects) {
-            addChoosableFileFilter(FileNameExtensionFilter("Bilder und GlitchR-Projekte", ProjectFile.EXTENSION, *suffixes))
-            addChoosableFileFilter(FileNameExtensionFilter("GlitchR-Projekt (.${ProjectFile.EXTENSION})", ProjectFile.EXTENSION))
+            addChoosableFileFilter(FileNameExtensionFilter("Images and GlitchR projects", ProjectFile.EXTENSION, *suffixes))
+            addChoosableFileFilter(FileNameExtensionFilter("GlitchR project (.${ProjectFile.EXTENSION})", ProjectFile.EXTENSION))
         }
-        addChoosableFileFilter(FileNameExtensionFilter("Bilder", *suffixes))
+        addChoosableFileFilter(FileNameExtensionFilter("Images", *suffixes))
         fileFilter = choosableFileFilters[1]
         isMultiSelectionEnabled = !withProjects
     }
 
     /** Opens a project, or an image as a new document. */
     private fun openDialog() {
-        val chooser = imageChooser("Öffnen", withProjects = true)
+        val chooser = imageChooser("Open", withProjects = true)
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return
         val file = chooser.selectedFile
         if (ProjectFile.isProject(file)) {
@@ -761,7 +768,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
 
     /** Adds one or more pictures as image layers (or starts a document with the first). */
     private fun insertImageDialog() {
-        val chooser = imageChooser("Bild als Ebene einfügen", withProjects = false)
+        val chooser = imageChooser("Insert image as layer", withProjects = false)
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return
         chooser.selectedFiles.ifEmpty { arrayOf(chooser.selectedFile) }.forEach(::open)
     }
@@ -782,14 +789,14 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         if (ext !in setOf("png", "jpg", "jpeg")) {
             file = File(file.path + if (chooser.fileFilter == jpg) ".jpg" else ".png")
         }
-        if (file.exists() && JOptionPane.showConfirmDialog(this, "\"${file.name}\" überschreiben?", "Exportieren", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return
+        if (file.exists() && JOptionPane.showConfirmDialog(this, "Overwrite \"${file.name}\"?", "Export", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return
         try {
             if (file.extension.lowercase() == "png") ImageIO.write(out.toImage(), "png", file)
             else writeJpeg(onWhite(out), file)
             prefs.put(PREF_DIR, file.parent ?: "")
-            status.text = "Exportiert: ${file.absolutePath}"
+            status.text = "Exported: ${file.absolutePath}"
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(this, "Speichern fehlgeschlagen:\n${e.message}", "Exportieren", JOptionPane.ERROR_MESSAGE)
+            JOptionPane.showMessageDialog(this, "Saving failed:\n${e.message}", "Export", JOptionPane.ERROR_MESSAGE)
         }
     }
 
@@ -817,12 +824,12 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
                 else -> {
                     // PNG first, so transparency from other programs survives
                     val img = ImageClipboard.read(clipboard)
-                    if (img == null) status.text = "Kein Bild in der Zwischenablage"
-                    else if (hasDocument) addImageLayer(img, "Eingefügt") else newDocument(img, "eingefügt")
+                    if (img == null) status.text = "No image on the clipboard"
+                    else if (hasDocument) addImageLayer(img, "Pasted") else newDocument(img, "pasted")
                 }
             }
         } catch (e: Exception) {
-            status.text = "Einfügen fehlgeschlagen: ${e.message}"
+            status.text = "Paste failed: ${e.message}"
         }
     }
 
@@ -830,14 +837,14 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private fun copy() {
         val out = result ?: return
         ImageClipboard.copy(out, Toolkit.getDefaultToolkit().systemClipboard)
-        status.text = "Ergebnis in die Zwischenablage kopiert (mit Transparenz)"
+        status.text = "Result copied to the clipboard (with transparency)"
     }
 
     /** Asks to save unsaved changes; false means the user cancelled. */
     private fun confirmDiscard(): Boolean {
         if (!dirty || !hasDocument) return true
         val answer = JOptionPane.showConfirmDialog(
-            this, "Änderungen an „${projectName()}“ speichern?", "GlitchR",
+            this, "Save changes to “${projectName()}”?", "GlitchR",
             JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE,
         )
         return when (answer) {
@@ -849,7 +856,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
 
     // ---------------------------------------------------------------- projects
 
-    private fun projectName() = projectFile?.name ?: "Unbenannt"
+    private fun projectName() = projectFile?.name ?: "Untitled"
 
     private fun updateTitle() {
         title = "${if (dirty) "● " else ""}${projectName()} – ${shortName(docName, 48)} – GlitchR"
@@ -860,7 +867,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         val state = try {
             ProjectFile.load(file)
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(this, "„${file.name}“ konnte nicht geöffnet werden:\n${e.message}", "Öffnen", JOptionPane.ERROR_MESSAGE)
+            JOptionPane.showMessageDialog(this, "“${file.name}” could not be opened:\n${e.message}", "Open", JOptionPane.ERROR_MESSAGE)
             return
         }
         prefs.put(PREF_DIR, file.parent ?: "")
@@ -876,7 +883,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             canvas.setZoom(canvas.fitZoom())
             canvas.refreshOverlay()
         }
-        status.text = "Geöffnet: ${file.absolutePath}"
+        status.text = "Opened: ${file.absolutePath}"
     }
 
     private fun save(): Boolean = projectFile?.let(::writeProject) ?: saveAs()
@@ -884,15 +891,15 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private fun saveAs(): Boolean {
         if (!hasDocument) return false
         val chooser = JFileChooser(projectFile?.parentFile ?: prefs.get(PREF_DIR, null)?.let(::File)).apply {
-            dialogTitle = "Projekt speichern unter"
-            fileFilter = FileNameExtensionFilter("GlitchR-Projekt (.${ProjectFile.EXTENSION})", ProjectFile.EXTENSION)
+            dialogTitle = "Save project as"
+            fileFilter = FileNameExtensionFilter("GlitchR project (.${ProjectFile.EXTENSION})", ProjectFile.EXTENSION)
             selectedFile = projectFile ?: File(currentDirectory, "$docName.${ProjectFile.EXTENSION}")
         }
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return false
         val chosen = chooser.selectedFile
         val file = if (ProjectFile.isProject(chosen)) chosen else File(chosen.parentFile, "${chosen.name}.${ProjectFile.EXTENSION}")
         if (file.exists() && file != projectFile) {
-            val answer = JOptionPane.showConfirmDialog(this, "„${file.name}“ existiert bereits. Ersetzen?", "GlitchR", JOptionPane.YES_NO_OPTION)
+            val answer = JOptionPane.showConfirmDialog(this, "“${file.name}” already exists. Replace it?", "GlitchR", JOptionPane.YES_NO_OPTION)
             if (answer != JOptionPane.YES_OPTION) return false
         }
         return writeProject(file)
@@ -907,10 +914,10 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             projectFile = file
             dirty = false
             prefs.put(PREF_DIR, file.parent ?: "")
-            status.text = "Gespeichert: ${file.absolutePath}"
+            status.text = "Saved: ${file.absolutePath}"
             true
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(this, "Speichern fehlgeschlagen:\n${e.message}", "GlitchR", JOptionPane.ERROR_MESSAGE)
+            JOptionPane.showMessageDialog(this, "Saving failed:\n${e.message}", "GlitchR", JOptionPane.ERROR_MESSAGE)
             false
         } finally {
             cursor = java.awt.Cursor.getDefaultCursor()

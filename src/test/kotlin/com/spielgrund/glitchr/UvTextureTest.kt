@@ -56,6 +56,6 @@ class UvTextureTest {
         assertEquals(argb(255, 0, 0, 0), out[64, 5])
         for (p in 0..10) UvTexture.apply(ramp, UvTexture.defaultValues(mapOf("pattern" to p)), 3L)
         fun colors(aa: Int) = UvTexture.apply(ramp, UvTexture.defaultValues(base + mapOf("antialias" to aa, "rotation" to 20)), 3L).data.toSet().size
-        assertTrue(colors(2) > colors(0), "glatt ${colors(2)}, hart ${colors(0)}")
+        assertTrue(colors(2) > colors(0), "smooth ${colors(2)}, hard ${colors(0)}")
     }
 }

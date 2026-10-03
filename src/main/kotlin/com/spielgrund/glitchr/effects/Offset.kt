@@ -4,12 +4,12 @@ import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.image.parallelRows
 
 /** Moves the picture by whole pixels, repeating it at the edges, and can mirror it. */
-object Offset : Effect("offset", "Verschieben", "Verschiebt das Bild in X und Y (es wiederholt sich am Rand) und spiegelt es") {
+object Offset : Effect("offset", "Shift", "Shifts the picture in X and Y (it repeats at the edge) and mirrors it") {
     override val params = listOf(
-        Param.Slider("shiftX", "Verschieben X", -3000, 3000, 100, " px", "Am Rand wiederholt sich das Bild"),
-        Param.Slider("shiftY", "Verschieben Y", -3000, 3000, 0, " px", "Am Rand wiederholt sich das Bild"),
-        Param.Toggle("flipX", "Spiegeln X", false, "Links und rechts tauschen"),
-        Param.Toggle("flipY", "Spiegeln Y", false, "Oben und unten tauschen"),
+        Param.Slider("shiftX", "Shift X", -3000, 3000, 100, " px", "The picture repeats at the edge"),
+        Param.Slider("shiftY", "Shift Y", -3000, 3000, 0, " px", "The picture repeats at the edge"),
+        Param.Toggle("flipX", "Mirror X", false, "Swap left and right"),
+        Param.Toggle("flipY", "Mirror Y", false, "Swap top and bottom"),
     )
 
     override val random = false

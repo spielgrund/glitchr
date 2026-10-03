@@ -16,7 +16,7 @@ class RidgelinesTest {
         // left: the flat lines lie on their baselines 15, 45, 75 …
         assertTrue(white(50, 45) && white(50, 75) && !white(50, 60))
         // right: every line is lifted by 40 px (baseline 75 → 35), the lines behind are hidden
-        assertTrue(white(150, 35) && !white(150, 45) && !white(150, 75), "rechts angehoben")
+        assertTrue(white(150, 35) && !white(150, 45) && !white(150, 75), "raised on the right")
     }
 
     @Test
@@ -24,7 +24,7 @@ class RidgelinesTest {
         val img = Pixels(200, 200).also { it.data.fill(-1) }
         fun white(occlude: Int) = Ridgelines.apply(img, Ridgelines.defaultValues(mapOf("source" to 2, "height" to 60, "spacing" to 10, "occlude" to occlude)), 1L)
             .data.count { it and 0xFF > 128 }
-        assertTrue(white(1) < white(0), "verdeckt: weniger Linien sichtbar")
+        assertTrue(white(1) < white(0), "hidden: fewer lines visible")
     }
 
     @Test
@@ -34,8 +34,8 @@ class RidgelinesTest {
         fun fullRows(p: Pixels) = (0 until p.height).count { y -> (0 until p.width).count { x -> p[x, y] and 0xFF > 128 } > p.width * 0.9 }
         fun fullColumns(p: Pixels) = (0 until p.width).count { x -> (0 until p.height).count { y -> p[x, y] and 0xFF > 128 } > p.height * 0.9 }
         val flat = out(0)
-        assertTrue(fullRows(flat) > 0 && fullColumns(flat) == 0, "0°: waagrecht")
+        assertTrue(fullRows(flat) > 0 && fullColumns(flat) == 0, "0°: horizontal")
         val turned = out(90)
-        assertTrue(fullColumns(turned) > 0 && fullRows(turned) == 0, "90°: senkrecht")
+        assertTrue(fullColumns(turned) > 0 && fullRows(turned) == 0, "90°: vertical")
     }
 }

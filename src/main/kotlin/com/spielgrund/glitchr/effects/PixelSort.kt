@@ -20,19 +20,19 @@ import kotlin.random.Random
  * Sorts runs of pixels along rows or columns. A run is a stretch of pixels whose
  * brightness lies between the two thresholds (or outside, when inverted).
  */
-object PixelSort : Effect("pixelsort", "Pixelsort", "Sortiert Pixelstrecken innerhalb eines Helligkeitsbereichs") {
-    private val keys = listOf("Helligkeit", "Farbton", "Sättigung", "Rot", "Grün", "Blau")
+object PixelSort : Effect("pixelsort", "Pixelsort", "Sorts runs of pixels within a brightness range") {
+    private val keys = listOf("Brightness", "Hue", "Saturation", "Red", "Green", "Blue")
 
     override val params = listOf(
-        Param.Slider("angle", "Winkel", 0, 359, 0, "°", "Sortierrichtung: 0° nach rechts, 90° nach unten, 180° nach links, 270° nach oben"),
-        Param.Choice("key", "Sortieren nach", keys),
-        Param.Slider("lower", "Untere Schwelle", 0, 255, 60, tip = "Pixel dunkler als das beenden eine Strecke"),
-        Param.Slider("upper", "Obere Schwelle", 0, 255, 220, tip = "Pixel heller als das beenden eine Strecke"),
-        Param.Toggle("invert", "Bereich umkehren", false, "Sortiert die Pixel ausserhalb der Schwellen"),
-        Param.Slider("maxLength", "Max. Länge", 0, 3000, 0, " px", "0 = unbegrenzt; höchstens die längere Seite der Leinwand", canvasMax = true),
-        Param.Slider("jitter", "Längen-Zufall", 0, 100, 0, " %", "Verkürzt die Strecken zufällig"),
-        Param.Choice("block", "Blockgrösse", blockOptions, tip = "Sortiert grosse Pixel: die sortierten Strecken werden aus n×n-Blöcken gebaut"),
-        Param.Slider("overhang", "Überstand", 0, 3000, 200, " px", "Wie weit eine Strecke, die an den Rand des Bilds stösst, in den leeren Bereich hinaus gezogen wird; höchstens die längere Seite der Leinwand", canvasMax = true),
+        Param.Slider("angle", "Angle", 0, 359, 0, "°", "Sorting direction: 0° to the right, 90° down, 180° to the left, 270° up"),
+        Param.Choice("key", "Sort by", keys),
+        Param.Slider("lower", "Lower threshold", 0, 255, 60, tip = "Pixels darker than this end a run"),
+        Param.Slider("upper", "Upper threshold", 0, 255, 220, tip = "Pixels brighter than this end a run"),
+        Param.Toggle("invert", "Invert range", false, "Sorts the pixels outside the thresholds"),
+        Param.Slider("maxLength", "Max. length", 0, 3000, 0, " px", "0 = unlimited; at most the longer side of the canvas", canvasMax = true),
+        Param.Slider("jitter", "Length variation", 0, 100, 0, " %", "Shortens the runs randomly"),
+        Param.Choice("block", "Block size", blockOptions, tip = "Sorts big pixels: the sorted runs are built from n×n blocks"),
+        Param.Slider("overhang", "Overhang", 0, 3000, 200, " px", "How far a run that hits the edge of the picture is pulled out into the empty area; at most the longer side of the canvas", canvasMax = true),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

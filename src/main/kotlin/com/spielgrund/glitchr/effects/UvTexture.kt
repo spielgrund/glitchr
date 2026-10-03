@@ -30,10 +30,10 @@ import kotlin.math.sqrt
  * smoothed first (against 8-bit steps), the pattern moved, turned and scaled. Every pixel
  * is sampled several times with the UVs interpolated between the pixels (anti-aliasing).
  */
-object UvTexture : Effect("uvtexture", "UV-Textur", "Legt ein Muster über UV-Koordinaten aus zwei Farbkanälen – wie eine Textur auf einem 3D-UV-Pass") {
-    private val channels = listOf("Rot", "Grün", "Blau", "Alpha", "Helligkeit", "Farbton", "Sättigung")
+object UvTexture : Effect("uvtexture", "UV texture", "Lays a pattern over UV coordinates from two color channels – like a texture on a 3D UV pass") {
+    private val channels = listOf("Red", "Green", "Blue", "Alpha", "Brightness", "Hue", "Saturation")
     private val patterns = listOf(
-        "Schachbrett", "Streifen", "Punkte", "Gitter", "Ringe", "Wellen", "Ziegel", "Sechsecke", "Noise", "Verlauf", "Bild",
+        "Checkerboard", "Stripes", "Dots", "Grid", "Rings", "Waves", "Bricks", "Hexagons", "Noise", "Gradient", "Picture",
     )
     private const val CHECKER = 0
     private const val STRIPES = 1
@@ -49,29 +49,29 @@ object UvTexture : Effect("uvtexture", "UV-Textur", "Legt ein Muster über UV-Ko
 
     override val params = listOf(
         Param.Heading("uvHeading", "UV"),
-        Param.Choice("uChannel", "X (U) aus", channels, 0),
-        Param.Toggle("uInvert", "X umkehren", false),
-        Param.Choice("vChannel", "Y (V) aus", channels, 1),
-        Param.Toggle("vInvert", "Y umkehren", false),
-        Param.Toggle("blackEmpty", "Schwarz ist kein UV", true, "Schwarze (und durchsichtige) Pixel sind Hintergrund: dort kein Muster, und sie verfälschen die UVs daneben nicht"),
-        Param.Slider("smooth", "Glätten", 0, 200, 2, " px", "Glättet die UV-Kanäle, bevor das Muster nachgeschlagen wird – weichere Verläufe, keine 8-Bit-Stufen"),
-        Param.Heading("patternHeading", "Muster"),
-        Param.Choice("pattern", "Muster", patterns, CHECKER, "Bild: das Bild selbst wird über die UVs neu verteilt (UV-Remap)"),
-        Param.Slider("repeats", "Wiederholungen", 1, 200, 8, tip = "So oft wiederholt sich das Muster über den UV-Bereich 0 bis 1"),
-        Param.Slider("lineWidth", "Linienbreite", 1, 50, 10, " %", "Gitter, Ziegel, Sechsecke: Breite der Linien; Punkte: Grösse"),
-        Param.Choice("colors", "Farben", listOf("Zwei Farben", "Verlauf")),
-        Param.Color("colorA", "Farbe 1", 0x141414),
-        Param.Color("colorB", "Farbe 2", 0xF0F0F0),
-        Param.Ramp("ramp", "Verlauf", RampPalette.SUNSET.ramp.format(), "Farben: Verlauf – das Muster wählt seine Farben aus diesem Verlauf"),
-        Param.Heading("placeHeading", "Platzierung"),
-        Param.Slider("offsetU", "Verschieben X", -1000, 1000, 0, " %", decimals = 1),
-        Param.Slider("offsetV", "Verschieben Y", -1000, 1000, 0, " %", decimals = 1),
-        Param.Slider("rotation", "Drehung", -180, 180, 0, "°"),
-        Param.Slider("scale", "Skalierung", 1, 1000, 100, " %"),
-        Param.Heading("outHeading", "Ausgabe"),
-        Param.Choice("blend", "Mischen", listOf("Ersetzen", "Multiplizieren", "Weiches Licht")),
-        Param.Choice("antialias", "Kantenglättung", listOf("Aus", "2 × 2", "4 × 4"), 2, "Jeder Pixel wird mehrfach abgetastet, die UVs dazwischen interpoliert"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Choice("uChannel", "X (U) from", channels, 0),
+        Param.Toggle("uInvert", "Invert X", false),
+        Param.Choice("vChannel", "Y (V) from", channels, 1),
+        Param.Toggle("vInvert", "Invert Y", false),
+        Param.Toggle("blackEmpty", "Black is no UV", true, "Black (and transparent) pixels are background: no pattern there, and they don't distort the UVs next to them"),
+        Param.Slider("smooth", "Smooth", 0, 200, 2, " px", "Smooths the UV channels before the pattern is looked up – softer gradients, no 8-bit steps"),
+        Param.Heading("patternHeading", "Pattern"),
+        Param.Choice("pattern", "Pattern", patterns, CHECKER, "Picture: the picture itself is redistributed via the UVs (UV remap)"),
+        Param.Slider("repeats", "Repeats", 1, 200, 8, tip = "The pattern repeats this often across the UV range 0 to 1"),
+        Param.Slider("lineWidth", "Line width", 1, 50, 10, " %", "Grid, bricks, hexagons: width of the lines; dots: size"),
+        Param.Choice("colors", "Colors", listOf("Two colors", "Gradient")),
+        Param.Color("colorA", "Color 1", 0x141414),
+        Param.Color("colorB", "Color 2", 0xF0F0F0),
+        Param.Ramp("ramp", "Gradient", RampPalette.SUNSET.ramp.format(), "Colors: gradient – the pattern picks its colors from this gradient"),
+        Param.Heading("placeHeading", "Placement"),
+        Param.Slider("offsetU", "Shift X", -1000, 1000, 0, " %", decimals = 1),
+        Param.Slider("offsetV", "Shift Y", -1000, 1000, 0, " %", decimals = 1),
+        Param.Slider("rotation", "Rotation", -180, 180, 0, "°"),
+        Param.Slider("scale", "Scale", 1, 1000, 100, " %"),
+        Param.Heading("outHeading", "Output"),
+        Param.Choice("blend", "Mix", listOf("Replace", "Multiply", "Soft light")),
+        Param.Choice("antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 2, "Every pixel is sampled several times, the UVs interpolated in between"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override val random = false

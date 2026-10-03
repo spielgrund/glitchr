@@ -20,52 +20,52 @@ import kotlin.math.sin
  * Puts moiré into a picture the ways it happens for real, or brings out moiré that is
  * already there:
  *
- * - Bildschirm abfotografiert: the picture shown on a screen of RGB subpixels, photographed
+ * - Photographed screen: the picture shown on a screen of RGB subpixels, photographed
  *   by a camera whose pixel grid is slightly turned and scaled against it.
- * - Druckraster: printed as a halftone (dots, lines, grid or rings); in color with one
+ * - Halftone: printed as a halftone (dots, lines, grid or rings); in color with one
  *   screen per ink (cyan, magenta, yellow) at the classic angles, slightly different
  *   screen widths make them beat. Without smoothing the fine screen aliases on top.
- * - Raster überlagern: a fine line grating laid over the picture (multiplied); fine
+ * - Overlay grid: a fine line grating laid over the picture (multiplied); fine
  *   textures in the picture beat against it. A second grating with a different width
  *   adds a moiré of its own; in color the gratings are shifted per channel.
  * - Aliasing: the picture sampled on a turned grid without filtering, then smoothly
  *   enlarged again – fine textures fold into coarse moiré, like a careless downscale.
- * - Vorhandenes Moiré verstärken: a band-pass between the grid width (removes the fine
+ * - Amplify existing moiré: a band-pass between the grid width (removes the fine
  *   lines) and the band width (the size of the moiré bands) is amplified and added back;
- *   "Nur Moiré" leaves the fine lines out.
+ *   "Moiré only" leaves the fine lines out.
  */
-object MoireFilter : Effect("moirefilter", "Moiré-Filter", "Fügt Moiré ein (Bildschirm abfotografiert, Druckraster, Raster, Aliasing) oder verstärkt vorhandenes") {
+object MoireFilter : Effect("moirefilter", "Moiré filter", "Adds moiré (photographed screen, halftone, overlaid grid, aliasing) or amplifies existing moiré") {
     private val modes = listOf(
-        "Bildschirm abfotografiert", "Druckraster", "Raster überlagern", "Aliasing", "Vorhandenes Moiré verstärken",
+        "Photographed screen", "Halftone", "Overlay grid", "Aliasing", "Amplify existing moiré",
     )
 
     override val params = listOf(
-        Param.Choice("mode", "Art", modes),
-        Param.Heading("screenHeading", "Raster"),
+        Param.Choice("mode", "Type", modes),
+        Param.Heading("screenHeading", "Grid"),
         Param.Slider(
-            "pitch", "Rasterweite", 10, 400, 30, " px", decimals = 1,
-            tip = "Bildschirmpixel, Rasterzelle, Linienabstand oder Abtastschritt. Verstärken: feinere Linien als diese werden entfernt",
+            "pitch", "Grid pitch", 10, 400, 30, " px", decimals = 1,
+            tip = "Screen pixel, halftone cell, line spacing or sampling step. Amplify: lines finer than this are removed",
         ),
         Param.Slider(
-            "angle", "Verdrehung", -4500, 4500, 150, "°", decimals = 2,
-            tip = "Winkel des Rasters gegen das Bild (Bildschirm: der Kamera gegen den Bildschirm) – kleine Winkel geben breite Moiré-Bänder",
+            "angle", "Twist", -4500, 4500, 150, "°", decimals = 2,
+            tip = "Angle of the grid against the picture (screen: of the camera against the screen) – small angles give wide moiré bands",
         ),
         Param.Slider(
-            "deviation", "Abweichung", -300, 300, 40, " %", decimals = 1,
-            tip = "Bildschirm: Massstab der Kamera gegen den Bildschirm. Druckraster (farbig): Unterschied der Rasterweiten der Druckfarben. " +
-                "Raster überlagern: Rasterweite eines zweiten Rasters (0 = keins)",
+            "deviation", "Deviation", -300, 300, 40, " %", decimals = 1,
+            tip = "Screen: scale of the camera against the screen. Halftone (colored): difference of the screen rulings of the inks. " +
+                "Overlay grid: pitch of a second grid (0 = none)",
         ),
-        Param.Choice("pattern", "Rasterform", listOf("Punkte", "Linien", "Gitter", "Ringe"), tip = "Für Druckraster und Raster überlagern"),
-        Param.Slider("width", "Strichstärke", 5, 95, 50, " %", "Raster überlagern: Anteil der Linie am Abstand"),
-        Param.Toggle("color", "Farbig", true, "Bildschirm: RGB-Subpixel. Druckraster: je Druckfarbe ein Raster. Raster: je Kanal versetzt – regenbogenfarbenes Moiré"),
-        Param.Toggle("smooth", "Kantenglättung", false, "Aus: das Raster wird hart abgetastet und bildet zusätzlich Aliasing-Moiré"),
-        Param.Slider("softness", "Weichheit", 0, 20, 0, " px", "Weichzeichnen danach, wie eine leicht unscharfe Kamera"),
-        Param.Heading("amplifyHeading", "Verstärken"),
-        Param.Slider("band", "Bandbreite", 3, 300, 40, " px", "Grösse der Moiré-Bänder, die verstärkt werden"),
-        Param.Slider("gain", "Verstärkung", 0, 1000, 300, " %"),
-        Param.Toggle("onlyMoire", "Nur Moiré", false, "Die feinen Linien weglassen, nur die (verstärkten) Moiré-Bänder zeigen"),
-        Param.Heading("mixHeading", "Mischen"),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Choice("pattern", "Grid shape", listOf("Dots", "Lines", "Grid", "Rings"), tip = "For halftone and overlay grid"),
+        Param.Slider("width", "Line width", 5, 95, 50, " %", "Overlay grid: share of the line in the spacing"),
+        Param.Toggle("color", "Colored", true, "Screen: RGB subpixels. Halftone: one screen per ink. Grid: offset per channel – rainbow-colored moiré"),
+        Param.Toggle("smooth", "Anti-aliasing", false, "Off: the grid is sampled hard and adds aliasing moiré on top"),
+        Param.Slider("softness", "Softness", 0, 20, 0, " px", "Blurs afterwards, like a slightly unsharp camera"),
+        Param.Heading("amplifyHeading", "Amplify"),
+        Param.Slider("band", "Band width", 3, 300, 40, " px", "Size of the moiré bands that are amplified"),
+        Param.Slider("gain", "Gain", 0, 1000, 300, " %"),
+        Param.Toggle("onlyMoire", "Moiré only", false, "Leave out the fine lines, show only the (amplified) moiré bands"),
+        Param.Heading("mixHeading", "Mix"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override val random = false
@@ -299,7 +299,7 @@ object MoireFilter : Effect("moirefilter", "Moiré-Filter", "Fügt Moiré ein (B
 
     /**
      * Band-pass between the grid width and the band width, amplified: the moiré bands
-     * stand out, the fine lines stay (or are left out with "Nur Moiré").
+     * stand out, the fine lines stay (or are left out with "Moiré only").
      */
     private fun amplify(src: Pixels, v: Values): Pixels {
         val channels = Channels.of(src)

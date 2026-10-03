@@ -37,7 +37,7 @@ class LabColorTest {
     fun `a gray picture can be tinted, like sepia`() {
         // chroma 0 first, then yellow (b) and a little magenta (a)
         val c = one(argb(255, 60, 120, 200), mapOf("chroma" to 0, "bShift" to 30, "aShift" to 8))
-        assertTrue(red(c) > green(c) && green(c) > blue(c), "warm getönt")
+        assertTrue(red(c) > green(c) && green(c) > blue(c), "warm tint")
     }
 
     @Test
@@ -45,7 +45,7 @@ class LabColorTest {
         val red = argb(255, 220, 40, 60)
         val turned = one(red, mapOf("hue" to 90))
         val diff = (LabColor.hueOf(turned) - LabColor.hueOf(red) + 360) % 360
-        assertTrue(abs(diff - 90) < 8, "Farbton $diff")
+        assertTrue(abs(diff - 90) < 8, "hue $diff")
         val inverted = one(argb(255, 30, 30, 30), mapOf("lInvert" to 1))
         assertTrue(red(inverted) > 180)
         // green (a < 0) turns magenta-ish with a negative a gain

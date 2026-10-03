@@ -23,7 +23,7 @@ class DepthTest {
     @Test
     fun `the guessed depth puts the detailed, colorful, low part near`() {
         val z = ZMap.apply(scene, ZMap.defaultValues(), 3L)
-        assertTrue(red(z[60, 75]) > red(z[60, 15]) + 60, "nah ${red(z[60, 75])}, fern ${red(z[60, 15])}")
+        assertTrue(red(z[60, 75]) > red(z[60, 15]) + 60, "near ${red(z[60, 75])}, far ${red(z[60, 15])}")
         // grey: all channels the same
         assertEquals(red(z[60, 75]), z[60, 75] and 0xFF)
         val inverted = ZMap.apply(scene, ZMap.defaultValues(mapOf("depthInvert" to 1)), 3L)
@@ -34,7 +34,7 @@ class DepthTest {
     fun `fog covers the far part more than the near one`() {
         val fogged = Fog.apply(scene, Fog.defaultValues(mapOf("fogColor" to 0xFFFFFF, "wisps" to 0, "haze" to 0, "aerial" to 0)), 3L)
         fun change(x: Int, y: Int) = kotlin.math.abs(red(fogged[x, y]) - red(scene[x, y])) + kotlin.math.abs((fogged[x, y] and 0xFF) - (scene[x, y] and 0xFF))
-        assertTrue(change(60, 15) > 5, "fern ${change(60, 15)}")
+        assertTrue(change(60, 15) > 5, "far ${change(60, 15)}")
         val shown = Fog.apply(scene, Fog.defaultValues(mapOf("depthShow" to 1)), 3L)
         assertContentEquals(ZMap.apply(scene, ZMap.defaultValues(), 3L).data, shown.data)
     }
@@ -45,7 +45,7 @@ class DepthTest {
         val moved = Wiggle.apply(scene, Wiggle.defaultValues(mapOf("mode" to 0, "camX" to 6, "camY" to 0, "focus" to 0)), 3L)
         val skyChanged = (10 until 110).count { moved[it, 10] != scene[it, 10] }
         val groundChanged = (10 until 110).count { moved[it, 80] != scene[it, 80] }
-        assertTrue(groundChanged > skyChanged + 20, "Boden $groundChanged, Himmel $skyChanged")
+        assertTrue(groundChanged > skyChanged + 20, "ground $groundChanged, sky $skyChanged")
         for (mode in 1..3) {
             val v = Wiggle.defaultValues(mapOf("mode" to mode))
             assertContentEquals(Wiggle.apply(scene, v, 3L).data, Wiggle.apply(scene, v, 3L).data)

@@ -23,24 +23,24 @@ import kotlin.random.Random
  * a blur that goes wrong in memory: sums overflow, rows are read with the wrong length,
  * bits flip, or the running sum isn't reset between rows.
  */
-object Blur : Effect("blur", "Blur", "Weichzeichner: Gauss, Box, Richtung, Radial und Drehung – auch für einzelne Kanäle und mit Datenfehlern") {
-    private val types = listOf("Gauss", "Box", "Richtung", "Radial (Zoom)", "Drehung")
-    private val channels = listOf("Alle Kanäle", "Rot", "Grün", "Blau", "Alpha", "Helligkeit", "Farbe")
-    private val errors = listOf("Keine", "Überlauf", "Zeilenbreite", "Bitfehler", "Verschleppung")
+object Blur : Effect("blur", "Blur", "Blur: Gauss, box, directional, radial and spin – also for single channels and with data errors") {
+    private val types = listOf("Gauss", "Box", "Direction", "Radial (zoom)", "Spin")
+    private val channels = listOf("All channels", "Red", "Green", "Blue", "Alpha", "Brightness", "Color")
+    private val errors = listOf("None", "Overflow", "Row width", "Bit errors", "Carry-over")
 
     override val params = listOf(
-        Param.Choice("type", "Art", types),
-        Param.Slider("radius", "Radius", 0, 500, 12, " px", "Stärke der Unschärfe; bei Radial und Drehung ihre Länge am Bildrand"),
-        Param.Slider("angle", "Winkel", 0, 359, 0, "°", "Für „Richtung“"),
-        Param.Slider("centerX", "Mitte X", 0, 100, 50, " %", "Für Radial und Drehung"),
-        Param.Slider("centerY", "Mitte Y", 0, 100, 50, " %", "Für Radial und Drehung"),
-        Param.Choice("channel", "Kanal", channels, tip = "Welche Kanäle weichgezeichnet werden; die anderen bleiben scharf"),
+        Param.Choice("type", "Type", types),
+        Param.Slider("radius", "Radius", 0, 500, 12, " px", "Strength of the blur; for radial and spin its length at the picture edge"),
+        Param.Slider("angle", "Angle", 0, 359, 0, "°", "For “Direction”"),
+        Param.Slider("centerX", "Center X", 0, 100, 50, " %", "For radial and spin"),
+        Param.Slider("centerY", "Center Y", 0, 100, 50, " %", "For radial and spin"),
+        Param.Choice("channel", "Channel", channels, tip = "Which channels are blurred; the others stay sharp"),
         Param.Choice(
-            "error", "Datenfehler", errors,
-            tip = "Überlauf: Summen laufen über und springen zurück · Zeilenbreite: die Daten werden mit falscher Zeilenlänge gelesen · " +
-                "Bitfehler: einzelne Bits kippen in Streifen · Verschleppung: die laufende Summe wird zwischen den Zeilen nicht zurückgesetzt",
+            "error", "Data errors", errors,
+            tip = "Overflow: sums overflow and wrap around · Row width: the data is read with the wrong row length · " +
+                "Bit errors: single bits flip in stripes · Carry-over: the running sum is not reset between rows",
         ),
-        Param.Slider("errorAmount", "Fehlerstärke", 0, 100, 50, " %"),
+        Param.Slider("errorAmount", "Error strength", 0, 100, 50, " %"),
     )
 
     private const val ALL = 0

@@ -20,7 +20,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /** Inverts the colors. */
-private class Invert : Effect("invert", "Invertieren", "") {
+private class Invert : Effect("invert", "Invert", "") {
     override val params = listOf(Param.Slider("dummy", "Dummy", 0, 1, 0))
     override fun apply(src: Pixels, v: Values, seed: Long) =
         Pixels(src.width, src.height, IntArray(src.data.size) { src.data[it] xor 0x00FFFFFF })
@@ -62,9 +62,9 @@ class OverhangTest {
         }
         val out = Renderer().render(100, 50, listOf(picture.state(), fx.state()))
         // pixel centers sit half a pixel inside the gradient ends, so allow a few levels
-        assertTrue(kotlin.math.abs(com.spielgrund.glitchr.image.red(out[50, 25]) - 55) <= 6, "linker Bildrand: voller Effekt")
-        assertTrue(kotlin.math.abs(com.spielgrund.glitchr.image.red(out[99, 25]) - 200) <= 6, "rechter Bildrand: kein Effekt")
-        assertTrue(kotlin.math.abs(com.spielgrund.glitchr.image.red(out[75, 25]) - 128) <= 6, "Mitte des Bilds: halber Effekt")
+        assertTrue(kotlin.math.abs(com.spielgrund.glitchr.image.red(out[50, 25]) - 55) <= 6, "left picture edge: full effect")
+        assertTrue(kotlin.math.abs(com.spielgrund.glitchr.image.red(out[99, 25]) - 200) <= 6, "right picture edge: no effect")
+        assertTrue(kotlin.math.abs(com.spielgrund.glitchr.image.red(out[75, 25]) - 128) <= 6, "middle of the picture: half effect")
     }
 
     @Test
@@ -100,7 +100,7 @@ class OverhangTest {
         for ((id, values) in settings) {
             val effect = Effects.byId(id)
             val out = effect.apply(placed, Values(effect.defaults().apply { putAll(values) }), 9L)
-            assertTrue(opaqueOutside(out) > 0, "$id bleibt im Bild")
+            assertTrue(opaqueOutside(out) > 0, "$id stays inside the picture")
             ImageIO.write(out.toImage(), "png", File(dir, "overhang-$id.png"))
         }
     }
@@ -123,7 +123,7 @@ class CutOutTest {
         }
         val out = Renderer().render(100, 20, listOf(picture.state(), bleedLeft.state()))
         val beyondCut = (0 until 20).count { y -> alpha(out[45, y]) > 0 }
-        assertTrue(beyondCut > 0, "Pixelbleed läuft über die Maskenkante hinaus")
-        assertEquals(0, alpha(Renderer().render(100, 20, listOf(picture.state()))[45, 5]), "ohne Effekt bleibt links leer")
+        assertTrue(beyondCut > 0, "pixelbleed runs beyond the mask edge")
+        assertEquals(0, alpha(Renderer().render(100, 20, listOf(picture.state()))[45, 5]), "without effect the left stays empty")
     }
 }

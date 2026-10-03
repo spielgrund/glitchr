@@ -19,7 +19,7 @@ import kotlin.math.sqrt
 
 /**
  * A foam over the picture: the start mask (a threshold range) first melts into one large
- * area (gaps up to "Verschmelzen" close). On it bubbles appear one after another and grow
+ * area (gaps up to "Merge" close). On it bubbles appear one after another and grow
  * until they press against their neighbours; now and then two pressed ones fuse into a
  * larger one (keeping their area). Afterwards the gaps are filled with ever smaller bubbles.
  *
@@ -30,7 +30,7 @@ import kotlin.math.sqrt
  * (diffuse, highlight, rim) and can shimmer like a thin film; walls, rims and highlights
  * are anti-aliased by supersampling.
  */
-object Bubbles : Effect("bubbles", "Blasen", "Schaum: auf dem Schwellenbereich wachsen Blasen, drücken sich aneinander und wölben das Bild wie Kugeln") {
+object Bubbles : Effect("bubbles", "Bubbles", "Foam: bubbles grow on the threshold range, press against each other and bulge the picture like spheres") {
     class Bubble(var x: Double, var y: Double, var r: Double, var rate: Double, var pinch: Boolean, var limit: Double)
 
     private const val CELL = 48
@@ -44,47 +44,47 @@ object Bubbles : Effect("bubbles", "Blasen", "Schaum: auf dem Schwellenbereich w
     ).format()
 
     override val params = listOf(
-        Param.Heading("startHeading", "Startmaske"),
-        Param.Choice("source", "Wert", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("lower", "Untere Schwelle", 0, 255, 140, tip = "Beim Farbton darf sie über der oberen liegen (Bereich über Rot hinweg)"),
-        Param.Slider("upper", "Obere Schwelle", 0, 255, 255),
-        Param.Toggle("invert", "Bereich umkehren", false),
-        Param.Toggle("showMask", "Maske und Blasen zeigen", false, "Startmaske weiss, verschmolzene Fläche grau, Blasenwände rot"),
-        Param.Slider("merge", "Verschmelzen", 0, 300, 80, " px", "Lücken der Startmaske bis zu dieser Weite schliessen sich zu einer grossen Fläche", canvasMax = true),
-        Param.Heading("foamHeading", "Schaum"),
-        Param.Slider("steps", "Schritte", 1, 1000, 200, tip = "Wie lange die Blasen wachsen"),
-        Param.Slider("bubbles", "Anzahl", 1, 500, 80, tip = "So viele Blasen entstehen im Lauf der Schritte auf der Fläche"),
-        Param.Slider("bubbleGrowth", "Blasenwachstum", 1, 100, 3, " px", "So viel wächst der Radius je Schritt", decimals = 1),
-        Param.Slider("bubbleMax", "Max. Radius", 2, 1000, 60, " px", "Bis hierhin wächst eine Blase allein – verschmolzene werden grösser", canvasMax = true),
-        Param.Slider("overhang", "Über den Rand", 0, 200, 30, " %", "Wie weit eine Blase über den Rand der Fläche wachsen darf"),
-        Param.Slider("press", "Wanddruck", 0, 100, 60, " %", "Wie fest sich Blasen aneinanderdrücken, bevor sie aufhören zu wachsen – mehr: längere, flache Wände"),
-        Param.Slider("fuse", "Zusammenschluss", 0, 100, 20, " %", "Wie oft die Wand zwischen zwei gedrückten Blasen platzt und sie zu einer grösseren werden"),
-        Param.Slider("fill", "Zwischenräume füllen", 0, 2000, 300, tip = "So viele kleine Blasen füllen danach die Lücken, von gross nach klein"),
-        Param.Slider("fillMin", "Kleinste Blase", 1, 100, 3, " px", "Kleiner werden die Füllblasen nicht"),
-        Param.Heading("bendHeading", "Wölbung"),
-        Param.Slider("bulge", "Wölbung", -100, 100, 90, " %", "Positiv aufblähen wie eine Kugel (Mitte vergrössert, zu den Wänden gestaucht), negativ zusammenziehen (Pinch)"),
-        Param.Slider("pinchShare", "Anteil umgekehrt", 0, 100, 0, " %", "So viele Blasen wölben in die Gegenrichtung"),
-        Param.Slider("sizeInfluence", "Grösse wirkt", 0, 100, 50, " %", "100 %: je grösser die Blase, desto stärker die Wölbung (voll ab Max. Radius)"),
-        Param.Heading("lightHeading", "Licht"),
-        Param.Toggle("lightOn", "Licht an", true, "Aus: keine Schattierung, kein Glanz, kein Randlicht – die Regler bleiben erhalten"),
-        Param.Slider("lightAngle", "Lichtrichtung", 0, 359, 225, "°", "Aus dieser Richtung fällt das Licht (225° = von oben links)"),
-        Param.Slider("lightHeight", "Lichthöhe", 5, 90, 40, "°", "Flach: Glanz am Rand, 90°: Licht von vorn"),
-        Param.Slider("shading", "Schattierung", 0, 100, 45, " %", "Die vom Licht abgewandte Seite wird dunkler"),
-        Param.Slider("gloss", "Glanz", 0, 100, 60, " %", "Glanzpunkt, wo das Licht gespiegelt wird"),
-        Param.Slider("glossSize", "Glanzgrösse", 1, 100, 25, " %"),
-        Param.Slider("rim", "Randlicht", 0, 100, 25, " %", "Heller Saum an den Wänden, wie bei Glas oder Seifenblasen"),
-        Param.Heading("irisHeading", "Schillern"),
-        Param.Slider("iris", "Schillern", 0, 100, 40, " %", "Farben wie ein dünner Film (Seifenblase, Öl) – zum Rand hin stärker"),
-        Param.Ramp("irisRamp", "Filmfarben", SOAP_FILM, "Die Farben, die der Film je nach Dicke zeigt (von links nach rechts, läuft mehrmals durch)"),
-        Param.Slider("irisBands", "Farbbänder", 1, 20, 3, tip = "Wie oft der Verlauf von der Mitte bis zum Rand durchläuft"),
-        Param.Slider("irisSwirl", "Schlieren", 0, 100, 50, " %", "Der Film ist ungleich dick – wirbelnde Farbschlieren"),
-        Param.Heading("outHeading", "Ausgabe"),
+        Param.Heading("startHeading", "Start mask"),
+        Param.Choice("source", "Value", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("lower", "Lower threshold", 0, 255, 140, tip = "For hue it may lie above the upper one (a range across red)"),
+        Param.Slider("upper", "Upper threshold", 0, 255, 255),
+        Param.Toggle("invert", "Invert range", false),
+        Param.Toggle("showMask", "Show mask and bubbles", false, "Start mask white, merged area grey, bubble walls red"),
+        Param.Slider("merge", "Merge", 0, 300, 80, " px", "Gaps in the start mask up to this width close into one large area", canvasMax = true),
+        Param.Heading("foamHeading", "Foam"),
+        Param.Slider("steps", "Steps", 1, 1000, 200, tip = "How long the bubbles grow"),
+        Param.Slider("bubbles", "Count", 1, 500, 80, tip = "This many bubbles appear on the area over the course of the steps"),
+        Param.Slider("bubbleGrowth", "Bubble growth", 1, 100, 3, " px", "How much the radius grows per step", decimals = 1),
+        Param.Slider("bubbleMax", "Max. radius", 2, 1000, 60, " px", "A single bubble grows up to this size – merged ones get bigger", canvasMax = true),
+        Param.Slider("overhang", "Over the edge", 0, 200, 30, " %", "How far a bubble may grow beyond the edge of the area"),
+        Param.Slider("press", "Wall pressure", 0, 100, 60, " %", "How firmly bubbles press against each other before they stop growing – more: longer, flat walls"),
+        Param.Slider("fuse", "Merging", 0, 100, 20, " %", "How often the wall between two pressed bubbles bursts so they become one larger bubble"),
+        Param.Slider("fill", "Fill gaps", 0, 2000, 300, tip = "This many small bubbles then fill the gaps, from large to small"),
+        Param.Slider("fillMin", "Smallest bubble", 1, 100, 3, " px", "The filler bubbles get no smaller than this"),
+        Param.Heading("bendHeading", "Bulge"),
+        Param.Slider("bulge", "Bulge", -100, 100, 90, " %", "Positive inflates like a sphere (middle enlarged, squeezed towards the walls), negative contracts (pinch)"),
+        Param.Slider("pinchShare", "Share reversed", 0, 100, 0, " %", "This many bubbles bulge in the opposite direction"),
+        Param.Slider("sizeInfluence", "Size matters", 0, 100, 50, " %", "100 %: the larger the bubble, the stronger the bulge (full from max. radius)"),
+        Param.Heading("lightHeading", "Light"),
+        Param.Toggle("lightOn", "Light on", true, "Off: no shading, no gloss, no rim light – the sliders are kept"),
+        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "The light comes from this direction (225° = from the top left)"),
+        Param.Slider("lightHeight", "Light height", 5, 90, 40, "°", "Flat: gloss at the rim, 90°: light from the front"),
+        Param.Slider("shading", "Shading", 0, 100, 45, " %", "The side facing away from the light gets darker"),
+        Param.Slider("gloss", "Gloss", 0, 100, 60, " %", "Highlight where the light is reflected"),
+        Param.Slider("glossSize", "Gloss size", 1, 100, 25, " %"),
+        Param.Slider("rim", "Rim light", 0, 100, 25, " %", "Bright fringe along the walls, as with glass or soap bubbles"),
+        Param.Heading("irisHeading", "Iridescence"),
+        Param.Slider("iris", "Iridescence", 0, 100, 40, " %", "Colors like a thin film (soap bubble, oil) – stronger towards the rim"),
+        Param.Ramp("irisRamp", "Film colors", SOAP_FILM, "The colors the film shows depending on its thickness (left to right, runs through several times)"),
+        Param.Slider("irisBands", "Color bands", 1, 20, 3, tip = "How often the ramp runs through from the middle to the rim"),
+        Param.Slider("irisSwirl", "Swirls", 0, 100, 50, " %", "The film is unevenly thick – swirling streaks of color"),
+        Param.Heading("outHeading", "Output"),
         Param.Choice(
-            "antialias", "Kantenglättung", listOf("Aus", "2 × 2", "4 × 4"), 2,
-            "Wände, Ränder und Glanzpunkte werden mehrfach abgetastet und gemittelt – glatte Kanten",
+            "antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 2,
+            "Walls, rims and highlights are sampled several times and averaged – smooth edges",
         ),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
-        Param.Choice("precision", "Rechengenauigkeit", listOf("1 px (voll)", "2 px", "4 px"), 1, "Für die Fläche – gröber ist schneller"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
+        Param.Choice("precision", "Precision", listOf("1 px (full)", "2 px", "4 px"), 1, "For the area – coarser is faster"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

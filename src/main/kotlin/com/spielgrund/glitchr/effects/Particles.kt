@@ -41,21 +41,21 @@ import kotlin.random.Random
  * Big shapes are drawn first, small ones on top, so small blobs stay readable.
  */
 // id stays "shapes" so projects from when this effect was called "Formen" still load
-object Particles : Effect("shapes", "Partikel", "Setzt das Bild aus geometrischen Partikeln neu zusammen") {
-    private val forms = listOf("Kreise", "Quadrate", "Dreiecke", "Sechsecke", "Striche", "Gemischt")
+object Particles : Effect("shapes", "Particles", "Rebuilds the picture from geometric particles") {
+    private val forms = listOf("Circles", "Squares", "Triangles", "Hexagons", "Strokes", "Mixed")
 
     override val params = listOf(
-        Param.Choice("form", "Form", forms),
-        Param.Slider("density", "Dichte", 10, 400, 100, " %", "Wie dicht die Partikel liegen: bei 100 % schliessen sie lückenlos an, egal wie gross sie sind"),
-        Param.Slider("abstraction", "Abstraktion", 0, 100, 40, " %", "Wie stark das Bild zuerst zu Farbflächen (Blobs) vereinfacht wird. Grosse Blobs geben grosse Partikel"),
-        Param.Slider("particleSize", "Partikelgrösse", 10, 400, 100, " %", "Skaliert alle Partikel; ihre Grundgrösse folgt der Grösse ihrer Farbfläche"),
-        Param.Slider("sizeJitter", "Grössen-Zufall", 0, 100, 30, " %", "0 %: alle Partikel einer Fläche gleich gross. 100 %: stark gestreut"),
-        Param.Slider("colorRange", "Farbvielfalt", 0, 100, 50, " %", "0 %: Mittelfarbe der Fläche. 100 %: jedes Partikel nimmt eine zufällige Originalfarbe aus seiner Fläche"),
-        Param.Slider("detail", "Detail an Kanten", 0, 100, 0, " %", "Macht Partikel an den Rändern der Farbflächen kleiner"),
-        Param.Choice("spread", "Verteilung", listOf("Zufällig", "Raster", "An Kanten dichter")),
-        Param.Choice("orient", "Ausrichtung", listOf("Zufällig", "Entlang der Kanten", "Gerade")),
-        Param.Slider("opacity", "Deckkraft der Formen", 5, 100, 90, " %"),
-        Param.Choice("background", "Hintergrund", listOf("Originalbild", "Mittlere Farbe", "Transparent", "Blob-Bild")),
+        Param.Choice("form", "Shape", forms),
+        Param.Slider("density", "Density", 10, 400, 100, " %", "How densely the particles lie: at 100 % they fit together without gaps, however large they are"),
+        Param.Slider("abstraction", "Abstraction", 0, 100, 40, " %", "How much the picture is first simplified into color areas (blobs). Large blobs give large particles"),
+        Param.Slider("particleSize", "Particle size", 10, 400, 100, " %", "Scales all particles; their base size follows the size of their color area"),
+        Param.Slider("sizeJitter", "Size variation", 0, 100, 30, " %", "0 %: all particles of an area the same size. 100 %: widely scattered"),
+        Param.Slider("colorRange", "Color variety", 0, 100, 50, " %", "0 %: the area's average color. 100 %: every particle takes a random original color from its area"),
+        Param.Slider("detail", "Detail at edges", 0, 100, 0, " %", "Makes particles at the borders of the color areas smaller"),
+        Param.Choice("spread", "Distribution", listOf("Random", "Grid", "Denser at edges")),
+        Param.Choice("orient", "Orientation", listOf("Random", "Along the edges", "Straight")),
+        Param.Slider("opacity", "Opacity of the shapes", 5, 100, 90, " %"),
+        Param.Choice("background", "Background", listOf("Original picture", "Average color", "Transparent", "Blob picture")),
     )
 
     private class Particle(val x: Double, val y: Double, val size: Double, val angle: Double, val color: Int, val form: Int)
@@ -77,7 +77,7 @@ object Particles : Effect("shapes", "Partikel", "Setzt das Bild aus geometrische
         /** Base particle radius of blob [b]: from its area (half the radius of a circle as big as the blob). */
         fun blobRadius(b: Int) = max(0.75, min(largest, sqrt(blobs.area[b] / PI) * 0.5 * sizeFactor))
 
-        /** Base particle radius at pixel [i]: the same for the whole blob, smaller at edges with "Detail an Kanten". */
+        /** Base particle radius at pixel [i]: the same for the whole blob, smaller at edges with "Detail at edges". */
         fun base(i: Int): Double {
             val blob = blobs.label[i]
             return if (blob < 0) 1.0 else max(0.75, blobRadius(blob) * (1 - detail * edge[i] * 0.85))
@@ -86,7 +86,7 @@ object Particles : Effect("shapes", "Partikel", "Setzt das Bild aus geometrische
         // Every blob gets its own grid, spaced for its particle size: circles of radius r on
         // a square grid of spacing about 1.25·r cover the area even with some jitter, so the
         // coverage no longer depends on how big the particles are. Dividing by √density packs them closer or looser. The grid
-        // is jittered for "Zufällig", exact for "Raster". A blob smaller than one grid step
+        // is jittered for "Random", exact for "Grid". A blob smaller than one grid step
         // still gets a particle near its middle, so no area is left out.
         val spread = v["spread"]
         val positions = ArrayList<Pair<Double, Double>>()
@@ -120,7 +120,7 @@ object Particles : Effect("shapes", "Partikel", "Setzt das Bild aus geometrische
                 positions += (c % w + 0.5) to (c / w + 0.5)
             }
         }
-        // "An Kanten dichter": extra particles scattered along the edges
+        // "Denser at edges": extra particles scattered along the edges
         if (spread == 2) {
             val cell = 3
             for (cy in 0 until h step cell) for (cx in 0 until w step cell) {
@@ -188,7 +188,7 @@ object Particles : Effect("shapes", "Partikel", "Setzt das Bild aus geometrische
         val center: IntArray,
     )
 
-    /** How many original colors each blob keeps for "Farbvielfalt". */
+    /** How many original colors each blob keeps for "Color variety". */
     private const val SAMPLES = 32
 
     /**

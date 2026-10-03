@@ -21,9 +21,9 @@ class MetalTest {
         for (metal in 0..8) for (env in 0..3) {
             val v = Metal.defaultValues(mapOf("metal" to metal, "env" to env, "surface" to (metal + env) % 5))
             val out = Metal.apply(src, v, 5L)
-            assertContentEquals(out.data, Metal.apply(src, v, 5L).data, "Metall $metal, Umgebung $env")
+            assertContentEquals(out.data, Metal.apply(src, v, 5L).data, "metal $metal, environment $env")
             val changed = (0 until src.data.size).count { out.data[it] != src.data[it] }
-            assertTrue(changed > src.data.size / 2, "Metall $metal, Umgebung $env: $changed")
+            assertTrue(changed > src.data.size / 2, "metal $metal, environment $env: $changed")
         }
         // a contact sheet of lettering and shapes, to look at
         val img = java.awt.image.BufferedImage(240, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB)
@@ -80,7 +80,7 @@ class MetalTest {
         }
         val hard = run(0)
         val soft = run(3)
-        assertTrue(jumps(soft) < jumps(hard), "glatt ${jumps(soft)}, hart ${jumps(hard)}")
+        assertTrue(jumps(soft) < jumps(hard), "smooth ${jumps(soft)}, hard ${jumps(hard)}")
         assertContentEquals(soft.data, run(3).data)
         val sheet = Pixels(240, 120)
         for (y in 0 until 120) for (x in 0 until 120) {

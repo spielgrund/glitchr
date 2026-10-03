@@ -33,24 +33,24 @@ import kotlin.math.sin
  * of horizontal lines that rise where it is bright. The lines are drawn from the back
  * (top) to the front (bottom), and every line hides the ones behind it.
  */
-object Ridgelines : Effect("ridgelines", "Spektroskop", "Gestapelte Linien, die sich mit dem Bild auftürmen – wie „Unknown Pleasures“") {
+object Ridgelines : Effect("ridgelines", "Spectroscope", "Stacked lines that pile up with the picture – like “Unknown Pleasures”") {
     override val params = listOf(
-        Param.Slider("spacing", "Linienabstand", 3, 200, 12, " px"),
-        Param.Slider("angle", "Winkel", 0, 359, 0, "°", "Dreht die Linien; die Berge wachsen immer quer zu den Linien"),
-        Param.Slider("height", "Höhe", 0, 1000, 80, " px", "Wie hoch sich eine Linie an der hellsten Stelle auftürmt", canvasMax = true),
-        Param.Choice("source", "Quelle", listOf("Bildhelligkeit", "Bild dunkel", "Nur Noise"), tip = "Was die Linien anhebt; „Nur Noise“ ergibt das Plattencover ohne Bild"),
-        Param.Slider("peaks", "Spitzen", 50, 400, 200, " %", "Höhere Werte lassen nur die hellsten Stellen als spitze Berge stehen"),
-        Param.Slider("jag", "Zacken", 0, 100, 30, " %", "Zufällige Zacken, die mit der Höhe wachsen"),
-        Param.Slider("step", "Punktabstand", 1, 40, 3, " px", "Abstand der Punkte entlang einer Linie – grösser wird kantiger"),
-        Param.Slider("smooth", "Glätten", 0, 20, 1, "", "Glättet die Linie über so viele Punkte"),
-        Param.Slider("focus", "Mitte betonen", 0, 100, 0, " %", "Lässt die Berge wie auf dem Cover nur in der Mitte wachsen"),
-        Param.Slider("focusWidth", "Breite Mitte", 5, 100, 40, " %"),
-        Param.Slider("lineWidth", "Linienstärke", 1, 100, 20, tip = "In Zehntelpixeln: 20 = 2 px"),
-        Param.Choice("lineColor", "Linienfarbe", listOf("Eine Farbe", "Bildfarbe")),
-        Param.Color("color", "Farbe", 0xFFFFFF),
-        Param.Choice("background", "Hintergrund", listOf("Farbe", "Transparent", "Originalbild")),
-        Param.Color("bgColor", "Hintergrundfarbe", 0x000000),
-        Param.Toggle("occlude", "Linien verdecken", true, "Vordere Linien verdecken die dahinter liegenden"),
+        Param.Slider("spacing", "Line spacing", 3, 200, 12, " px"),
+        Param.Slider("angle", "Angle", 0, 359, 0, "°", "Rotates the lines; the mountains always grow across the lines"),
+        Param.Slider("height", "Height", 0, 1000, 80, " px", "How high a line piles up at the brightest spot", canvasMax = true),
+        Param.Choice("source", "Source", listOf("Picture brightness", "Picture darkness", "Noise only"), tip = "What lifts the lines; “Noise only” gives the record cover without a picture"),
+        Param.Slider("peaks", "Peaks", 50, 400, 200, " %", "Higher values leave only the brightest spots standing as pointed mountains"),
+        Param.Slider("jag", "Spikes", 0, 100, 30, " %", "Random spikes that grow with the height"),
+        Param.Slider("step", "Point spacing", 1, 40, 3, " px", "Spacing of the points along a line – larger gets more angular"),
+        Param.Slider("smooth", "Smooth", 0, 20, 1, "", "Smooths the line over this many points"),
+        Param.Slider("focus", "Emphasize middle", 0, 100, 0, " %", "Lets the mountains grow only in the middle, like on the cover"),
+        Param.Slider("focusWidth", "Middle width", 5, 100, 40, " %"),
+        Param.Slider("lineWidth", "Line weight", 1, 100, 20, tip = "In tenths of a pixel: 20 = 2 px"),
+        Param.Choice("lineColor", "Line color", listOf("One color", "Picture color")),
+        Param.Color("color", "Color", 0xFFFFFF),
+        Param.Choice("background", "Background", listOf("Color", "Transparent", "Original picture")),
+        Param.Color("bgColor", "Background color", 0x000000),
+        Param.Toggle("occlude", "Lines hide", true, "Front lines hide the ones behind them"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

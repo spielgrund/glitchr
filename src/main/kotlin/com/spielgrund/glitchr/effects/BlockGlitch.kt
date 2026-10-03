@@ -13,20 +13,20 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /** Random rectangles that are displaced, channel-rotated, inverted, smeared, pixelated or median-filtered, like a broken video stream. */
-object BlockGlitch : Effect("blocks", "Block-Glitch", "Zufällige Rechtecke werden verschoben, vertauscht, verschmiert oder vergröbert") {
+object BlockGlitch : Effect("blocks", "Block-Glitch", "Random rectangles are shifted, swapped, smeared or coarsened") {
     private val modes = listOf(
-        "Verschieben", "Kanäle tauschen", "Invertieren", "Verschmieren", "Grosser Pixel", "Median", "Gemischt",
+        "Shift", "Swap channels", "Invert", "Smear", "Big pixel", "Median", "Mixed",
     )
     private const val MIXED = 6
 
     override val params = listOf(
-        Param.Choice("mode", "Art", modes, tip = "Grosser Pixel: der ganze Block in seiner Durchschnittsfarbe. Median: Farbflächen wie mit einem Medianfilter"),
-        Param.Slider("count", "Anzahl", 1, 600, 40),
-        Param.Slider("minSize", "Min. Grösse", 2, 1000, 8, " px"),
-        Param.Slider("maxSize", "Max. Grösse", 2, 2000, 160, " px"),
-        Param.Slider("shift", "Max. Versatz", 0, 2000, 80, " px", "Nur für Verschieben"),
-        Param.Slider("radius", "Median-Radius", 1, 30, 6, " px", "Nur für Median: je grösser, desto flächiger"),
-        Param.Choice("channels", "Kanäle", channelOptions),
+        Param.Choice("mode", "Type", modes, tip = "Big pixel: the whole block in its average color. Median: flat color areas as with a median filter"),
+        Param.Slider("count", "Count", 1, 600, 40),
+        Param.Slider("minSize", "Min. size", 2, 1000, 8, " px"),
+        Param.Slider("maxSize", "Max. size", 2, 2000, 160, " px"),
+        Param.Slider("shift", "Max. offset", 0, 2000, 80, " px", "Only for Shift"),
+        Param.Slider("radius", "Median radius", 1, 30, 6, " px", "Only for Median: the larger, the flatter"),
+        Param.Choice("channels", "Channels", channelOptions),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

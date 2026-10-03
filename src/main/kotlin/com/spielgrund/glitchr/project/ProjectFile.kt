@@ -89,28 +89,28 @@ object ProjectFile {
         ZipInputStream(file.inputStream().buffered()).use { zip ->
             generateSequence { zip.nextEntry }.forEach { entries[it.name] = zip.readBytes() }
         }
-        val json = entries[JSON_ENTRY] ?: error("Keine GlitchR-Projektdatei")
+        val json = entries[JSON_ENTRY] ?: error("Not a GlitchR project file")
         val dto = gson.fromJson(json.toString(Charsets.UTF_8), ProjectDto::class.java)
-        if (dto.format != "glitchr") error("Keine GlitchR-Projektdatei")
-        if (dto.version > FORMAT_VERSION) error("Datei stammt von einer neueren GlitchR-Version")
+        if (dto.format != "glitchr") error("Not a GlitchR project file")
+        if (dto.version > FORMAT_VERSION) error("The file comes from a newer GlitchR version")
 
         val images = mutableMapOf<String, Pixels>()
         fun image(path: String): Pixels = images.getOrPut(path) {
-            val bytes = entries[path] ?: error("Bild $path fehlt in der Datei")
-            Pixels.of(ImageIO.read(bytes.inputStream()) ?: error("Bild $path ist beschädigt"))
+            val bytes = entries[path] ?: error("Image $path is missing from the file")
+            Pixels.of(ImageIO.read(bytes.inputStream()) ?: error("Image $path is damaged"))
         }
 
         // version 1: one source picture below all layers
         val v1Source = if (dto.version < 2) image(V1_SOURCE_ENTRY) else null
         val width = v1Source?.width ?: dto.width
         val height = v1Source?.height ?: dto.height
-        if (width <= 0 || height <= 0) error("Die Leinwandgrösse fehlt in der Datei")
+        if (width <= 0 || height <= 0) error("The canvas size is missing from the file")
 
         val layers = mutableListOf<LayerMemento>()
         if (v1Source != null) layers += baseLayer(v1Source)
         for (layerDto in dto.layers) {
             val painted = layerDto.mask.painted?.let { path ->
-                readMask(entries[path] ?: error("Maske $path fehlt in der Datei"))
+                readMask(entries[path] ?: error("Mask $path is missing from the file"))
             }
             layers += layerDto.toMemento(painted, ::image)
         }
@@ -121,7 +121,7 @@ object ProjectFile {
     }
 
     private fun baseLayer(image: Pixels) = ImageMemento(
-        Layer.newId(), "Bild", true, 100, BlendMode.NORMAL, emptyMask(), image, 0.0, 0.0, 1.0, true,
+        Layer.newId(), "Picture", true, 100, BlendMode.NORMAL, emptyMask(), image, 0.0, 0.0, 1.0, true,
     )
 
     private fun maskImage(mask: MaskMemento): BufferedImage {
@@ -150,7 +150,7 @@ private class PaintedMask(val data: ByteArray, val width: Int, val height: Int)
 private data class ProjectDto(
     val format: String = "glitchr",
     val version: Int = 1,
-    val sourceName: String = "bild",
+    val sourceName: String = "image",
     val width: Int = 0,
     val height: Int = 0,
     val selected: Int? = null,
@@ -235,12 +235,12 @@ private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels)
     if (type == "image") {
         return ImageMemento(
             id = Layer.newId(),
-            name = name ?: "Bild",
+            name = name ?: "Picture",
             visible = visible,
             opacity = opacity.coerceIn(0, 100),
             blend = enumOr(blend, BlendMode.NORMAL),
             mask = maskMemento,
-            image = image(this.image ?: error("Bildebene ohne Bild in der Datei")),
+            image = image(this.image ?: error("Image layer without an image in the file")),
             x = x,
             y = y,
             scale = scale.takeIf { it > 0 } ?: 1.0,
@@ -250,7 +250,7 @@ private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels)
     }
     if (type == "generator") {
         val generator = Generators.byId(generator)
-            ?: error("Unbekannter Generator „$generator“ – stammt die Datei von einer neueren GlitchR-Version?")
+            ?: error("Unknown generator “$generator” – does the file come from a newer GlitchR version?")
         return GeneratorMemento(
             id = Layer.newId(),
             name = name ?: generator.name,
@@ -265,7 +265,7 @@ private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels)
         )
     }
     val effect = Effects.all.firstOrNull { it.id == effect }
-        ?: error("Unbekannter Effekt „$effect“ – stammt die Datei von einer neueren GlitchR-Version?")
+        ?: error("Unknown effect “$effect” – does the file come from a newer GlitchR version?")
     return EffectMemento(
         id = Layer.newId(),
         name = name ?: effect.name,

@@ -25,7 +25,7 @@ class ProjectFileTest {
     @Test
     fun `saved project loads with identical layers, masks and result`() {
         val sort = EffectLayer(Effects.byId("pixelsort")).apply {
-            name = "Streifen"
+            name = "Stripes"
             values["angle"] = 33
             opacity = 70
             blend = BlendMode.LIGHTEN
@@ -52,7 +52,7 @@ class ProjectFileTest {
 
         val a = loaded.layers[1] as EffectMemento
         val b = loaded.layers[2] as EffectMemento
-        assertEquals("Streifen", a.name)
+        assertEquals("Stripes", a.name)
         assertEquals(sort.values, a.values)
         assertEquals(sort.seed, a.seed)
         assertEquals(70, a.opacity)
@@ -78,18 +78,18 @@ class ProjectFileTest {
             javax.imageio.ImageIO.write(src.toImage(), "png", zip)
         }
         val loaded = ProjectFile.load(file)
-        assertEquals(2, loaded.layers.size, "Version 1: Ausgangsbild wird unterste Bildebene")
+        assertEquals(2, loaded.layers.size, "version 1: the source image becomes the lowest image layer")
         assertContentEquals(src.data, (loaded.layers[0] as ImageMemento).image.data)
         val layer = loaded.layers[1] as EffectMemento
-        assertEquals(300, layer.values["rx"], "auf den Bereich begrenzt")
-        assertEquals(0, layer.values["ry"], "Standardwert")
+        assertEquals(300, layer.values["rx"], "limited to the region")
+        assertEquals(0, layer.values["ry"], "default value")
         assertEquals(null, layer.values["gone"])
         assertEquals(MaskMode.OFF, layer.mask.mode)
     }
 
     @Test
     fun `other files are rejected with a message`() {
-        val file = File(dir, "kaputt.glitchr").apply { writeText("kein zip") }
+        val file = File(dir, "kaputt.glitchr").apply { writeText("no zip") }
         assertFailsWith<IllegalStateException> { ProjectFile.load(file) }
     }
 }

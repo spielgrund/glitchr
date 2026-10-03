@@ -13,26 +13,26 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * Blob echo: the picture is simplified into areas (blobs, as in "Partikel"), and every
+ * Blob echo: the picture is simplified into areas (blobs, as in "Particles"), and every
  * area – or only a slice of it, a wedge from its middle – is copied again and again in one
  * direction across the canvas, fading if wanted, like a trail it leaves. The areas are copied
  * from the biggest to the smallest, so the small ones end up on top. Very big areas (usually
  * the background) can be left out, so the trails run over them.
  */
-object BlobEcho : Effect("blobecho", "Blob-Echo", "Alle Bildflächen werden in eine Richtung immer wieder über das Bild kopiert") {
+object BlobEcho : Effect("blobecho", "Blob-Echo", "All areas of the picture are copied over the picture again and again in one direction") {
     override val params = listOf(
-        Param.Slider("areas", "Flächen", 0, 100, 50, " %", "Wie grob das Bild in Flächen zerlegt wird"),
-        Param.Slider("maxArea", "Grösste Fläche", 1, 100, 15, " %", "Flächen, die mehr als diesen Anteil des Bildes bedecken (meist der Hintergrund), werden nicht kopiert; 100 % = alle"),
-        Param.Slider("direction", "Richtung", 0, 359, 0, "°", "In welche Richtung die Flächen kopiert werden; 0° = nach rechts"),
-        Param.Slider("slice", "Ausschnitt", 1, 360, 360, "°", "Von jeder Fläche wird nur ein Tortenstück dieses Winkels kopiert, mit der Spitze in ihrer Mitte; 360° = die ganze Fläche"),
-        Param.Slider("sliceAngle", "Ausschnitt Richtung", 0, 359, 270, "°", "Wohin das Tortenstück offen ist; 270° = nach oben"),
-        Param.Toggle("toEdge", "Bis zum Rand", true, "Die Kopien laufen über die ganze Leinwand; aus: nur so viele wie bei „Anzahl“"),
-        Param.Slider("copies", "Anzahl", 1, 200, 8, "", "Wie oft kopiert wird, wenn nicht bis zum Rand"),
-        Param.Slider("spacing", "Abstand", 1, 1000, 40, " px", "Abstand von Kopie zu Kopie"),
-        Param.Slider("fade", "Verblassen", 0, 100, 40, " %", "Wie stark die Kopien mit der Entfernung durchsichtig werden"),
-        Param.Choice("order", "Ebene", listOf("Kopien hinter der eigenen Fläche", "Kopien über allem", "Kopien hinter allen Flächen"),
-            tip = "Hinter der eigenen Fläche: eine Kopie verdeckt nie die Fläche, von der sie stammt · über allem: die Kopien liegen auf allem · " +
-                "hinter allen Flächen: die Kopien laufen nur über die Flächen, die selbst nicht kopiert werden (meist der Hintergrund)",
+        Param.Slider("areas", "Areas", 0, 100, 50, " %", "How coarsely the picture is split into areas"),
+        Param.Slider("maxArea", "Largest area", 1, 100, 15, " %", "Areas covering more than this share of the picture (usually the background) are not copied; 100 % = all"),
+        Param.Slider("direction", "Direction", 0, 359, 0, "°", "In which direction the areas are copied; 0° = to the right"),
+        Param.Slider("slice", "Slice", 1, 360, 360, "°", "Only a pie slice of this angle is copied from every area, with its tip in the area's middle; 360° = the whole area"),
+        Param.Slider("sliceAngle", "Slice direction", 0, 359, 270, "°", "Where the pie slice opens to; 270° = upwards"),
+        Param.Toggle("toEdge", "To the edge", true, "The copies run across the whole canvas; off: only as many as set under “Count”"),
+        Param.Slider("copies", "Count", 1, 200, 8, "", "How often it is copied when not to the edge"),
+        Param.Slider("spacing", "Spacing", 1, 1000, 40, " px", "Distance from copy to copy"),
+        Param.Slider("fade", "Fade", 0, 100, 40, " %", "How much the copies become transparent with distance"),
+        Param.Choice("order", "Layer", listOf("Copies behind their own area", "Copies above everything", "Copies behind all areas"),
+            tip = "Behind their own area: a copy never covers the area it comes from · above everything: the copies lie on top of everything · " +
+                "behind all areas: the copies only run over areas that are not copied themselves (usually the background)",
         ),
     )
 

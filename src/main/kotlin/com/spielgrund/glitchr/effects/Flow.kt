@@ -46,18 +46,18 @@ object FlowStrokes {
  * few pixels, with hard seams or cross-faded. Every
  * section moves forward as a whole and jumps back after one section length.
  */
-object Flow : Effect("flow", "Flow", "Verschiebt das Bild entlang einer mit der Maus gezeichneten Flussrichtung") {
+object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction drawn with the mouse") {
     override val params = listOf(
-        Param.Flow("strokes", "Flussrichtung", "Im Bild ziehen zeichnet einen Pfeil: das Bild fliesst in Zeichenrichtung, ohne Pfeile alles in die Grundrichtung"),
-        Param.Slider("shift", "Versatz", -400, 400, 0, " %", "Wie weit das Bild entlang der Richtung wandert: 100 % ist eine komplette Wiederholung (einmal über das Bild, bei Abschnitten einmal durch den Abschnitt); negativ gegen die Richtung"),
-        Param.Choice("mode", "Verschieben", listOf("Ganz (Wiederholung)", "In Abschnitten", "Schleife entlang der Pfeile", "Schleife in Abschnitten"), tip = "Ganz: alles wandert, am Rand wiederholt sich das Bild · In Abschnitten: der Versatz beginnt alle paar Pixel von vorn · Schleife: das Bild läuft in einem Band (so breit wie die Reichweite) die Pfeile entlang, was am Pfeilende ankommt, springt an den Anfang; 100 % = einmal ganz herum · Schleife in Abschnitten: dasselbe, aber jeder Abschnitt des Pfeils ist eine eigene kleine Schleife"),
-        Param.Slider("section", "Abschnittslänge", 4, 500, 120, " px", "Für „In Abschnitten“: Länge eines Abschnitts entlang der Richtung"),
-        Param.Slider("spread", "Abschnitte versetzt", 0, 100, 100, " %", "Für „In Abschnitten“: wie unterschiedlich weit die Abschnitte schon gewandert sind"),
-        Param.Choice("edge", "Kanten", listOf("Hart", "Weich"), 1, "Übergänge zwischen den Abschnitten und am Rand des Flussbereichs"),
-        Param.Choice("method", "Methode", listOf("Strömung folgen", "Direkt (UV-Offset)"), tip = "Strömung folgen: das Bild wandert die Kurven entlang · Direkt: jeder Punkt verschiebt sich gerade in seine Richtung, wie ein UV-Offset"),
-        Param.Slider("reach", "Reichweite", 5, 1000, 120, " px", "Wie weit ein Strich um sich herum wirkt"),
-        Param.Choice("outside", "Ausserhalb", listOf("Richtung fortsetzen", "Stillstand"), tip = "Was abseits der Striche passiert"),
-        Param.Slider("baseAngle", "Grundrichtung", 0, 359, 0, "°", "Richtung ohne gezeichnete Striche; 0° = nach rechts"),
+        Param.Flow("strokes", "Flow direction", "Dragging in the picture draws an arrow: the picture flows in the drawing direction, without arrows everything in the base direction"),
+        Param.Slider("shift", "Offset", -400, 400, 0, " %", "How far the picture travels along the direction: 100 % is one complete repeat (once across the picture, with sections once through the section); negative against the direction"),
+        Param.Choice("mode", "Shift", listOf("Whole (repeat)", "In sections", "Loop along the arrows", "Loop in sections"), tip = "Whole: everything moves, at the edge the picture repeats · In sections: the offset starts over every few pixels · Loop: the picture runs in a band (as wide as the reach) along the arrows, whatever arrives at the arrow's end jumps to the start; 100 % = once all the way round · Loop in sections: the same, but every section of the arrow is its own small loop"),
+        Param.Slider("section", "Section length", 4, 500, 120, " px", "For “In sections”: length of a section along the direction"),
+        Param.Slider("spread", "Sections offset", 0, 100, 100, " %", "For “In sections”: how differently far the sections have already travelled"),
+        Param.Choice("edge", "Edges", listOf("Hard", "Soft"), 1, "Transitions between the sections and at the edge of the flow area"),
+        Param.Choice("method", "Method", listOf("Follow the flow", "Direct (UV offset)"), tip = "Follow the flow: the picture travels along the curves · Direct: every point moves straight in its direction, like a UV offset"),
+        Param.Slider("reach", "Reach", 5, 1000, 120, " px", "How far around itself a stroke works"),
+        Param.Choice("outside", "Outside", listOf("Continue direction", "Standstill"), tip = "What happens away from the strokes"),
+        Param.Slider("baseAngle", "Base direction", 0, 359, 0, "°", "Direction without drawn strokes; 0° = to the right"),
     )
 
     override val random = false

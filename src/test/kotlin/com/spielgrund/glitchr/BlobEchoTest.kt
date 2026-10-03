@@ -21,9 +21,9 @@ class BlobEchoTest {
     fun `every area is copied in the direction`() {
         val out = run("direction" to 0, "copies" to 3, "spacing" to 40)
         // copies at +40, +80, +120 px to the right
-        for (k in 1..3) assertTrue(white(out, 35 + 40 * k, 55), "Kopie $k")
-        assertTrue(!white(out, 35 + 40 * 4, 55), "nicht mehr als drei")
-        assertTrue(!white(out, 35, 20) && !white(out, 35, 95), "nichts darüber oder darunter")
+        for (k in 1..3) assertTrue(white(out, 35 + 40 * k, 55), "copy $k")
+        assertTrue(!white(out, 35 + 40 * 4, 55), "no more than three")
+        assertTrue(!white(out, 35, 20) && !white(out, 35, 95), "nothing above or below")
         val down = run("direction" to 90, "copies" to 1, "spacing" to 35)
         assertTrue(white(down, 35, 55 + 35))
     }
@@ -31,7 +31,7 @@ class BlobEchoTest {
     @Test
     fun `to the edge the copies run across the whole canvas`() {
         val out = run("direction" to 0, "spacing" to 40, "toEdge" to 1)
-        assertTrue(white(out, 35 + 40 * 4, 55), "bis zum rechten Rand")
+        assertTrue(white(out, 35 + 40 * 4, 55), "up to the right edge")
     }
 
     @Test
@@ -48,9 +48,9 @@ class BlobEchoTest {
     fun `only the slice of each area is copied`() {
         // a quarter slice opening upwards: the copy has the square's upper middle, not its lower half
         val out = run("direction" to 0, "copies" to 1, "spacing" to 60, "slice" to 90, "sliceAngle" to 270)
-        assertTrue(white(out, 35 + 60, 45), "oberer Teil kopiert")
-        assertTrue(!white(out, 35 + 60, 65), "unterer Teil nicht")
-        assertTrue(!white(out, 22 + 60, 55), "linker Rand nicht")
+        assertTrue(white(out, 35 + 60, 45), "upper part copied")
+        assertTrue(!white(out, 35 + 60, 65), "lower part not")
+        assertTrue(!white(out, 22 + 60, 55), "left edge not")
         // the original itself stays whole
         assertTrue(white(out, 35, 65))
     }
@@ -67,14 +67,14 @@ class BlobEchoTest {
             nested, BlobEcho.defaultValues(mapOf("areas" to 0, "fade" to 0, "toEdge" to 0, "copies" to 1, "spacing" to 30, "order" to 1)), 1L,
         )
         // the red copy lies at x 40..89, the blue one at 60..69 – on top of the red
-        assertTrue(out[65, 45] == 0xFF0000FF.toInt(), "klein liegt oben")
+        assertTrue(out[65, 45] == 0xFF0000FF.toInt(), "small lies on top")
         assertTrue(out[80, 45] == 0xFFFF0000.toInt())
         // behind all areas: the red square stays whole, the trails only run over the black background
         val behind = BlobEcho.apply(
             nested, BlobEcho.defaultValues(mapOf("areas" to 0, "fade" to 0, "toEdge" to 0, "copies" to 1, "spacing" to 30, "order" to 2)), 1L,
         )
-        assertTrue(behind[45, 45] == 0xFFFF0000.toInt() && behind[35, 45] == 0xFF0000FF.toInt(), "Original unverdeckt")
-        assertTrue(behind[80, 45] == 0xFFFF0000.toInt(), "Spur über dem Hintergrund")
+        assertTrue(behind[45, 45] == 0xFFFF0000.toInt() && behind[35, 45] == 0xFF0000FF.toInt(), "original uncovered")
+        assertTrue(behind[80, 45] == 0xFFFF0000.toInt(), "trail over the background")
     }
 
     @Test
@@ -82,6 +82,6 @@ class BlobEchoTest {
         val out = run("direction" to 0, "copies" to 3, "spacing" to 40, "fade" to 90)
         val near = out[75, 55] shr 8 and 0xFF
         val far = out[155, 55] shr 8 and 0xFF
-        assertTrue(near > far && far > 0, "nah $near, fern $far")
+        assertTrue(near > far && far > 0, "near $near, far $far")
     }
 }

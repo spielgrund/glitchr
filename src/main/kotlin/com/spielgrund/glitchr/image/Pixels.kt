@@ -13,7 +13,7 @@ import java.util.stream.IntStream
  */
 class Pixels(val width: Int, val height: Int, val data: IntArray = IntArray(width * height)) {
     init {
-        require(data.size == width * height) { "${data.size} Pixel passen nicht zu ${width}×$height" }
+        require(data.size == width * height) { "${data.size} pixels don't fit ${width}×$height" }
     }
 
     operator fun get(x: Int, y: Int) = data[y * width + x]
@@ -77,7 +77,7 @@ fun lerpArgb(a: Int, b: Int, t: Float): Int {
 
 /** How out-of-image coordinates are resolved. */
 enum class Edge(val label: String) {
-    WRAP("Wiederholen"), CLAMP("Rand strecken"), MIRROR("Spiegeln");
+    WRAP("Repeat"), CLAMP("Stretch edge"), MIRROR("Mirror");
 
     fun resolve(v: Int, size: Int): Int = when (this) {
         WRAP -> Math.floorMod(v, size)

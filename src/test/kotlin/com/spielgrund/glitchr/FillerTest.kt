@@ -29,9 +29,9 @@ class FillerTest {
             for (ty in 0 until 3) for (tx in 0 until 4) {
                 val c = out[tx * 22 + 10, ty * 22 + 10]
                 // the whole tile (its gradient too) got one color
-                for (y in 2 until 18) for (x in 2 until 18) assertEquals(c, out[tx * 22 + x, ty * 22 + y], "Verfahren $finder, Kachel $tx/$ty")
+                for (y in 2 until 18) for (x in 2 until 18) assertEquals(c, out[tx * 22 + x, ty * 22 + y], "method $finder, tile $tx/$ty")
             }
-            assertTrue(tileColors(out).toSet().size >= 10, "Verfahren $finder: ${tileColors(out).toSet().size} Farben")
+            assertTrue(tileColors(out).toSet().size >= 10, "method $finder: ${tileColors(out).toSet().size} colors")
         }
     }
 
@@ -68,9 +68,9 @@ class FillerTest {
         // the black grid of lines is the largest area and touches the border
         for (cut in listOf(1, 2)) {
             val out = Filler.apply(tiles, Filler.defaultValues(mapOf("cutout" to cut, "antialias" to 0)), 3L)
-            assertEquals(0, out[21, 10] ushr 24, "Auswahl $cut: Linie")
+            assertEquals(0, out[21, 10] ushr 24, "cut-out $cut: line")
             // a tile in the middle (not touching the border)
-            assertEquals(255, out[32, 32] ushr 24, "Auswahl $cut: Kachel")
+            assertEquals(255, out[32, 32] ushr 24, "cut-out $cut: tile")
         }
         // by color: black
         val black = Filler.apply(tiles, Filler.defaultValues(mapOf("cutout" to 3, "cutColor" to 0, "antialias" to 0)), 3L)
@@ -82,7 +82,7 @@ class FillerTest {
         // random: some tiles clear, some not
         val random = Filler.apply(tiles, Filler.defaultValues(mapOf("cutout" to 6, "cutShare" to 50, "antialias" to 0)), 3L)
         val clear = tileColors(random).count { it ushr 24 == 0 }
-        assertTrue(clear in 1..11, "zufällig $clear")
+        assertTrue(clear in 1..11, "random $clear")
     }
 
     @Test

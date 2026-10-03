@@ -30,19 +30,19 @@ import kotlin.math.sqrt
  * follows the cell's brightness – so the picture reappears as a pattern. The brightness
  * is stretched to the picture's own range first, so dark or pale pictures still show.
  */
-object GridModules : Effect("grid", "Raster", "Rastermodule, deren Dichte, Grösse oder Richtung der Bildhelligkeit folgt") {
-    private val modules = listOf("Punktraster", "Konzentrische Kreise", "Strahlen", "Schraffur", "Streifen", "Moiré-Gitter")
+object GridModules : Effect("grid", "Grid", "Grid modules whose density, size or direction follows the picture's brightness") {
+    private val modules = listOf("Dot screen", "Concentric circles", "Rays", "Hatching", "Stripes", "Moiré grid")
 
     override val params = listOf(
-        Param.Choice("module", "Modul", modules),
-        Param.Slider("cell", "Zellgrösse", 4, 200, 16, " px"),
-        Param.Slider("lines", "Linien je Zelle", 1, 40, 8, tip = "Höchstzahl der Linien, Ringe oder Strahlen in einer ganz dunklen Zelle; Moiré: Linienabstand"),
-        Param.Slider("influence", "Bildeinfluss", 0, 100, 100, " %", "0 %: alle Zellen gleich, reines Muster. 100 %: die Helligkeit bestimmt jede Zelle"),
-        Param.Slider("lineWidth", "Linienstärke", 1, 50, 8, tip = "In Zehntelpixeln"),
-        Param.Toggle("invert", "Umkehren", false, "Helle statt dunkle Stellen werden dicht – für dunklen Hintergrund einschalten"),
-        Param.Choice("colorMode", "Farbe", listOf("Eine Farbe", "Aus dem Bild")),
-        Param.Color("color", "Linienfarbe", 0x111111),
-        Param.Choice("background", "Hintergrund", listOf("Weiss", "Schwarz", "Transparent", "Originalbild")),
+        Param.Choice("module", "Module", modules),
+        Param.Slider("cell", "Cell size", 4, 200, 16, " px"),
+        Param.Slider("lines", "Lines per cell", 1, 40, 8, tip = "Maximum number of lines, rings or rays in a fully dark cell; moiré: line spacing"),
+        Param.Slider("influence", "Picture influence", 0, 100, 100, " %", "0 %: all cells alike, pure pattern. 100 %: the brightness sets every cell"),
+        Param.Slider("lineWidth", "Line weight", 1, 50, 8, tip = "In tenths of a pixel"),
+        Param.Toggle("invert", "Invert", false, "Bright instead of dark areas get dense – turn on for a dark background"),
+        Param.Choice("colorMode", "Color", listOf("One color", "From the picture")),
+        Param.Color("color", "Line color", 0x111111),
+        Param.Choice("background", "Background", listOf("White", "Black", "Transparent", "Original picture")),
     )
 
     override val random = false

@@ -16,7 +16,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 
 /** Inverts the image and counts how often it ran. */
-private class CountingInvert : Effect("count", "Zähler", "") {
+private class CountingInvert : Effect("count", "Counter", "") {
     var calls = 0
     override val params = listOf(Param.Slider("dummy", "Dummy", 0, 10, 0))
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -85,15 +85,15 @@ class RendererTest {
         layer.mask.linearEnd = RelPoint(1.0, 0.5)
         val out = Renderer().render(src, listOf(layer.state()))
         val w = src.width
-        assertClose(src.data[5 * w] xor 0x00FFFFFF, out.data[5 * w], "links voller Effekt")
-        assertClose(src.data[5 * w + w - 1], out.data[5 * w + w - 1], "rechts kein Effekt")
+        assertClose(src.data[5 * w] xor 0x00FFFFFF, out.data[5 * w], "full effect on the left")
+        assertClose(src.data[5 * w + w - 1], out.data[5 * w + w - 1], "no effect on the right")
     }
 
     /** Pixel centers never sit exactly on the gradient ends, so allow a few levels per channel. */
     private fun assertClose(expected: Int, actual: Int, message: String) {
         for (shift in listOf(16, 8, 0)) {
             val d = kotlin.math.abs((expected shr shift and 0xFF) - (actual shr shift and 0xFF))
-            kotlin.test.assertTrue(d <= 6, "$message: Kanal weicht um $d ab")
+            kotlin.test.assertTrue(d <= 6, "$message: channel differs by $d")
         }
     }
 

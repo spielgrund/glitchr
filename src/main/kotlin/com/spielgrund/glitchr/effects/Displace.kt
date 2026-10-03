@@ -13,15 +13,15 @@ import kotlin.math.floor
  * displaced is set by the layer's mask – a gradient mask gives a smooth transition.
  * (The id stays "noise" so projects from when this was called "Noise-Verlauf" still load.)
  */
-object Displace : Effect("noise", "Displace", "Verschiebt die Bildpixel entlang eines Noise-Musters; die Effektmaske steuert die Stärke") {
-    private val types = listOf("Perlin", "Fraktal (fBm)", "Ridged", "Zellen (Worley)", "Wert-Noise", "Weisses Rauschen")
+object Displace : Effect("noise", "Displace", "Shifts the picture's pixels along a noise pattern; the effect mask controls the strength") {
+    private val types = listOf("Perlin", "Fractal (fBm)", "Ridged", "Cells (Worley)", "Value noise", "White noise")
 
     override val params = listOf(
         Param.Choice("type", "Noise", types),
-        Param.Slider("scale", "Grösse", 2, 1000, 80, " px", "Grösse der Noise-Strukturen"),
-        Param.Slider("octaves", "Detailstufen", 1, 8, 4, tip = "Nur Fraktal und Ridged: wie viele feinere Lagen dazukommen"),
-        Param.Slider("strength", "Stärke", 0, 300, 100, " %", "Wie weit verschoben wird, im Verhältnis zur Grösse. Für stufenlose Übergänge die Maske der Ebene nutzen, z. B. einen Verlauf"),
-        Param.Choice("edge", "Rand", Edge.labels, default = Edge.MIRROR.ordinal),
+        Param.Slider("scale", "Size", 2, 1000, 80, " px", "Size of the noise structures"),
+        Param.Slider("octaves", "Detail levels", 1, 8, 4, tip = "Fractal and Ridged only: how many finer layers are added"),
+        Param.Slider("strength", "Strength", 0, 300, 100, " %", "How far it shifts, relative to the size. For seamless transitions use the layer's mask, e.g. a gradient"),
+        Param.Choice("edge", "Edge", Edge.labels, default = Edge.MIRROR.ordinal),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

@@ -9,8 +9,8 @@ import kotlin.math.min
 
 /** What a threshold compares; every mode gives a value 0..255 (see [thresholdValue]). */
 internal val thresholdModes = listOf(
-    "Helligkeit (Luma)", "Mittelwert RGB", "Hellster Kanal (HSV)", "Dunkelster Kanal", "Sättigung", "Buntheit (Chroma)",
-    "Farbton", "Rot", "Grün", "Blau",
+    "Brightness (luma)", "Average RGB", "Brightest channel (HSV)", "Darkest channel", "Saturation", "Colorfulness (chroma)",
+    "Hue", "Red", "Green", "Blue",
 )
 
 internal const val THRESHOLD_LUMA = 0
@@ -18,8 +18,8 @@ internal const val THRESHOLD_MEAN = 1
 internal const val THRESHOLD_HUE = 6
 
 internal const val THRESHOLD_TIP =
-    "Farbton: 0 Rot, 43 Gelb, 85 Grün, 128 Cyan, 170 Blau, 213 Magenta, 255 wieder Rot; fast graue Pixel haben keinen Farbton " +
-        "und zählen nie. Sättigung: wie rein die Farbe ist, Buntheit: wie weit hellster und dunkelster Kanal auseinanderliegen"
+    "Hue: 0 red, 43 yellow, 85 green, 128 cyan, 170 blue, 213 magenta, 255 red again; almost grey pixels have no hue " +
+        "and never count. Saturation: how pure the color is, colorfulness: how far apart the brightest and darkest channel lie"
 
 /** Grays below this chroma have no meaningful hue. */
 private const val MIN_CHROMA_FOR_HUE = 12

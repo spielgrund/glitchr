@@ -20,31 +20,31 @@ import kotlin.random.Random
  * share deepen into channels, so later drops follow them even more.
  * See [ErosionFast] for a river network version that is much quicker on large pictures.
  */
-object Erosion : Effect("erosion", "Erosion", "Das Bild als Landschaft: Regentropfen fliessen bergab, tragen die Farben mit und graben Rinnen") {
+object Erosion : Effect("erosion", "Erosion", "The picture as a landscape: raindrops run downhill, carry the colors along and dig channels") {
     override val params = listOf(
-        Param.Flow("strokes", "Bereiche", "Im Bild ziehen zeichnet Pfeile: nur um sie herum wird erodiert; ohne Pfeile das ganze Bild"),
-        Param.Slider("areaWidth", "Bereich Breite", 5, 1000, 80, " px", "Wie weit um die Pfeile herum erodiert wird"),
+        Param.Flow("strokes", "Regions", "Dragging in the picture draws arrows: only the area around them is eroded; without arrows the whole picture"),
+        Param.Slider("areaWidth", "Region width", 5, 1000, 80, " px", "How far around the arrows it erodes"),
         Param.Choice(
-            "flow", "Flussrichtung", listOf("Bildhöhe (hell = hoch)", "Bildhöhe (dunkel = hoch)", "Winkel", "Pfeilrichtung", "Zufall"),
-            tip = "Bildhöhe: das Wasser fliesst von hellen zu dunklen Stellen (oder umgekehrt) · Winkel: die Landschaft ist in diese Richtung gekippt, die Bildhöhe lenkt das Wasser nur ab · " +
-                "Pfeilrichtung: das Wasser fliesst die gezeichneten Pfeile entlang · Zufall: eine zufällige Hügellandschaft lenkt das Wasser in alle Richtungen („Neu würfeln“ für eine andere)",
+            "flow", "Flow direction", listOf("Picture height (bright = high)", "Picture height (dark = high)", "Angle", "Arrow direction", "Random"),
+            tip = "Picture height: the water flows from bright to dark spots (or the other way round) · Angle: the landscape is tilted in this direction, the picture height only deflects the water · " +
+                "Arrow direction: the water flows along the drawn arrows · Random: a random hilly landscape steers the water in all directions (“Reroll” for a different one)",
         ),
-        Param.Slider("angle", "Winkel", 0, 359, 90, "°", "Für „Winkel“: 90° = nach unten"),
-        Param.Slider("relief", "Relief", 0, 100, 20, " %", "Für „Winkel“, „Pfeilrichtung“ und „Zufall“: wie stark die Bildhöhe das Wasser ablenkt"),
-        Param.Slider("generations", "Generationen", 1, 100, 24, "", "Wie oft es regnet; jede Generation vertieft die Rinnen der vorigen"),
-        Param.Slider("strength", "Stärke", 0, 100, 100, " %", "Wie viel Material und Farbe die Tropfen abtragen und mitnehmen"),
-        Param.Slider("rain", "Regen", 1, 100, 71, " %", "Wie viele Tropfen pro Generation fallen"),
-        Param.Slider("path", "Weglänge", 10, 1000, 120, " px", "Wie weit ein Tropfen höchstens fliesst"),
-        Param.Slider("terrain", "Gelände glätten", 0, 20, 14, " px", "Glättet die Bildhöhe vorher: grössere, ruhigere Rinnen"),
-        Param.Slider("channels", "Rinnen abdunkeln", 0, 100, 30, " %", "Dunkelt die ausgewaschenen Rinnen ab, Ablagerungen werden etwas heller"),
+        Param.Slider("angle", "Angle", 0, 359, 90, "°", "For “Angle”: 90° = downwards"),
+        Param.Slider("relief", "Relief", 0, 100, 20, " %", "For “Angle”, “Arrow direction” and “Random”: how strongly the picture height deflects the water"),
+        Param.Slider("generations", "Generations", 1, 100, 24, "", "How often it rains; every generation deepens the channels of the previous one"),
+        Param.Slider("strength", "Strength", 0, 100, 100, " %", "How much material and color the drops wear away and carry along"),
+        Param.Slider("rain", "Rain", 1, 100, 71, " %", "How many drops fall per generation"),
+        Param.Slider("path", "Path length", 10, 1000, 120, " px", "The furthest a drop flows"),
+        Param.Slider("terrain", "Smooth terrain", 0, 20, 14, " px", "Smooths the picture height first: larger, calmer channels"),
+        Param.Slider("channels", "Darken channels", 0, 100, 30, " %", "Darkens the washed-out channels, deposits get a little brighter"),
         Param.Choice(
-            "precision", "Rechengenauigkeit", listOf("1 px (voll)", "2 px", "4 px"), 1,
-            tip = "Rechnet auf einem gröberen Raster: 2 px etwa viermal, 4 px etwa sechzehnmal so schnell",
+            "precision", "Precision", listOf("1 px (full)", "2 px", "4 px"), 1,
+            tip = "Computes on a coarser grid: 2 px about four times, 4 px about sixteen times as fast",
         ),
         Param.Slider(
-            "keepDetail", "Originaldetails", 0, 100, 0, " %",
-            "Für 2 und 4 px: wie viel der feinen Details des Originals in den erodierten Stellen erhalten bleibt; " +
-                "wo nichts erodiert wird, bleibt das Bild immer scharf",
+            "keepDetail", "Original details", 0, 100, 0, " %",
+            "For 2 and 4 px: how much of the original's fine detail is kept in the eroded spots; " +
+                "where nothing is eroded the picture always stays sharp",
         ),
     )
 
@@ -178,7 +178,7 @@ object Erosion : Effect("erosion", "Erosion", "Das Bild als Landschaft: Regentro
         // the landscape: the brightness, with an angle tilted so the water runs that way
         val byChance = flow == 4
         val relief = if (byAngle || byArrows || byChance) (v["relief"] / 100.0).toFloat() else 1f
-        // random hills and valleys for "Zufall"
+        // random hills and valleys for "Random"
         val hills = com.spielgrund.glitchr.image.Noise(seed xor 0x51ED)
         val hillSize = max(w, h) / 6.0
         val ax = cos(angle)
@@ -195,7 +195,7 @@ object Erosion : Effect("erosion", "Erosion", "Das Bild als Landschaft: Regentro
             (light[i] * relief + tilt) / unit
         }
         val start = height.copyOf()
-        // along the arrows the water is pushed as hard as the tilt of "Winkel" pulls it
+        // along the arrows the water is pushed as hard as the tilt of "Angle" pulls it
         val push = 6 / size / unit
         val arrow = DoubleArray(2)
 

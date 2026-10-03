@@ -29,38 +29,38 @@ import kotlin.random.Random
  * Generative line drawings in the style of creative coding: many hairlines drawn by
  * simple rules, whose overlaps create moiré. Colors can come from the picture.
  *
- * - Bänder: a wobbly closed shape wanders along a noise field and is drawn at every
+ * - Bands: a wobbly closed shape wanders along a noise field and is drawn at every
  *   step, giving twisted ribbons of fine lines.
- * - Fliesslinien: lines following a flow field – noise, the picture's brightness contours
- *   or both. "Gleichmässig füllen" packs evenly spaced streamlines over the whole picture
+ * - Flow lines: lines following a flow field – noise, the picture's brightness contours
+ *   or both. "Fill evenly" packs evenly spaced streamlines over the whole picture
  *   (each line grows both ways until it comes too close to another), optionally denser
  *   where the picture is dark.
  * - Moiré-Ringe: several centers with dense, slightly wavy rings that interfere.
- * - Spiegelkacheln: flow lines drawn mirrored in one tile, repeated over the picture.
+ * - Mirror tiles: flow lines drawn mirrored in one tile, repeated over the picture.
  */
-object Generative : Effect("generative", "Generativ", "Generative Linienmuster: Bänder, Fliesslinien, Moiré, Spiegelkacheln") {
-    private val patterns = listOf("Bänder", "Fliesslinien", "Moiré-Ringe", "Spiegelkacheln")
-    private val colorModes = listOf("Aus dem Bild", "Bildpalette", "Regenbogen (pastell)", "Eine Farbe")
+object Generative : Effect("generative", "Generative", "Generative line patterns: bands, flow lines, moiré, mirror tiles") {
+    private val patterns = listOf("Bands", "Flow lines", "Moiré rings", "Mirror tiles")
+    private val colorModes = listOf("From the picture", "Picture palette", "Rainbow (pastel)", "One color")
 
     override val params = listOf(
-        Param.Choice("pattern", "Muster", patterns),
-        Param.Slider("count", "Anzahl", 1, 3000, 16, tip = "Bänder, Linien oder Ring-Zentren (Fliesslinien: nur ohne „Gleichmässig füllen“)"),
-        Param.Slider("steps", "Länge", 10, 3000, 400, tip = "Wie viele Schritte jedes Band oder jede Linie gezeichnet wird"),
+        Param.Choice("pattern", "Pattern", patterns),
+        Param.Slider("count", "Count", 1, 3000, 16, tip = "Bands, lines or ring centers (flow lines: only without “Fill evenly”)"),
+        Param.Slider("steps", "Length", 10, 3000, 400, tip = "How many steps every band or line is drawn"),
         Param.Choice(
-            "field", "Strömung", listOf("Noise", "Aus dem Bild", "Bild + Noise"),
-            tip = "Aus dem Bild: die Linien folgen den Helligkeitskonturen des Bilds (Bänder und Fliesslinien)",
+            "field", "Flow field", listOf("Noise", "From the picture", "Picture + noise"),
+            tip = "From the picture: the lines follow the brightness contours of the picture (bands and flow lines)",
         ),
-        Param.Toggle("fill", "Gleichmässig füllen", true, "Nur Fliesslinien: füllt das ganze Bild mit Linien im festen Abstand"),
-        Param.Slider("spacing", "Linienabstand", 2, 100, 8, " px", "Nur „Gleichmässig füllen“"),
-        Param.Toggle("darkDense", "Dunkle Stellen dichter", false, "Nur „Gleichmässig füllen“: der Abstand folgt der Helligkeit – das Motiv entsteht aus der Liniendichte"),
-        Param.Slider("size", "Grösse", 2, 600, 90, " px", "Bänder: Durchmesser der Form. Ringe: Abstand der Ringe × 10. Kacheln: Kachelgrösse"),
-        Param.Slider("turbulence", "Turbulenz", 1, 100, 30, " %", "Wie stark die Wege sich winden"),
-        Param.Slider("wobble", "Verformung", 0, 100, 35, " %", "Wie stark Bänder und Ringe verbeult werden"),
-        Param.Slider("lineWidth", "Linienstärke", 1, 50, 5, tip = "In Zehntelpixeln: 5 = 0,5 px Haarlinie"),
-        Param.Slider("lineOpacity", "Deckkraft der Linien", 1, 100, 45, " %"),
-        Param.Choice("colorMode", "Farbe", colorModes),
-        Param.Color("color", "Linienfarbe", 0x1BA34A, "Für „Eine Farbe“"),
-        Param.Choice("background", "Hintergrund", listOf("Originalbild", "Weiss", "Schwarz", "Transparent"), default = 1),
+        Param.Toggle("fill", "Fill evenly", true, "Flow lines only: fills the whole picture with lines at a fixed spacing"),
+        Param.Slider("spacing", "Line spacing", 2, 100, 8, " px", "Only “Fill evenly”"),
+        Param.Toggle("darkDense", "Denser in dark areas", false, "Only “Fill evenly”: the spacing follows the brightness – the subject emerges from the line density"),
+        Param.Slider("size", "Size", 2, 600, 90, " px", "Bands: diameter of the shape. Rings: ring spacing × 10. Tiles: tile size"),
+        Param.Slider("turbulence", "Turbulence", 1, 100, 30, " %", "How much the paths wind"),
+        Param.Slider("wobble", "Deformation", 0, 100, 35, " %", "How much bands and rings are dented"),
+        Param.Slider("lineWidth", "Line weight", 1, 50, 5, tip = "In tenths of a pixel: 5 = 0.5 px hairline"),
+        Param.Slider("lineOpacity", "Line opacity", 1, 100, 45, " %"),
+        Param.Choice("colorMode", "Color", colorModes),
+        Param.Color("color", "Line color", 0x1BA34A, "For “One color”"),
+        Param.Choice("background", "Background", listOf("Original picture", "White", "Black", "Transparent"), default = 1),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

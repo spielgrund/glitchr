@@ -36,7 +36,7 @@ class GrowTest {
     fun `the infection spreads further with more steps and carries the start pixels`() {
         val short = grow(mapOf("steps" to 10, "content" to 2))
         val long = grow(mapOf("steps" to 40, "content" to 2))
-        assertTrue(grown(long) > grown(short) * 2, "kurz ${grown(short)}, lang ${grown(long)}")
+        assertTrue(grown(long) > grown(short) * 2, "short ${grown(short)}, long ${grown(long)}")
         // what grew is the spot's own color, laid over the dark (edges partly)
         val changed = long.data.filter { it != dark }
         assertTrue(changed.count { it == bright } > changed.size * 3 / 4)
@@ -54,7 +54,7 @@ class GrowTest {
             val y0 = xs.minOf { it / 160 }; val y1 = xs.maxOf { it / 160 }
             return xs.size.toDouble() / ((x1 - x0 + 1) * (y1 - y0 + 1))
         }
-        assertTrue(fill(branching) < fill(round) - 0.15, "verästelt ${fill(branching)}, rund ${fill(round)}")
+        assertTrue(fill(branching) < fill(round) - 0.15, "branching ${fill(branching)}, round ${fill(round)}")
     }
 
     @Test
@@ -62,7 +62,7 @@ class GrowTest {
         val out = grow(mapOf("steps" to 40, "direction" to 0, "directionStrength" to 100, "content" to 2))
         val right = out.data.indices.count { out.data[it] != dark && it % 160 > 90 }
         val left = out.data.indices.count { out.data[it] != dark && it % 160 < 70 }
-        assertTrue(right > left * 2, "rechts $right, links $left")
+        assertTrue(right > left * 2, "right $right, left $left")
     }
 
     @Test
@@ -85,11 +85,11 @@ class GrowTest {
         // near the growth's outer edge, well outside the spot: the left side shows its red half
         // stretched out, the right side its blue
         val grown = (0 until 160).filter { out[it, 60] != dark }
-        assertTrue(grown.first() < 80 - 14 && grown.last() > 80 + 14, "gewachsen ${grown.first()}..${grown.last()}")
+        assertTrue(grown.first() < 80 - 14 && grown.last() > 80 + 14, "grown ${grown.first()}..${grown.last()}")
         val left = out[grown.first() + 3, 60]
         val right = out[grown.last() - 3, 60]
-        assertTrue(red(left) > 150 && com.spielgrund.glitchr.image.blue(left) < 100, "links ${Integer.toHexString(left)}")
-        assertTrue(com.spielgrund.glitchr.image.blue(right) > 150 && red(right) < 100, "rechts ${Integer.toHexString(right)}")
+        assertTrue(red(left) > 150 && com.spielgrund.glitchr.image.blue(left) < 100, "left ${Integer.toHexString(left)}")
+        assertTrue(com.spielgrund.glitchr.image.blue(right) > 150 && red(right) < 100, "right ${Integer.toHexString(right)}")
         // what did not grow stays
         assertEquals(dark, out[5, 5])
     }
@@ -109,11 +109,11 @@ class GrowTest {
         val out = Grow.apply(stripes, v, 3L)
         // the growth runs to the right: to the right of the spot the picture is pulled along, so the
         // spot's bright color shows where stripes were
-        assertTrue((90 until 130).any { red(out[it, 60]) > 200 }, "nichts mitgezogen")
+        assertTrue((90 until 130).any { red(out[it, 60]) > 200 }, "nothing dragged along")
         // pixels outside the grown area move too (pulled softly)
         val grownOnly = Grow.apply(stripes, Grow.defaultValues(mapOf("precision" to 0, "noise" to 0, "immunity" to 10, "steps" to 40, "direction" to 0, "directionStrength" to 100, "content" to 2)), 3L)
         val movedOutside = (0 until 160 * 120).count { grownOnly.data[it] == stripes.data[it] && out.data[it] != stripes.data[it] }
-        assertTrue(movedOutside > 500, "ausserhalb bewegt $movedOutside")
+        assertTrue(movedOutside > 500, "moved outside $movedOutside")
         // far away nothing moves
         assertEquals(stripes[5, 5], out[5, 5])
     }

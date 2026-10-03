@@ -39,8 +39,8 @@ class MoireFilterTest {
         for (mode in 0..4) {
             val out = MoireFilter.apply(src, MoireFilter.defaultValues(mapOf("mode" to mode)), 1L)
             ImageIO.write(out.toImage(), "png", File(dir, "mode$mode.png"))
-            assertContentEquals(src.data.map { it ushr 24 }, out.data.map { it ushr 24 }, "Art $mode")
-            assertTrue(!out.data.contentEquals(src.data), "Art $mode ändert nichts")
+            assertContentEquals(src.data.map { it ushr 24 }, out.data.map { it ushr 24 }, "type $mode")
+            assertTrue(!out.data.contentEquals(src.data), "type $mode changes nothing")
         }
     }
 
@@ -50,7 +50,7 @@ class MoireFilterTest {
         val src = stripes(200, 240, 3.3)
         val before = coarseRange(src, 12)
         val out = MoireFilter.apply(src, MoireFilter.defaultValues(mapOf("mode" to 3, "pitch" to 30, "angle" to 0, "deviation" to 0)), 0)
-        assertTrue(coarseRange(out, 12) > before + 60, "vorher $before, nachher ${coarseRange(out, 12)}")
+        assertTrue(coarseRange(out, 12) > before + 60, "before $before, after ${coarseRange(out, 12)}")
     }
 
     @Test

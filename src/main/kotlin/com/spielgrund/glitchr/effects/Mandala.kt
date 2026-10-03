@@ -26,37 +26,37 @@ import kotlin.random.Random
  * are symmetric in themselves, so every ring is mirror- and rotation-symmetric.
  *
  * Which motif a ring gets, how many times it repeats (the symmetry or twice that),
- * whether it is turned by half a step and the ring widths come from the seed – "Neu
- * würfeln" gives a new mandala with the same settings. Only used as a generator.
+ * whether it is turned by half a step and the ring widths come from the seed – "Reroll"
+ * gives a new mandala with the same settings. Only used as a generator.
  */
-object Mandala : Effect("mandala", "Mandala", "Ringe aus symmetrisch wiederholten Motiven um eine Mitte") {
-    private val motifs = listOf("Blätter", "Punkte", "Bögen", "Zacken", "Tropfen", "Strahlen", "Rauten")
+object Mandala : Effect("mandala", "Mandala", "Rings of symmetrically repeated motifs around a center") {
+    private val motifs = listOf("Leaves", "Dots", "Arches", "Spikes", "Drops", "Rays", "Diamonds")
 
     override val params = listOf(
-        Param.Heading("shapeHeading", "Form"),
-        Param.Slider("symmetry", "Symmetrie", 3, 48, 12, tip = "Wie oft sich jedes Motiv um die Mitte wiederholt (äussere Ringe auch doppelt so oft)"),
-        Param.Slider("rings", "Ringe", 1, 24, 8),
-        Param.Choice("motif", "Motiv", listOf("Gemischt (Zufall)") + motifs, tip = "Gemischt: jeder Ring bekommt ein zufälliges Motiv – „Neu würfeln“ gibt ein neues Mandala"),
-        Param.Slider("size", "Grösse", 5, 150, 92, " %", "Radius im Verhältnis zur halben kürzeren Seite"),
-        Param.Slider("growth", "Ringbreite nach aussen", 30, 300, 100, " %", "Unter 100 %: äussere Ringe schmaler, darüber breiter"),
-        Param.Slider("variation", "Zufall der Ringbreiten", 0, 100, 30, " %"),
-        Param.Slider("detail", "Verzierung", 0, 100, 50, " %", "Innere Konturen, Adern und Punkte zwischen den Motiven"),
-        Param.Toggle("separators", "Trennkreise", true, "Ein Kreis zwischen den Ringen"),
-        Param.Slider("rotation", "Drehung", 0, 359, 0, "°"),
-        Param.Slider("centerX", "Mitte X", 0, 100, 50, " %"),
-        Param.Slider("centerY", "Mitte Y", 0, 100, 50, " %"),
-        Param.Heading("styleHeading", "Darstellung"),
-        Param.Choice("style", "Stil", listOf("Linien", "Gefüllt", "Gefüllt mit Kontur")),
-        Param.Slider("lineWidth", "Strichstärke", 1, 200, 20, " px", decimals = 1),
+        Param.Heading("shapeHeading", "Shape"),
+        Param.Slider("symmetry", "Symmetry", 3, 48, 12, tip = "How often every motif repeats around the middle (outer rings also twice as often)"),
+        Param.Slider("rings", "Rings", 1, 24, 8),
+        Param.Choice("motif", "Motif", listOf("Mixed (random)") + motifs, tip = "Mixed: every ring gets a random motif – “Reroll” gives a new mandala"),
+        Param.Slider("size", "Size", 5, 150, 92, " %", "Radius relative to half the shorter side"),
+        Param.Slider("growth", "Ring width outwards", 30, 300, 100, " %", "Below 100 %: outer rings narrower, above wider"),
+        Param.Slider("variation", "Ring width variation", 0, 100, 30, " %"),
+        Param.Slider("detail", "Ornament", 0, 100, 50, " %", "Inner outlines, veins and dots between the motifs"),
+        Param.Toggle("separators", "Dividing circles", true, "A circle between the rings"),
+        Param.Slider("rotation", "Rotation", 0, 359, 0, "°"),
+        Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
+        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Heading("styleHeading", "Display"),
+        Param.Choice("style", "Style", listOf("Lines", "Filled", "Filled with outline")),
+        Param.Slider("lineWidth", "Line width", 1, 200, 20, " px", decimals = 1),
         Param.Choice(
-            "colorMode", "Farben", listOf("Eine Farbe", "Zwei Farben abwechselnd", "Verlauf innen → aussen", "Regenbogen", "Pastell"),
-            tip = "Farbe der Ringe; bei „Gefüllt mit Kontur“ die Füllung",
+            "colorMode", "Colors", listOf("One color", "Two colors alternating", "Gradient inside → outside", "Rainbow", "Pastel"),
+            tip = "Color of the rings; for “Filled with outline” the fill",
         ),
-        Param.Color("color1", "Farbe 1", 0xF5E6C8),
-        Param.Color("color2", "Farbe 2", 0xD9487A),
-        Param.Color("lineColor", "Konturfarbe", 0x16121F, "Für „Gefüllt mit Kontur“"),
-        Param.Color("background", "Hintergrund", 0x16121F),
-        Param.Toggle("transparent", "Hintergrund transparent", false),
+        Param.Color("color1", "Color 1", 0xF5E6C8),
+        Param.Color("color2", "Color 2", 0xD9487A),
+        Param.Color("lineColor", "Outline color", 0x16121F, "For “Filled with outline”"),
+        Param.Color("background", "Background", 0x16121F),
+        Param.Toggle("transparent", "Transparent background", false),
     )
 
     /** One ring: from radius [r0] to [r1], [motif] repeated [count] times, turned by [offset] (radians). */

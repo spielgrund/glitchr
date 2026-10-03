@@ -51,4 +51,6 @@ Baue bitte auch Glitch Features wie überlauf etc ein.
 UV Mapping X
 Basierend auf x,y werten der Kanäle können Texturen platziert werden
 
-True Depth implementierung
+True Depth implementierung O
+
+Maskierungs Tools

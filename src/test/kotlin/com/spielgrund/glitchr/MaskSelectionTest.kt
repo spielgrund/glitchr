@@ -55,9 +55,9 @@ class MaskSelectionTest {
         mask.applyPatch(Selection.shape(Rectangle2D.Double(0.0, 0.0, 40.0, 10.0), 40, 40, 0)!!, subtract = true)
         val p = mask.painted!!
         fun at(x: Int, y: Int) = p[y * 40 + x].toInt() and 0xFF
-        assertEquals(255, at(5, 20), "hinzugefügt")
+        assertEquals(255, at(5, 20), "added")
         assertEquals(0, at(5, 5), "abgezogen")
-        assertEquals(0, at(30, 20), "nie ausgewählt")
+        assertEquals(0, at(30, 20), "never selected")
     }
 
     @Test
@@ -65,7 +65,7 @@ class MaskSelectionTest {
         val patch = Selection.shape(Ellipse2D.Double(20.0, 20.0, 60.0, 60.0), 100, 100, 12)!!
         fun at(x: Int, y: Int) = patch.data[(y - patch.rect.y) * patch.rect.width + x - patch.rect.x].toInt() and 0xFF
         assertEquals(255, at(50, 50))
-        assertTrue(at(20, 50) in 40..220, "Rand ist weich: ${at(20, 50)}")
+        assertTrue(at(20, 50) in 40..220, "edge is soft: ${at(20, 50)}")
     }
 
     @Test
@@ -81,7 +81,7 @@ class MaskSelectionTest {
 
         val everywhere = Selection.similarColor(img, 2, 2, 40, contiguous = false, feather = 0)!!
         assertEquals(java.awt.Rectangle(0, 0, 30, 10), everywhere.rect)
-        assertEquals(0, everywhere.data[5 * 30 + 15].toInt(), "Blau gehört nicht dazu")
+        assertEquals(0, everywhere.data[5 * 30 + 15].toInt(), "blue doesn't belong to it")
     }
 
     @Test

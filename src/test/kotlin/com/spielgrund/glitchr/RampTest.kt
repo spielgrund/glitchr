@@ -43,8 +43,8 @@ class RampTest {
     fun `only color keeps the brightness`() {
         val c = one(argb(255, 128, 128, 128), mapOf("mode" to 1))
         val l = 0.2126 * red(c) + 0.7152 * green(c) + 0.0722 * blue(c)
-        assertTrue(abs(l - 128) < 6, "Helligkeit $l")
-        assertTrue(blue(c) != red(c), "eingefärbt")
+        assertTrue(abs(l - 128) < 6, "brightness $l")
+        assertTrue(blue(c) != red(c), "tinted")
     }
 
     @Test

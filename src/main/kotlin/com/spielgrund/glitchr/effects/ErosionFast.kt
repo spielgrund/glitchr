@@ -23,30 +23,30 @@ import kotlin.math.sqrt
  * downstream, the further the more water flows, the eroded relief is lit from the side,
  * and the rivers can be drawn in.
  */
-object ErosionFast : Effect("erosionfast", "Erosion Fast", "Das Bild als Landschaft: ein Flussnetz gräbt Täler, zieht die Farben mit und wird plastisch beleuchtet") {
-    private val riverModes = listOf("Aus", "Dunkel", "Hell", "Farbe")
+object ErosionFast : Effect("erosionfast", "Erosion Fast", "The picture as a landscape: a river network digs valleys, drags the colors along and is lit in relief") {
+    private val riverModes = listOf("Off", "Dark", "Bright", "Color")
 
     override val params = listOf(
-        Param.Flow("strokes", "Bereiche", "Im Bild ziehen zeichnet Pfeile: nur um sie herum wird erodiert; ohne Pfeile das ganze Bild"),
-        Param.Slider("areaWidth", "Bereich Breite", 5, 1000, 80, " px", "Wie weit um die Pfeile herum erodiert wird"),
+        Param.Flow("strokes", "Regions", "Dragging in the picture draws arrows: only the area around them is eroded; without arrows the whole picture"),
+        Param.Slider("areaWidth", "Region width", 5, 1000, 80, " px", "How far around the arrows it erodes"),
         Param.Choice(
-            "flow", "Flussrichtung", listOf("Bildhöhe (hell = hoch)", "Bildhöhe (dunkel = hoch)", "Winkel", "Pfeilrichtung", "Zufall"),
-            tip = "Bildhöhe: das Wasser fliesst von hellen zu dunklen Stellen (oder umgekehrt) · Winkel: die Landschaft ist in diese Richtung gekippt, die Bildhöhe lenkt das Wasser nur ab · " +
-                "Pfeilrichtung: das Wasser fliesst die gezeichneten Pfeile entlang · Zufall: eine zufällige Hügellandschaft lenkt das Wasser in alle Richtungen („Neu würfeln“ für eine andere)",
+            "flow", "Flow direction", listOf("Picture height (bright = high)", "Picture height (dark = high)", "Angle", "Arrow direction", "Random"),
+            tip = "Picture height: the water flows from bright to dark spots (or the other way round) · Angle: the landscape is tilted in this direction, the picture height only deflects the water · " +
+                "Arrow direction: the water flows along the drawn arrows · Random: a random hilly landscape steers the water in all directions (“Reroll” for a different one)",
         ),
-        Param.Slider("angle", "Winkel", 0, 359, 90, "°", "Für „Winkel“: 90° = nach unten"),
-        Param.Slider("relief", "Relief", 0, 100, 25, " %", "Für „Winkel“, „Pfeilrichtung“ und „Zufall“: wie stark die Bildhöhe das Wasser ablenkt"),
-        Param.Slider("generations", "Generationen", 1, 50, 13, "", "Wie oft sich die Flüsse eingraben; mehr gibt tiefere Täler"),
-        Param.Slider("strength", "Stärke", 0, 100, 100, " %", "Wie tief sich die Flüsse pro Generation eingraben"),
-        Param.Slider("terrain", "Gelände glätten", 0, 30, 7, " px", "Glättet die Bildhöhe vorher: grössere, ruhigere Flusssysteme"),
-        Param.Slider("density", "Flussdichte", 0, 100, 80, " %", "Ab wie viel Wasser ein Fluss sichtbar wird: mehr zeigt auch die feinen Bäche"),
-        Param.Slider("streak", "Streifenlänge", 0, 500, 130, " px", "Wie weit die Farben flussabwärts gezogen werden; grosse Flüsse ziehen am weitesten"),
-        Param.Slider("light", "Relief-Licht", 0, 100, 0, " %", "Beleuchtet die erodierte Landschaft von der Seite"),
-        Param.Slider("lightAngle", "Lichtrichtung", 0, 359, 225, "°", "225° = Licht von oben links"),
-        Param.Choice("rivers", "Flüsse", riverModes, 0, "Die Flüsse selbst einzeichnen"),
-        Param.Color("riverColor", "Flussfarbe", 0x2A6FDB, "Für „Farbe“"),
-        Param.Slider("riverStrength", "Flüsse Deckkraft", 0, 100, 50, " %"),
-        Param.Slider("detail", "Detail", 128, 1024, 512, " px", "Auflösung, auf der das Flussnetz berechnet wird (längere Bildseite); höher ist feiner, aber langsamer"),
+        Param.Slider("angle", "Angle", 0, 359, 90, "°", "For “Angle”: 90° = downwards"),
+        Param.Slider("relief", "Relief", 0, 100, 25, " %", "For “Angle”, “Arrow direction” and “Random”: how strongly the picture height deflects the water"),
+        Param.Slider("generations", "Generations", 1, 50, 13, "", "How often the rivers dig in; more gives deeper valleys"),
+        Param.Slider("strength", "Strength", 0, 100, 100, " %", "How deep the rivers dig in per generation"),
+        Param.Slider("terrain", "Smooth terrain", 0, 30, 7, " px", "Smooths the picture height first: larger, calmer river systems"),
+        Param.Slider("density", "River density", 0, 100, 80, " %", "From how much water a river becomes visible: more also shows the fine streams"),
+        Param.Slider("streak", "Streak length", 0, 500, 130, " px", "How far the colors are dragged downstream; large rivers drag furthest"),
+        Param.Slider("light", "Relief light", 0, 100, 0, " %", "Lights the eroded landscape from the side"),
+        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "225° = light from the top left"),
+        Param.Choice("rivers", "Rivers", riverModes, 0, "Draw the rivers themselves"),
+        Param.Color("riverColor", "River color", 0x2A6FDB, "For “Color”"),
+        Param.Slider("riverStrength", "River opacity", 0, 100, 50, " %"),
+        Param.Slider("detail", "Detail", 128, 1024, 512, " px", "Resolution the river network is computed at (longer side of the picture); higher is finer but slower"),
     )
 
 

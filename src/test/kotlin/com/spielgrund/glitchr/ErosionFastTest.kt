@@ -32,7 +32,7 @@ class ErosionFastTest {
         // the white is pulled below the square, nothing of it reaches the rows above
         val below = (50 until 60).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
         val above = (5 until 15).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
-        assertTrue(below > 2 * above + 1000, "unten $below, oben $above")
+        assertTrue(below > 2 * above + 1000, "below $below, above $above")
     }
 
     @Test
@@ -40,7 +40,7 @@ class ErosionFastTest {
         val src = testImage(200, 150)
         val out = run(src, "rivers" to 3, "riverColor" to 0xFF0000, "riverStrength" to 100, "density" to 80)
         val red = out.data.count { (it shr 16 and 0xFF) > 200 && (it shr 8 and 0xFF) < 60 && (it and 0xFF) < 60 }
-        assertTrue(red in 200 until out.data.size / 2, "Flüsse: $red")
+        assertTrue(red in 200 until out.data.size / 2, "rivers: $red")
     }
 
     @Test
@@ -58,8 +58,8 @@ class ErosionFastTest {
         )
         for (flow in listOf(0, 3)) {
             val out = fast(flow)
-            assertTrue((0 until 200).all { x -> (100 until 150).all { y -> out[x, y] == src[x, y] } }, "Fluss $flow: weit weg bleibt alles")
-            assertTrue((20 until 180).any { x -> out[x, 30] != src[x, 30] }, "Fluss $flow: am Pfeil wird erodiert")
+            assertTrue((0 until 200).all { x -> (100 until 150).all { y -> out[x, y] == src[x, y] } }, "flow $flow: far away everything stays")
+            assertTrue((20 until 180).any { x -> out[x, 30] != src[x, 30] }, "flow $flow: eroded at the arrow")
         }
     }
 
@@ -67,7 +67,7 @@ class ErosionFastTest {
     fun `random landscapes differ with the seed`() {
         val src = testImage(160, 120)
         fun out(seed: Long) = ErosionFast.apply(src, ErosionFast.defaultValues(mapOf("flow" to 4, "streak" to 60, "precision" to 0)), seed)
-        assertTrue(!out(1).data.contentEquals(src.data), "Zufall erodiert")
-        assertTrue(!out(1).data.contentEquals(out(2).data), "anderer Zufall, andere Landschaft")
+        assertTrue(!out(1).data.contentEquals(src.data), "random erodes")
+        assertTrue(!out(1).data.contentEquals(out(2).data), "different seed, different landscape")
     }
 }

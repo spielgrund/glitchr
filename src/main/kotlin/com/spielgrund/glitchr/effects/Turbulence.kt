@@ -31,34 +31,34 @@ import kotlin.math.sin
  * is supersampled (anti-aliasing). Optional thin-film colors run along the brightness
  * lines of the swirled picture.
  */
-object Turbulence : Effect("turbulence", "Verwirbelung", "Farben fliessen wie auf Wasser oder einem Seifenfilm und falten sich zu feinen Schlieren") {
+object Turbulence : Effect("turbulence", "Turbulence", "Colors flow as on water or a soap film and fold into fine streaks") {
     override val params = listOf(
-        Param.Heading("regionHeading", "Bereich"),
-        Param.Choice("region", "Fliesst", listOf("Ganzes Bild", "Schwellenbereich"), tip = "Schwellenbereich: nur wo der Wert zwischen den Schwellen liegt, weich auslaufend"),
-        Param.Choice("source", "Wert", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("lower", "Untere Schwelle", 0, 255, 140, tip = "Beim Farbton darf sie über der oberen liegen (Bereich über Rot hinweg)"),
-        Param.Slider("upper", "Obere Schwelle", 0, 255, 255),
-        Param.Toggle("invert", "Bereich umkehren", false),
-        Param.Slider("soft", "Weiche", 0, 1000, 80, " px", "Wie weit die Strömung über den Bereich hinaus ausläuft", canvasMax = true),
-        Param.Toggle("showMask", "Bereich zeigen", false, "Zeigt schwarzweiss, wie stark es wo fliesst"),
-        Param.Heading("flowHeading", "Strömung"),
-        Param.Slider("swirl", "Wirbelstärke", 0, 200, 30, " px", "So weit fliesst die Farbe je Durchlauf", decimals = 1),
-        Param.Slider("swirlSize", "Wirbelgrösse", 4, 1000, 120, " px", "Grösse der grössten Wirbel", canvasMax = true),
-        Param.Slider("swirlDetail", "Feinheit", 1, 6, 4, tip = "Wie viele immer kleinere Wirbel dazukommen"),
-        Param.Slider("swirlSteps", "Durchläufe", 1, 300, 80, tip = "Je mehr, desto feiner werden die Schlieren ausgezogen und gefaltet"),
-        Param.Slider("swirlEvolve", "Wandel", 0, 100, 30, " %", "Wie schnell sich die Strömung ändert – 0 %: stehende Wirbel, mehr: verschlungene Falten"),
-        Param.Slider("direction", "Richtung", 0, 359, 0, "°", "Die Farbe treibt zusätzlich in diese Richtung – lange, gezogene Bahnen"),
-        Param.Slider("directionStrength", "Richtungsstärke", 0, 200, 0, " %"),
+        Param.Heading("regionHeading", "Region"),
+        Param.Choice("region", "Flows", listOf("Whole picture", "Threshold range"), tip = "Threshold range: only where the value lies between the thresholds, fading out softly"),
+        Param.Choice("source", "Value", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("lower", "Lower threshold", 0, 255, 140, tip = "For hue it may lie above the upper one (a range across red)"),
+        Param.Slider("upper", "Upper threshold", 0, 255, 255),
+        Param.Toggle("invert", "Invert range", false),
+        Param.Slider("soft", "Feather", 0, 1000, 80, " px", "How far the flow runs out beyond the range", canvasMax = true),
+        Param.Toggle("showMask", "Show range", false, "Shows in black and white how strongly it flows where"),
+        Param.Heading("flowHeading", "Flow field"),
+        Param.Slider("swirl", "Swirl strength", 0, 200, 30, " px", "How far the color flows per pass", decimals = 1),
+        Param.Slider("swirlSize", "Swirl size", 4, 1000, 120, " px", "Size of the largest swirls", canvasMax = true),
+        Param.Slider("swirlDetail", "Fineness", 1, 6, 4, tip = "How many ever smaller swirls are added"),
+        Param.Slider("swirlSteps", "Passes", 1, 300, 80, tip = "The more, the finer the streaks are drawn out and folded"),
+        Param.Slider("swirlEvolve", "Change", 0, 100, 30, " %", "How fast the flow changes – 0 %: standing swirls, more: tangled folds"),
+        Param.Slider("direction", "Direction", 0, 359, 0, "°", "The color also drifts in this direction – long, drawn-out paths"),
+        Param.Slider("directionStrength", "Direction strength", 0, 200, 0, " %"),
         Param.Heading("filmHeading", "Film"),
-        Param.Slider("film", "Filmfarben", 0, 100, 25, " %", "Regenbogenschlieren wie ein Seifen- oder Ölfilm, entlang der Helligkeitslinien"),
-        Param.Ramp("filmRamp", "Filmverlauf", Bubbles.SOAP_FILM, "Die Farben des Films, läuft mehrmals durch"),
-        Param.Slider("filmBands", "Filmbänder", 1, 40, 8, tip = "Wie oft der Filmverlauf über die Helligkeit durchläuft"),
-        Param.Heading("outHeading", "Ausgabe"),
+        Param.Slider("film", "Film colors", 0, 100, 25, " %", "Rainbow streaks like a soap or oil film, along the brightness lines"),
+        Param.Ramp("filmRamp", "Film gradient", Bubbles.SOAP_FILM, "The colors of the film, runs through several times"),
+        Param.Slider("filmBands", "Film bands", 1, 40, 8, tip = "How often the film gradient runs through over the brightness"),
+        Param.Heading("outHeading", "Output"),
         Param.Choice(
-            "antialias", "Kantenglättung", listOf("Aus", "2 × 2", "4 × 4"), 2,
-            "Wo die Strömung das Bild zu Schlieren feiner als ein Pixel zusammenzieht, wird mehrfach gelesen und gemittelt",
+            "antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 2,
+            "Where the flow pulls the picture into streaks finer than a pixel, it is read several times and averaged",
         ),
-        Param.Slider("amount", "Stärke", 0, 100, 100, " %"),
+        Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {

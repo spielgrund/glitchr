@@ -23,10 +23,10 @@ class NoiseFieldTest {
             if (mix in 3..5) {
                 // HSL there and back may round by a level
                 for (i in src.data.indices) for (shift in 0..16 step 8) {
-                    assertTrue(abs((src.data[i] shr shift and 0xFF) - (out.data[i] shr shift and 0xFF)) <= 1, "Mischart $mix")
+                    assertTrue(abs((src.data[i] shr shift and 0xFF) - (out.data[i] shr shift and 0xFF)) <= 1, "blend $mix")
                 }
             } else {
-                assertContentEquals(src.data, out.data, "Mischart $mix")
+                assertContentEquals(src.data, out.data, "blend $mix")
             }
         }
     }
@@ -40,7 +40,7 @@ class NoiseFieldTest {
             val a = NoiseField.apply(src, NoiseField.defaultValues(settings), 4L)
             val b = NoiseField.apply(changed, NoiseField.defaultValues(settings), 4L)
             val differing = a.data.indices.filter { a.data[it] != b.data[it] }
-            assertTrue(differing.all { it == 50 * 240 + 60 }, "Mischart $mix verändert andere Pixel: ${differing.take(5)}")
+            assertTrue(differing.all { it == 50 * 240 + 60 }, "blend $mix changes other pixels: ${differing.take(5)}")
         }
     }
 
@@ -51,13 +51,13 @@ class NoiseFieldTest {
         fun roughness(x0: Int) = (0 until 160).sumOf { y ->
             (x0 until x0 + 40).sumOf { x -> abs((out[x + 1, y] and 0xFF) - (out[x, y] and 0xFF)) }
         }
-        assertTrue(roughness(5) > 4 * roughness(190), "links fein ${roughness(5)}, rechts grob ${roughness(190)}")
+        assertTrue(roughness(5) > 4 * roughness(190), "fine on the left ${roughness(5)}, coarse on the right ${roughness(190)}")
         // turned by 180°, the fine side is on the right
         val turned = pure("scaleStart" to 6, "scaleEnd" to 200, "amount" to 100, "direction" to 180)
         fun roughnessTurned(x0: Int) = (0 until 160).sumOf { y ->
             (x0 until x0 + 40).sumOf { x -> abs((turned[x + 1, y] and 0xFF) - (turned[x, y] and 0xFF)) }
         }
-        assertTrue(roughnessTurned(190) > 4 * roughnessTurned(5), "gedreht: rechts fein")
+        assertTrue(roughnessTurned(190) > 4 * roughnessTurned(5), "rotated: fine on the right")
     }
 
     @Test
@@ -70,9 +70,9 @@ class NoiseFieldTest {
         )
         fun red(out: com.spielgrund.glitchr.image.Pixels, x0: Int) = (0 until 100).sumOf { y -> (x0 until x0 + 80).count { x -> out[x, y] == 0xFFFF0000.toInt() } }
         val bright = run(0)
-        assertTrue(red(bright, 10) == 0 && red(bright, 110) > 7000, "Bildhelligkeit: Noise nur rechts")
+        assertTrue(red(bright, 10) == 0 && red(bright, 110) > 7000, "picture brightness: noise only on the right")
         val dark = run(1)
-        assertTrue(red(dark, 110) == 0 && red(dark, 10) > 7000, "Bild dunkel: Noise nur links")
+        assertTrue(red(dark, 110) == 0 && red(dark, 10) > 7000, "picture darkness: noise only on the left")
     }
 
     @Test
@@ -80,31 +80,31 @@ class NoiseFieldTest {
         val out = pure("type" to 6, "scaleStart" to 40, "scaleEnd" to 40)
         // flat cells: most neighbouring pixels are equal
         val equal = (0 until 160).sumOf { y -> (0 until 239).count { x -> out[x, y] == out[x + 1, y] } }
-        assertTrue(equal > 160 * 239 * 0.9, "flache Zellen: $equal gleiche Nachbarn")
-        assertTrue(out.data.toSet().size > 10, "viele verschiedene Zellen")
+        assertTrue(equal > 160 * 239 * 0.9, "flat cells: $equal equal neighbors")
+        assertTrue(out.data.toSet().size > 10, "many different cells")
     }
 
     @Test
     fun `noise from the picture is made of the picture's colors and follows its forms`() {
-        // "Aus dem Bild" is the picture itself, pushed and shaded by the noise: without any noise
+        // "From the picture" is the picture itself, pushed and shaded by the noise: without any noise
         // contrast (and no picture shaping) nothing is pushed or shaded and the picture stays
         val flat = run("colorMode" to 3, "imageShape" to 0, "contrastStart" to 0, "contrastEnd" to 0)
-        assertContentEquals(src.data, flat.data, "ohne Noise-Kontrast bleibt das Bild")
+        assertContentEquals(src.data, flat.data, "without noise contrast the picture stays")
         val textured = run("colorMode" to 3)
-        assertTrue(!textured.data.contentEquals(src.data), "mit Noise entsteht Struktur")
+        assertTrue(!textured.data.contentEquals(src.data), "with noise structure appears")
 
         // the picture's shape flows into the noise: the grey noise gets brighter where the picture is bright
         val img = com.spielgrund.glitchr.image.Pixels(200, 100)
         for (y in 0 until 100) for (x in 0 until 200) img.data[y * 200 + x] = if (x < 100) 0xFF000000.toInt() else -1
         val shaped = NoiseField.apply(img, NoiseField.defaultValues(mapOf("colorMode" to 0, "imageShape" to 100)), 4L)
         fun mean(x0: Int) = (0 until 100).sumOf { y -> (x0 until x0 + 60).sumOf { x -> shaped[x, y] and 0xFF } } / 6000
-        assertTrue(mean(130) > mean(10) + 60, "hell: ${mean(130)}, dunkel: ${mean(10)}")
+        assertTrue(mean(130) > mean(10) + 60, "bright: ${mean(130)}, dark: ${mean(10)}")
     }
 
     @Test
     fun `cut out makes the picture transparent below the threshold`() {
         val out = run("mix" to 2, "threshold" to 50, "softness" to 1)
         val transparent = out.data.count { alpha(it) == 0 }
-        assertTrue(transparent in 1 until out.data.size, "teilweise ausgeschnitten: $transparent")
+        assertTrue(transparent in 1 until out.data.size, "partly cut out: $transparent")
     }
 }

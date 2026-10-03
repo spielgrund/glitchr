@@ -4,9 +4,9 @@ import com.spielgrund.glitchr.image.Pixels
 
 /**
  * Makes a picture from nothing, for a generator layer: one of the pattern or noise
- * effects run on a canvas filled with the base color ("Grundfarbe"). Settings that only
+ * effects run on a canvas filled with the base color ("Base color"). Settings that only
  * make sense with a picture below are fixed by [overrides] and left out of [params];
- * where an effect still asks for the picture (its colors, "Originalbild" as background),
+ * where an effect still asks for the picture (its colors, "Original picture" as background),
  * it gets the base color.
  *
  * [effect] null gives a plain color area. Without [withBase] the effect covers the
@@ -28,10 +28,10 @@ class Generator(
     withBase: Boolean = true,
 ) {
     val params: List<Param> =
-        listOfNotNull(Param.Color(BASE, "Grundfarbe", defaultBase, "Fläche, auf der das Muster entsteht").takeIf { withBase }) +
+        listOfNotNull(Param.Color(BASE, "Base color", defaultBase, "Area the pattern is created on").takeIf { withBase }) +
             (effect?.params?.filter { it.key !in hidden } ?: emptyList()) + positionParams
 
-    /** Whether "Neu würfeln" makes sense. */
+    /** Whether "Reroll" makes sense. */
     val random get() = effect?.random ?: false
 
     /** All values, including the fixed ones of hidden settings. */
@@ -73,11 +73,11 @@ class Generator(
         /** Position of the made picture, for every generator. */
         private val positionParams = listOf(
             Param.Heading("posHeading", "Position"),
-            Param.Slider(POS_X, "Verschieben X", -50000, 50000, 0, " px", decimals = 1),
-            Param.Slider(POS_Y, "Verschieben Y", -50000, 50000, 0, " px", decimals = 1),
-            Param.Slider(POS_SCALE, "Skalierung", 10, 10000, 1000, " %", decimals = 1, tip = "Um die Mitte der Leinwand"),
-            Param.Slider(POS_ROTATION, "Drehung", -1800, 1800, 0, "°", decimals = 1, tip = "Um die Mitte der Leinwand"),
-            Param.Choice(POS_EDGE, "Rand", Transform.edgeOptions, 0, "Was ausserhalb des erzeugten Bilds hereinkommt"),
+            Param.Slider(POS_X, "Shift X", -50000, 50000, 0, " px", decimals = 1),
+            Param.Slider(POS_Y, "Shift Y", -50000, 50000, 0, " px", decimals = 1),
+            Param.Slider(POS_SCALE, "Scale", 10, 10000, 1000, " %", decimals = 1, tip = "Around the middle of the canvas"),
+            Param.Slider(POS_ROTATION, "Rotation", -1800, 1800, 0, "°", decimals = 1, tip = "Around the middle of the canvas"),
+            Param.Choice(POS_EDGE, "Edge", Transform.edgeOptions, 0, "What comes in from outside the generated picture"),
         )
     }
 }
@@ -86,63 +86,63 @@ class Generator(
 object Generators {
     val all: List<Generator> = listOf(
         Generator(
-            "color", "Farbfläche", "Eine einfarbige Fläche – Grundlage für Effekte", null,
+            "color", "Color fill", "A single-color area – a base for effects", null,
             defaultBase = 0x808080,
         ),
         Generator(
-            "gradient", "Gradient", "Farbverlauf: linear, gespiegelt, radial, Winkel, Raute oder Quadrat; mit Wiederholungen und Stufen",
+            "gradient", "Gradient", "Color gradient: linear, mirrored, radial, angle, diamond or square; with repeats and steps",
             Gradient, withBase = false,
         ),
         Generator(
-            "moire", "Moiré", "Zwei Linienmuster (Linien, Ringe, Strahlen, Spirale, Gitter, Punkte …) übereinander, die Moiré-Muster bilden",
+            "moire", "Moiré", "Two line patterns (lines, rings, rays, spiral, grid, dots …) over each other that form moiré patterns",
             Moire, withBase = false,
         ),
         Generator(
-            "mandala", "Mandala", "Ringe aus symmetrisch wiederholten Motiven – „Neu würfeln“ gibt ein neues Mandala",
+            "mandala", "Mandala", "Rings of symmetrically repeated motifs – “Reroll” gives a new mandala",
             Mandala, withBase = false,
         ),
         Generator(
-            "spirograph", "Spirograph", "Wie die Schablone: ein Zahnrad rollt in einem Ring, der Stift im Loch zeichnet Spiralmuster",
+            "spirograph", "Spirograph", "Like the stencil: a gear rolls inside a ring, the pen in the hole draws spiral patterns",
             Spirograph, withBase = false,
         ),
         Generator(
-            "noise", "Noise", "Gerichteter Noise, schwarzweiss oder in zwei Farben: Perlin, Fraktal, Ridged, Worley, Wert, Weiss, Voronoi", NoiseField,
+            "noise", "Noise", "Directional noise, black and white or in two colors: Perlin, fractal, ridged, Worley, value, white, Voronoi", NoiseField,
             overrides = mapOf(
                 "type" to 1, "scaleStart" to 40, "scaleEnd" to 160, "contrastStart" to 220, "contrastEnd" to 220,
-                // black and white to start with; "Zwei Farben", so other colors are one click away
+                // black and white to start with; "Two colors", so other colors are one click away
                 "colorMode" to 1, "color1" to 0x000000, "color2" to 0xFFFFFF, "mix" to 0, "control" to 3, "imageShape" to 0,
             ),
             hidden = setOf("imageShape", "control", "noiseInfluence"),
             defaultBase = 0x000000,
         ),
         Generator(
-            "pattern", "Farbmuster", "Geometrische Muster als Farbverlauf: Streifen, Schachbrett, Sechsecke, Ringe, Truchet …",
+            "pattern", "Color pattern", "Geometric patterns as a color gradient: stripes, checkerboard, hexagons, rings, Truchet …",
             ColorPattern,
             overrides = mapOf("mapping" to 4),
             hidden = setOf("colors"),
         ),
         Generator(
-            "geometric", "Geometrisch", "Op-Art-Muster aus Bändern und Linien, schwarzweiss oder als Verlauf", Geometric,
+            "geometric", "Geometric", "Op-art patterns of bands and lines, black and white or as a gradient", Geometric,
             hidden = setOf("colors"),
         ),
         Generator(
-            "generative", "Generativ", "Generative Linienmuster: Bänder, Fliesslinien, Moiré, Spiegelkacheln", Generative,
+            "generative", "Generative", "Generative line patterns: bands, flow lines, moiré, mirror tiles", Generative,
             overrides = mapOf("field" to 0, "colorMode" to 2),
             hidden = setOf("field", "darkDense"),
         ),
         Generator(
-            "grid", "Raster", "Gleichmässige Rastermodule: Punkte, Kreise, Strahlen, Schraffur, Streifen, Moiré-Gitter", GridModules,
+            "grid", "Grid", "Even grid modules: dots, circles, rays, hatching, stripes, moiré grid", GridModules,
             overrides = mapOf("influence" to 0),
             hidden = setOf("influence", "invert", "colorMode"),
         ),
         Generator(
-            "ridgelines", "Spektroskop", "Gestapelte Noise-Linien wie ein Spektrogramm – oder das Cover von „Unknown Pleasures“", Ridgelines,
+            "ridgelines", "Spectroscope", "Stacked noise lines like a spectrogram – or the cover of “Unknown Pleasures”", Ridgelines,
             overrides = mapOf("source" to 2, "focus" to 70),
             hidden = setOf("source"),
             defaultBase = 0x000000,
         ),
         Generator(
-            "chars", "Zeichen", "Text oder Zeichen als Muster über die ganze Fläche", Characters,
+            "chars", "Characters", "Text or characters as a pattern across the whole area", Characters,
             overrides = mapOf("set" to Characters.OWN_TEXT, "colorMode" to 1),
             hidden = setOf("invert", "scaleByBrightness"),
             defaultBase = 0x000000,

@@ -35,7 +35,7 @@ class NewEffectsTest {
         var mismatches = 0
         for (y in 0 until 200) for (x in 0 until 100) if (!close(out[x, y], out[199 - x, y])) mismatches++
         for (y in 0 until 100) for (x in 0 until 200) if (!close(out[x, y], out[x, 199 - y])) mismatches++
-        assertTrue(mismatches < 400, "$mismatches Pixel unsymmetrisch")
+        assertTrue(mismatches < 400, "$mismatches pixels asymmetric")
         ImageIO.write(out.toImage(), "png", File(dir, "kaleido.png"))
     }
 
@@ -43,10 +43,10 @@ class NewEffectsTest {
     fun `nested folds change the picture and keep the outer symmetry`() {
         val single = run(Kaleidoscope, "segments" to 4)
         val nested = run(Kaleidoscope, "segments" to 4, "levels" to 3, "innerSegments" to 5, "innerDistance" to 40)
-        assertTrue(!single.data.contentEquals(nested.data), "innere Faltung ändert das Bild")
+        assertTrue(!single.data.contentEquals(nested.data), "inner fold changes the picture")
         var mismatches = 0
         for (y in 0 until 200) for (x in 0 until 100) if (!close(nested[x, y], nested[199 - x, y])) mismatches++
-        assertTrue(mismatches < 400, "äussere Symmetrie bleibt: $mismatches Abweichungen")
+        assertTrue(mismatches < 400, "outer symmetry stays: $mismatches differences")
         ImageIO.write(nested.toImage(), "png", File(dir, "kaleido-nested.png"))
     }
 
@@ -55,7 +55,7 @@ class NewEffectsTest {
         for ((effect, pattern) in (0..8).map { ColorPattern to it } + (0..9).map { Geometric to it }) {
             val out = run(effect, "pattern" to pattern, "colors" to 4, "size" to 20, "mapping" to 0, "smoothing" to 0)
             val palette = dominantColors(src, 4, 5L).toSet()
-            assertTrue(out.data.all { it in palette }, "${effect.name} $pattern nutzt nur Palettenfarben")
+            assertTrue(out.data.all { it in palette }, "${effect.name} $pattern uses only palette colors")
             ImageIO.write(out.toImage(), "png", File(dir, "${effect.id}-$pattern.png"))
         }
     }
@@ -65,8 +65,8 @@ class NewEffectsTest {
         val allowed = setOf(0xFF000000.toInt(), -1, 0xFF8C8C8C.toInt())
         for ((effect, pattern) in (0..8).map { ColorPattern to it } + (0..9).map { Geometric to it }) {
             val out = run(effect, "pattern" to pattern, "mapping" to 3, "size" to 20, "smoothing" to 0)
-            assertTrue(out.data.all { it in allowed }, "${effect.name} $pattern in Schwarz/Weiss")
-            assertTrue(out.data.toSet().size >= 2, "${effect.name} $pattern hat mehr als eine Farbe")
+            assertTrue(out.data.all { it in allowed }, "${effect.name} $pattern in black and white")
+            assertTrue(out.data.toSet().size >= 2, "${effect.name} $pattern has more than one color")
         }
     }
 
@@ -74,8 +74,8 @@ class NewEffectsTest {
     fun `smoothing softens the edges`() {
         val hard = run(Geometric, "pattern" to 3, "mapping" to 3, "smoothing" to 0).data.toSet().size
         val soft = run(Geometric, "pattern" to 3, "mapping" to 3, "smoothing" to 2).data.toSet().size
-        assertEquals(2, hard, "ohne Glättung nur Schwarz und Weiss")
-        assertTrue(soft > 10, "mit Glättung Zwischentöne an den Kanten: $soft")
+        assertEquals(2, hard, "without anti-aliasing only black and white")
+        assertTrue(soft > 10, "with anti-aliasing intermediate tones at the edges: $soft")
     }
 
     @Test
@@ -85,9 +85,9 @@ class NewEffectsTest {
         for (mapping in 4..5) {
             val out = run(Geometric, "pattern" to 4, "mapping" to mapping, "smoothing" to 0, "color1" to c1, "color2" to c2, "background" to 0x00FF00)
             val lines = out.data.filter { (it shr 8 and 0xFF) == 0 }
-            assertTrue(lines.any { (it shr 16 and 0xFF) > 200 } && lines.any { (it and 0xFF) > 200 }, "Verlauf $mapping hat beide Enden")
-            assertTrue(lines.any { (it shr 16 and 0xFF) in 60..190 }, "Verlauf $mapping hat Zwischenstufen")
-            assertTrue(out.data.any { it == 0xFF00FF00.toInt() }, "Hintergrundfarbe zwischen den Linien")
+            assertTrue(lines.any { (it shr 16 and 0xFF) > 200 } && lines.any { (it and 0xFF) > 200 }, "gradient $mapping has both ends")
+            assertTrue(lines.any { (it shr 16 and 0xFF) in 60..190 }, "gradient $mapping has intermediate steps")
+            assertTrue(out.data.any { it == 0xFF00FF00.toInt() }, "background color between the lines")
             ImageIO.write(out.toImage(), "png", File(dir, "geometric-gradient-$mapping.png"))
         }
     }
@@ -98,10 +98,10 @@ class NewEffectsTest {
         val out = run(ColorPattern, "pattern" to 0, "mapping" to 6, "size" to 20, "smoothing" to 0, "color1" to 0x000000, "color2" to 0xFFFFFF)
         val row = (0 until out.width).map { out[it, 10] and 0xFF }
         val start = (1 until out.width - 40).first { row[it] < row[it - 1] - 100 } // where a ramp begins again
-        assertTrue(row[start] < 8, "Oberkante des dunklen Streifens ist Farbe 1: ${row[start]}")
-        assertTrue(row[start + 10] in 50..90, "ein Viertel des Paars: ${row[start + 10]}")
-        assertTrue(row[start + 30] in 170..210, "drei Viertel des Paars: ${row[start + 30]}")
-        assertTrue(row[start + 39] > 240, "Unterkante des hellen Streifens ist fast Farbe 2: ${row[start + 39]}")
+        assertTrue(row[start] < 8, "top edge of the dark stripe is color 1: ${row[start]}")
+        assertTrue(row[start + 10] in 50..90, "a quarter of the pair: ${row[start + 10]}")
+        assertTrue(row[start + 30] in 170..210, "three quarters of the pair: ${row[start + 30]}")
+        assertTrue(row[start + 39] > 240, "bottom edge of the light stripe is almost color 2: ${row[start + 39]}")
         for (pattern in 0..9) {
             val g = run(Geometric, "pattern" to pattern, "mapping" to 6)
             ImageIO.write(g.toImage(), "png", File(dir, "geometric-ramp-$pattern.png"))
@@ -113,7 +113,7 @@ class NewEffectsTest {
         val red = 0xFFFF0000.toInt()
         val blue = 0xFF0000FF.toInt()
         val img = Pixels(100, 100, IntArray(10000) { if (it < 7000) red else blue })
-        assertEquals(listOf(red, blue), dominantColors(img, 2, 1L).toList(), "häufigste Farbe zuerst")
+        assertEquals(listOf(red, blue), dominantColors(img, 2, 1L).toList(), "most frequent color first")
     }
 
     @Test
@@ -142,8 +142,8 @@ class NewEffectsTest {
             run(Particles, "background" to 2, "abstraction" to 0, "density" to density, "detail" to 0, "opacity" to 100, image = img)
         val big = longestRun(shapes(flat, 100))
         val tiny = longestRun(shapes(checker, 100))
-        assertTrue(big > 50, "grosse Fläche, grosse Partikel: $big")
-        assertTrue(tiny < 12, "winzige Flächen, winzige Partikel: $tiny")
+        assertTrue(big > 50, "large area, large particles: $big")
+        assertTrue(tiny < 12, "tiny areas, tiny particles: $tiny")
     }
 
     @Test
@@ -158,7 +158,7 @@ class NewEffectsTest {
         }
         val means = spread(0)
         val originals = spread(100)
-        assertTrue(originals > means + 15, "Farbspanne ohne Vielfalt $means, mit voller Vielfalt $originals")
+        assertTrue(originals > means + 15, "color range without variety $means, with full variety $originals")
     }
 
     @Test
@@ -178,16 +178,16 @@ class NewEffectsTest {
         ).data.count { alpha(it) > 0 } / 57600.0
         val small = coverage(50)
         val large = coverage(300)
-        assertTrue(small > 0.85, "kleine Partikel decken: $small")
-        assertTrue(large >= small - 0.05, "grosse Partikel decken nicht weniger: klein $small, gross $large")
+        assertTrue(small > 0.85, "small particles cover: $small")
+        assertTrue(large >= small - 0.05, "large particles don't cover less: small $small, large $large")
     }
 
     @Test
     fun `shapes on a transparent background stay near the picture`() {
         val placed = ImageLayer(testImage(100, 100)).apply { x = 50.0; y = 50.0 }.placed(200, 200)
         val out = run(Particles, "background" to 2, "abstraction" to 10, image = placed)
-        assertEquals(0, alpha(out[5, 5]), "fern vom Bild bleibt es durchsichtig")
-        assertTrue(alpha(out[100, 100]) > 0, "im Bild sind Formen")
+        assertEquals(0, alpha(out[5, 5]), "far from the picture it stays transparent")
+        assertTrue(alpha(out[100, 100]) > 0, "shapes inside the picture")
         for (form in 0..5) ImageIO.write(run(Particles, "form" to form).toImage(), "png", File(dir, "shapes-$form.png"))
     }
 }

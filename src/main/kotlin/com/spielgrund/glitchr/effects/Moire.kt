@@ -30,43 +30,43 @@ import kotlin.math.sqrt
  * lines meet. Blurring the result wipes out the fine lines and leaves only the moiré.
  * Only used as a generator; the input only gives the size.
  */
-object Moire : Effect("moire", "Moiré", "Zwei Linienmuster übereinander, die sich zu Moiré-Mustern überlagern") {
-    private val types = listOf("Linien", "Ringe", "Strahlen", "Spirale", "Gitter", "Punkte", "Schachbrett", "Zonenplatte")
-    private val mixes = listOf("Überdrucken", "B deckt A", "Differenz (XOR)", "Licht (Addieren)", "Nur Überschneidung")
+object Moire : Effect("moire", "Moiré", "Two line patterns over each other that combine into moiré patterns") {
+    private val types = listOf("Lines", "Rings", "Rays", "Spiral", "Grid", "Dots", "Checkerboard", "Zone plate")
+    private val mixes = listOf("Overprint", "B covers A", "Difference (XOR)", "Light (add)", "Intersection only")
 
     private fun pattern(p: String, name: String, angle: Int) = listOf(
         Param.Heading("${p}Heading", name),
-        Param.Choice("${p}Type", "Muster", types),
+        Param.Choice("${p}Type", "Pattern", types),
         Param.Slider(
-            "${p}Spacing", "Abstand", 10, 2000, 80, " px", decimals = 1,
-            tip = "Abstand der Linien; Strahlen: Abstand am Rand eines Kreises über die halbe Leinwand. Zonenplatte: Abstand dort",
+            "${p}Spacing", "Spacing", 10, 2000, 80, " px", decimals = 1,
+            tip = "Spacing of the lines; rays: spacing at the edge of a circle over half the canvas. Zone plate: spacing there",
         ),
-        Param.Slider("${p}Width", "Strichstärke", 3, 97, 50, " %", "Anteil der Linie am Abstand; Punkte: Fläche der Punkte"),
-        Param.Slider("${p}Angle", "Winkel", 0, 36000, angle, "°", decimals = 2, tip = "Schon Bruchteile eines Grads ändern das Moiré stark"),
-        Param.Slider("${p}CenterX", "Mitte X", -1000, 2000, 500, " %", decimals = 1, tip = "Mitte für Ringe, Strahlen, Spirale; verschiebt die anderen Muster"),
-        Param.Slider("${p}CenterY", "Mitte Y", -1000, 2000, 500, " %", decimals = 1),
+        Param.Slider("${p}Width", "Line width", 3, 97, 50, " %", "Share of the line in the spacing; dots: area of the dots"),
+        Param.Slider("${p}Angle", "Angle", 0, 36000, angle, "°", decimals = 2, tip = "Even fractions of a degree change the moiré a lot"),
+        Param.Slider("${p}CenterX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Center for rings, rays, spiral; shifts the other patterns"),
+        Param.Slider("${p}CenterY", "Center Y", -1000, 2000, 500, " %", decimals = 1),
         Param.Slider(
             "${p}StretchX", "Stretch X", 10, 1000, 100, " %",
-            "Zieht das Muster in seiner eigenen X-Richtung auseinander (dreht mit dem Winkel mit); Ringe werden zu Ellipsen",
+            "Pulls the pattern apart in its own X direction (rotates with the angle); rings become ellipses",
         ),
-        Param.Slider("${p}StretchY", "Stretch Y", 10, 1000, 100, " %", "Zieht das Muster in seiner eigenen Y-Richtung auseinander"),
-        Param.Slider("${p}WaveAmp", "Welle", 0, 2000, 0, " px", decimals = 1, tip = "Biegt das Muster quer zu seiner Richtung in Wellen"),
-        Param.Slider("${p}WaveLen", "Wellenlänge", 10, 3000, 300, " px"),
+        Param.Slider("${p}StretchY", "Stretch Y", 10, 1000, 100, " %", "Pulls the pattern apart in its own Y direction"),
+        Param.Slider("${p}WaveAmp", "Wave", 0, 2000, 0, " px", decimals = 1, tip = "Bends the pattern into waves across its direction"),
+        Param.Slider("${p}WaveLen", "Wavelength", 10, 3000, 300, " px"),
     )
 
-    override val params = pattern("a", "Muster A", 0) + pattern("b", "Muster B", 500) + listOf(
-        Param.Heading("mixHeading", "Überlagerung"),
+    override val params = pattern("a", "Pattern A", 0) + pattern("b", "Pattern B", 500) + listOf(
+        Param.Heading("mixHeading", "Compositing"),
         Param.Choice(
-            "mix", "Mischen", mixes,
-            tip = "Überdrucken: die Linien liegen auf dem Hintergrund, wo sie sich kreuzen, mischen sich ihre Farben wie Druckfarben. B deckt A: B liegt deckend darüber. Differenz: wo sich die Linien treffen, " +
-                "verschwinden sie. Licht: die Linien leuchten und addieren sich (auf dunklem Hintergrund). Nur Überschneidung: nur wo beide Linien liegen",
+            "mix", "Mix", mixes,
+            tip = "Overprint: the lines lie on the background, where they cross their colors mix like printing inks. B covers A: B lies opaquely on top. Difference: where the lines meet " +
+                "they vanish. Light: the lines glow and add up (on a dark background). Intersection only: only where both lines lie",
         ),
-        Param.Color("colorA", "Farbe A", 0x000000),
-        Param.Color("colorB", "Farbe B", 0x000000),
-        Param.Color("background", "Hintergrund", 0xFFFFFF),
-        Param.Slider("blur", "Nur Moiré", 0, 100, 0, " px", "Weichzeichnen, bis die feinen Linien verschwinden und nur die Moiré-Bänder bleiben"),
-        Param.Toggle("autoContrast", "Kontrast strecken", true, "Nur mit „Nur Moiré“: die flauen Bänder auf vollen Kontrast ziehen"),
-        Param.Choice("smoothing", "Kantenglättung", listOf("Aus (hartes Aliasing)", "Normal (3×3)", "Hoch (5×5)"), 1, "Mehrere Stichproben je Pixel"),
+        Param.Color("colorA", "Color A", 0x000000),
+        Param.Color("colorB", "Color B", 0x000000),
+        Param.Color("background", "Background", 0xFFFFFF),
+        Param.Slider("blur", "Moiré only", 0, 100, 0, " px", "Blurs until the fine lines vanish and only the moiré bands remain"),
+        Param.Toggle("autoContrast", "Stretch contrast", true, "Only with “Moiré only”: pulls the flat bands to full contrast"),
+        Param.Choice("smoothing", "Anti-aliasing", listOf("Off (hard aliasing)", "Normal (3×3)", "High (5×5)"), 1, "Several samples per pixel"),
     )
 
     override val random = false

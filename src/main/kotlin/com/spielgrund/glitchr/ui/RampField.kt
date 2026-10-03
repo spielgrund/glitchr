@@ -28,7 +28,7 @@ private const val HANDLE_W = 10
 private const val HANDLE_H = 14
 
 /**
- * A color ramp with a "Vorlage…" box and "Umkehren" above its [GradientEditor]; every
+ * A color ramp with a "Preset…" box and "Invert" above its [GradientEditor]; every
  * change goes to [onChange] as the ramp's text.
  */
 class RampField(text: String, onChange: (String) -> Unit) : JPanel(BorderLayout(0, 4)) {
@@ -36,7 +36,7 @@ class RampField(text: String, onChange: (String) -> Unit) : JPanel(BorderLayout(
         isOpaque = false
         val editor = GradientEditor(ColorRamp.parse(text)) { onChange(it.format()) }
         val presets = JComboBox<Any>().apply {
-            addItem("Vorlage…")
+            addItem("Preset…")
             RampPalette.entries.forEach(::addItem)
             addActionListener {
                 // a preset applies once; the box snaps back, later edits make it stale
@@ -49,7 +49,7 @@ class RampField(text: String, onChange: (String) -> Unit) : JPanel(BorderLayout(
             isOpaque = false
             add(presets)
             add(javax.swing.Box.createHorizontalStrut(6))
-            add(JButton("Umkehren").apply { addActionListener { editor.gradient = editor.gradient.reversed() } })
+            add(JButton("Invert").apply { addActionListener { editor.gradient = editor.gradient.reversed() } })
         }, BorderLayout.NORTH)
         add(editor, BorderLayout.CENTER)
     }
@@ -77,8 +77,8 @@ class GradientEditor(initial: ColorRamp, private val onChange: (ColorRamp) -> Un
     init {
         preferredSize = Dimension(300, BAR_HEIGHT + HANDLE_H + 8)
         minimumSize = Dimension(120, BAR_HEIGHT + HANDLE_H + 8)
-        toolTipText = "<html>Klicken: Farbpunkt hinzufügen · Ziehen: verschieben<br>" +
-            "Doppelklick: Farbe wählen · Rechtsklick: entfernen</html>"
+        toolTipText = "<html>Click: add a color stop · Drag: move<br>" +
+            "Double-click: choose color · Right-click: remove</html>"
 
         val mouse = object : MouseAdapter() {
             override fun mousePressed(e: MouseEvent) {
@@ -136,7 +136,7 @@ class GradientEditor(initial: ColorRamp, private val onChange: (ColorRamp) -> Un
     }
 
     private fun pickColor(index: Int) {
-        val color = JColorChooser.showDialog(this, "Farbe wählen", Color(stops[index].rgb)) ?: return
+        val color = JColorChooser.showDialog(this, "Choose color", Color(stops[index].rgb)) ?: return
         stops[index] = stops[index].copy(rgb = color.rgb and 0xffffff)
         selected = index
         changed()

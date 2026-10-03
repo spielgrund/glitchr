@@ -15,29 +15,29 @@ import kotlin.random.Random
  * saturation, hue, a channel …) lies between the thresholds keeps its pixels in their
  * order and is stretched by a length:
  *
- * - Überlagern: like Pixelbleed, the stretched run lies over the pixels after it; they
+ * - Overlay: like Pixelbleed, the stretched run lies over the pixels after it; they
  *   are covered and don't start runs of their own.
- * - Schieben: like Pixelsort, the pixels after the run are pushed along by the stretch;
+ * - Push: like Pixelsort, the pixels after the run are pushed along by the stretch;
  *   what is pushed past the end of the line drops out – or moves into the empty canvas.
  */
-object PixelStretch : Effect("pixelstretch", "Pixelstretch", "Zieht Pixel in einem Helligkeits-, Farb- oder Sättigungsbereich in die Länge – über die folgenden Pixel oder sie vor sich her schiebend") {
+object PixelStretch : Effect("pixelstretch", "Pixelstretch", "Stretches pixels in a brightness, color or saturation range – over the following pixels or pushing them ahead") {
     override val params = listOf(
         Param.Choice(
-            "variant", "Variante", listOf("Überlagern", "Schieben"),
-            tip = "Überlagern: die gezogenen Pixel liegen über den folgenden. Schieben: die folgenden Pixel werden um die Länge weitergeschoben",
+            "variant", "Variant", listOf("Overlay", "Push"),
+            tip = "Overlay: the stretched pixels lie over the following ones. Push: the following pixels are pushed on by the length",
         ),
-        Param.Slider("angle", "Winkel", 0, 359, 90, "°", "Richtung: 0° nach rechts, 90° nach unten, 180° nach links, 270° nach oben"),
-        Param.Choice("thresholdMode", "Schwelle nach", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
-        Param.Slider("lower", "Untere Schwelle", 0, 255, 160, tip = "Pixel mit kleinerem Wert werden nicht gezogen; beim Farbton darf sie über der oberen liegen (Bereich über Rot hinweg)"),
-        Param.Slider("upper", "Obere Schwelle", 0, 255, 255, tip = "Pixel mit grösserem Wert werden nicht gezogen"),
-        Param.Toggle("invert", "Bereich umkehren", false, "Zieht die Pixel ausserhalb der Schwellen"),
-        Param.Slider("length", "Länge", 1, 3000, 80, " px", "Um so viele Pixel wird jede Strecke länger; höchstens die längere Seite der Leinwand", canvasMax = true),
-        Param.Slider("jitter", "Längen-Zufall", 0, 100, 60, " %", "Verkürzt die Länge jeder Strecke zufällig; 0 % = alle gleich lang"),
+        Param.Slider("angle", "Angle", 0, 359, 90, "°", "Direction: 0° to the right, 90° down, 180° to the left, 270° up"),
+        Param.Choice("thresholdMode", "Threshold by", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
+        Param.Slider("lower", "Lower threshold", 0, 255, 160, tip = "Pixels with a smaller value are not stretched; for hue it may lie above the upper one (a range across red)"),
+        Param.Slider("upper", "Upper threshold", 0, 255, 255, tip = "Pixels with a larger value are not stretched"),
+        Param.Toggle("invert", "Invert range", false, "Stretches the pixels outside the thresholds"),
+        Param.Slider("length", "Length", 1, 3000, 80, " px", "Every run gets this many pixels longer; at most the longer side of the canvas", canvasMax = true),
+        Param.Slider("jitter", "Length variation", 0, 100, 60, " %", "Shortens the length of every run randomly; 0 % = all equally long"),
         Param.Slider(
-            "maxRun", "Max. Strecke", 0, 3000, 1, " px",
-            "Wie viele Pixel im Bereich höchstens zusammen gezogen werden; 1 = jeder Pixel einzeln, 0 = unbegrenzt", canvasMax = true,
+            "maxRun", "Max. run", 0, 3000, 1, " px",
+            "How many pixels in the range are stretched together at most; 1 = every pixel on its own, 0 = unlimited", canvasMax = true,
         ),
-        Param.Choice("block", "Blockgrösse", blockOptions, tip = "Zieht grosse Pixel: die gezogenen Strecken werden aus n×n-Blöcken gebaut"),
+        Param.Choice("block", "Block size", blockOptions, tip = "Stretches big pixels: the stretched runs are built from n×n blocks"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -88,7 +88,7 @@ object PixelStretch : Effect("pixelstretch", "Pixelstretch", "Zieht Pixel in ein
     private fun stretched(line: IntArray, from: Int, to: Int, total: Int, j: Int) =
         line[from + (j.toLong() * (to - from) / total).toInt()]
 
-    /** Überlagern: each run is stretched over the pixels after it; covered pixels start no run. */
+    /** Overlay: each run is stretched over the pixels after it; covered pixels start no run. */
     private inline fun coverLine(
         line: IntArray, out: IntArray, moved: BooleanArray, selected: (Int) -> Boolean, maxRun: Int, extra: () -> Int,
     ) {

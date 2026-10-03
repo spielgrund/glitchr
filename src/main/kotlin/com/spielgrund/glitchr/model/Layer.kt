@@ -19,12 +19,12 @@ import kotlin.random.Random
 /** How a layer is combined with what lies below it. */
 enum class BlendMode(val label: String, private val f: (Int, Int) -> Int) {
     NORMAL("Normal", { _, t -> t }),
-    LIGHTEN("Aufhellen", { b, t -> max(b, t) }),
-    DARKEN("Abdunkeln", { b, t -> min(b, t) }),
-    SCREEN("Negativ multiplizieren", { b, t -> 255 - (255 - b) * (255 - t) / 255 }),
-    MULTIPLY("Multiplizieren", { b, t -> b * t / 255 }),
-    ADD("Addieren", { b, t -> min(255, b + t) }),
-    DIFFERENCE("Differenz", { b, t -> abs(b - t) });
+    LIGHTEN("Screen", { b, t -> max(b, t) }),
+    DARKEN("Darken", { b, t -> min(b, t) }),
+    SCREEN("Screen", { b, t -> 255 - (255 - b) * (255 - t) / 255 }),
+    MULTIPLY("Multiply", { b, t -> b * t / 255 }),
+    ADD("Add", { b, t -> min(255, b + t) }),
+    DIFFERENCE("Difference", { b, t -> abs(b - t) });
 
     fun apply(base: Int, top: Int): Int =
         if (this == NORMAL) top
@@ -61,7 +61,7 @@ sealed class Layer(val id: Int) {
     abstract fun state(): LayerState
 
     protected fun copyCommonTo(copy: Layer) {
-        copy.name = "$name Kopie"
+        copy.name = "$name copy"
         copy.visible = visible
         copy.opacity = opacity
         copy.blend = blend
@@ -75,7 +75,7 @@ interface ParamLayer {
     val values: MutableMap<String, Int>
     val texts: MutableMap<String, String>
 
-    /** Whether the result depends on the seed, i.e. whether "Neu würfeln" makes sense. */
+    /** Whether the result depends on the seed, i.e. whether "Reroll" makes sense. */
     val random: Boolean
 
     fun defaults(): Map<String, Int>
@@ -150,7 +150,7 @@ class GeneratorLayer(val generator: Generator, id: Int = newId()) : SourceLayer(
  * drawn [scale] times its own size and turned by [rotation] degrees around its middle.
  */
 class ImageLayer(val image: Pixels, id: Int = newId()) : SourceLayer(id) {
-    override var name = "Bild"
+    override var name = "Picture"
     var x = 0.0
     var y = 0.0
     var scale = 1.0
