@@ -16,9 +16,52 @@ import javax.swing.JSpinner
 import javax.swing.SpinnerNumberModel
 import javax.swing.SwingUtilities
 
+/** Whether an animatable setting has keyframes, and one at the current frame. */
+enum class KeyState { NONE, ANIMATED, KEY }
+
+/**
+ * Animation of one setting in the editor: a diamond before its label shows [state]
+ * (◆ keyframe here, ◇ animated), clicking it calls [toggle], right-clicking the row opens [menu].
+ */
+class AnimHook(val state: () -> KeyState, val toggle: () -> Unit, val menu: () -> javax.swing.JPopupMenu)
+
+/** The diamond before an animatable setting; [refresh] after the frame or the keyframes changed. */
+class KeyMarker(private val hook: AnimHook) : JLabel() {
+    init {
+        preferredSize = Dimension(14, 14)
+        minimumSize = preferredSize
+        horizontalAlignment = CENTER
+        foreground = javax.swing.UIManager.getColor("Component.accentColor") ?: java.awt.Color(0x4C9AFF)
+        cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                if (SwingUtilities.isLeftMouseButton(e)) hook.toggle()
+            }
+        })
+        refresh()
+    }
+
+    fun refresh() {
+        val s = hook.state()
+        text = when (s) {
+            KeyState.NONE -> ""
+            KeyState.ANIMATED -> "◇"
+            KeyState.KEY -> "◆"
+        }
+        toolTipText = when (s) {
+            KeyState.NONE -> null
+            KeyState.ANIMATED -> "Animated – click: keyframe at this frame"
+            KeyState.KEY -> "Keyframe at this frame – click: remove it"
+        }
+    }
+}
+
 /** Two-column form (label | control) with section headings. */
 class Form : JPanel(GridBagLayout()) {
     private var row = 0
+
+    /** The diamonds of the animatable rows, to update them when the frame changes. */
+    val markers = mutableListOf<KeyMarker>()
 
     fun section(title: String) {
         val label = JLabel(title).apply { font = font.deriveFont(Font.BOLD) }
@@ -26,14 +69,41 @@ class Form : JPanel(GridBagLayout()) {
         add(JSeparator(), gbc(0, 2).apply { insets = Insets(0, 0, 4, 0) })
     }
 
-    fun row(label: String, control: JComponent, tip: String? = null) {
+    fun row(label: String, control: JComponent, tip: String? = null, anim: AnimHook? = null) {
         val l = JLabel(label)
         tip?.let { l.toolTipText = it; control.toolTipText = it }
-        add(l, gbc(0, 1).apply { weightx = 0.0; insets = Insets(2, 0, 2, 8) })
+        // labels without a diamond keep its place free, so all labels line up
+        if (anim == null) l.border = javax.swing.BorderFactory.createEmptyBorder(0, 16, 0, 0)
+        add(withMarker(l, anim, control), gbc(0, 1).apply { weightx = 0.0; insets = Insets(2, 0, 2, 8) })
         add(control, gbc(1, 1))
     }
 
-    fun full(control: JComponent) = add(control, gbc(0, 2))
+    fun full(control: JComponent, anim: AnimHook? = null) = add(withMarker(control, anim, control), gbc(0, 2))
+
+    /** [label] with the diamond before it; right-clicking the label or [control] opens the animation menu. */
+    private fun withMarker(label: JComponent, anim: AnimHook?, control: JComponent): JComponent {
+        if (anim == null) return label
+        val marker = KeyMarker(anim).also(markers::add)
+        val popup = object : MouseAdapter() {
+            override fun mousePressed(e: MouseEvent) = show(e)
+            override fun mouseReleased(e: MouseEvent) = show(e)
+            private fun show(e: MouseEvent) {
+                if (e.isPopupTrigger) anim.menu().show(e.component, e.x, e.y)
+            }
+        }
+        fun install(c: java.awt.Component) {
+            c.addMouseListener(popup)
+            (c as? java.awt.Container)?.components?.forEach(::install)
+        }
+        install(label)
+        if (control !== label) install(control)
+        install(marker)
+        return JPanel(java.awt.BorderLayout(2, 0)).apply {
+            isOpaque = false
+            add(marker, java.awt.BorderLayout.WEST)
+            add(label, java.awt.BorderLayout.CENTER)
+        }
+    }
 
     /** Pushes the rows to the top. */
     fun end() = add(JPanel().apply { isOpaque = false }, gbc(0, 2).apply { weighty = 1.0; fill = GridBagConstraints.BOTH })

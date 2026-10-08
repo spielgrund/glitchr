@@ -5,7 +5,14 @@ package com.spielgrund.glitchr.model
  * Equality ignores the selection, so selecting another layer doesn't create an undo
  * step. Pictures are compared by identity, which is enough because pixels are never modified.
  */
-data class DocState(val width: Int, val height: Int, val name: String, val layers: List<LayerMemento>) {
+data class DocState(
+    val width: Int,
+    val height: Int,
+    val name: String,
+    val layers: List<LayerMemento>,
+    /** The animation's length and frame rate; null without animation. */
+    val timeline: Timeline? = null,
+) {
     var selectedId: Int? = null
 }
 
