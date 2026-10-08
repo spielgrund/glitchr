@@ -19,7 +19,9 @@ import java.util.concurrent.ConcurrentHashMap
  * Renders the layer stack onto a transparent canvas. The stack is split into groups:
  * a source layer and the effect layers above it. Each group's picture is placed on the
  * canvas (or generated in canvas size), cut out by the source layer's mask, run through
- * its effects and then laid over the canvas below.
+ * its effects and then laid over the canvas below. An adjustment layer starts a group
+ * too: its picture is the canvas so far, and its result replaces the canvas through its
+ * mask, opacity and blend mode.
  *
  * Every step is cached and only recomputed when its input or its own settings
  * changed; inputs are compared by identity, which works because cached results are
@@ -46,7 +48,17 @@ class Renderer {
         var output: Pixels? = null
     }
 
+    private class AdjustmentEntry {
+        var below: Pixels? = null
+        var effectKey: Any? = null
+        var effect: Pixels? = null
+        var group: Pixels? = null
+        var compositeKey: Any? = null
+        var output: Pixels? = null
+    }
+
     private val effects = HashMap<Int, EffectEntry>()
+    private val adjustments = HashMap<Int, AdjustmentEntry>()
     private val images = HashMap<Int, ImageEntry>()
     private var empty: Pixels? = null
 
@@ -62,18 +74,22 @@ class Renderer {
         val ids = layers.map { it.id }.toSet()
         effects.keys.retainAll(ids)
         images.keys.retainAll(ids)
+        adjustments.keys.retainAll(ids)
         generatedPictures.keys.retainAll(ids)
 
         var canvas = empty?.takeIf { it.width == width && it.height == height } ?: Pixels(width, height).also { empty = it }
         val blank = canvas
         var i = 0
         while (i < layers.size) {
-            val image = layers[i] as? SourceState
+            val first = layers[i]
             var end = i + 1
-            while (end < layers.size && layers[end] !is SourceState) end++
-            if (image != null && image.visible && image.opacity > 0) {
+            while (end < layers.size && !layers[end].startsGroup) end++
+            if (first.visible && first.opacity > 0) {
                 val groupEffects = layers.subList(i + 1, end).filterIsInstance<EffectState>()
-                canvas = renderGroup(image, groupEffects, canvas, blank, width, height)
+                when {
+                    first is SourceState -> canvas = renderGroup(first, groupEffects, canvas, blank, width, height)
+                    first is EffectState && first.adjustment -> canvas = renderAdjustment(first, groupEffects, canvas)
+                }
             }
             i = end
         }
@@ -118,6 +134,33 @@ class Renderer {
             entry.group = group
             entry.compositeKey = compositeKey
         }
+        return entry.output!!
+    }
+
+    /**
+     * An adjustment layer: its effect works on everything below ([below]), the effects
+     * above it refine that, and the result is mixed back over [below] through the
+     * adjustment layer's mask, opacity and blend mode.
+     */
+    private fun renderAdjustment(layer: EffectState, groupEffects: List<EffectState>, below: Pixels): Pixels {
+        val entry = adjustments.getOrPut(layer.id) { AdjustmentEntry() }
+        val space = MaskSpace.canvas(below.width, below.height)
+        val effectKey = listOf(layer.effect.id, layer.values, layer.seed, layer.texts)
+        if (entry.below !== below || entry.effectKey != effectKey || entry.effect == null) {
+            entry.effect = layer.effect.apply(below, Values(layer.values, layer.texts), layer.seed)
+            entry.effectKey = effectKey
+            entry.output = null
+        }
+        var group = entry.effect!!
+        for (fx in groupEffects) group = applyEffect(fx, group, space)
+
+        val compositeKey = listOf(layer.maskVersion, layer.opacity, layer.blend)
+        if (entry.below !== below || entry.group !== group || entry.compositeKey != compositeKey || entry.output == null) {
+            entry.output = composite(below, group, layer, space)
+            entry.group = group
+            entry.compositeKey = compositeKey
+        }
+        entry.below = below
         return entry.output!!
     }
 

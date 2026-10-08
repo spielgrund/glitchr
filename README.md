@@ -32,6 +32,20 @@ effects of its own. Every layer has opacity, a blend mode and a mask.
 - Moving, duplicating and deleting an image layer takes its effects along.
 - “Original” (Ctrl+B) shows all image and generator layers without effects.
 
+## Adjustment layers
+
+An effect normally works only on the image or generator layer below it (with the other effects of
+that group). As an **adjustment layer** it works on everything below it instead – all layers already
+composited – like an adjustment layer in Photoshop; layers above it stay untouched.
+
+- Add one via **+ Adjustment ▾** next to “+ Effect” or Layer → **Add adjustment layer**; it goes
+  above the selected layer's group. The **Adjustment layer** switch in the properties panel turns
+  any effect layer into one and back.
+- In the layer list it is marked ◑ and heads a group of its own: effects directly above it refine its
+  result, and moving, duplicating and deleting it takes them along.
+- Its mask, opacity and blend mode decide how its result is laid over the picture below; the mask
+  spans the canvas.
+
 ## Starting without an image: generator layers
 
 “New…” (Ctrl+N) creates an empty canvas of any size (with presets such as HD, 4K, square,

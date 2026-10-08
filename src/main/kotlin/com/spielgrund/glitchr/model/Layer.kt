@@ -40,6 +40,8 @@ private val nextId = AtomicInteger()
  * An entry of the layer stack: a picture source ([SourceLayer]: a loaded picture or a
  * generated one) or an effect ([EffectLayer]). Effects work on the nearest source layer
  * below them; that picture with its effects is then laid over everything further down.
+ * An adjustment layer (an [EffectLayer] with [EffectLayer.adjustment]) instead takes
+ * everything below it as its picture, like an adjustment layer in Photoshop.
  */
 sealed class Layer(val id: Int) {
     companion object {
@@ -160,9 +162,14 @@ private fun ParamLayer.setParamProperty(key: String, value: Double) {
     }
 }
 
-/** A destructive effect applied to the source layer below it. */
+/**
+ * A destructive effect applied to the source layer below it – or, as an [adjustment]
+ * layer, to everything below it: then it starts a group of its own like a source layer,
+ * and effects above it refine its result.
+ */
 class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id), ParamLayer {
     override var name = effect.name
+    var adjustment = false
     override val values = effect.defaults()
     override val texts = effect.textDefaults()
     var seed = Random.nextLong()
@@ -181,6 +188,7 @@ class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id), ParamLayer
         copy.values.putAll(values)
         copy.texts.putAll(texts)
         copy.seed = seed
+        copy.adjustment = adjustment
     }
 
     override fun animatableKeys() = paramKeys() + AnimKeys.OPACITY
@@ -191,9 +199,10 @@ class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id), ParamLayer
 
     override fun memento() = EffectMemento(
         id, name, visible, canonicalOpacity(), blend, mask.memento(), effect, canonicalValues(values), seed, texts.toMap(), tracks.toMap(), seedPerFrame,
+        adjustment,
     )
 
-    override fun state() = EffectState(id, visible, opacity, blend, mask.shape(), mask.version, effect, values.toMap(), seed, texts.toMap())
+    override fun state() = EffectState(id, visible, opacity, blend, mask.shape(), mask.version, effect, values.toMap(), seed, texts.toMap(), adjustment)
 }
 
 /** A layer that brings a picture: effects above it work on it, up to the next source layer. */
@@ -367,8 +376,10 @@ data class EffectMemento(
     val texts: Map<String, String> = emptyMap(),
     override val tracks: Map<String, Track> = emptyMap(),
     override val seedPerFrame: Boolean = false,
+    val adjustment: Boolean = false,
 ) : LayerMemento {
     override fun toLayer() = EffectLayer(effect, id).also { l ->
+        l.adjustment = adjustment
         l.name = name
         l.visible = visible
         l.opacity = opacity
@@ -461,6 +472,8 @@ data class EffectState(
     val values: Map<String, Int>,
     val seed: Long,
     val texts: Map<String, String> = emptyMap(),
+    /** Works on everything below instead of the source layer below. */
+    val adjustment: Boolean = false,
 ) : LayerState
 
 /** What the renderer needs of a source layer. */
@@ -508,11 +521,17 @@ fun placement(width: Int, height: Int, x: Double, y: Double, scale: Double, rota
         scale(scale, scale)
     }
 
-/** The layers that belong to the source layer at [index]: itself and the effects above it. */
+/** Whether the layer begins a group: a source layer, or an adjustment layer working on everything below. */
+val Layer.startsGroup get() = this is SourceLayer || (this is EffectLayer && adjustment)
+
+/** Like [Layer.startsGroup], for the renderer. */
+val LayerState.startsGroup get() = this is SourceState || (this is EffectState && adjustment)
+
+/** The layers that belong to the group at [index]: its source or adjustment layer and the effects above it. */
 fun groupRange(layers: List<Layer>, index: Int): IntRange {
     var start = index
-    while (start > 0 && layers[start] !is SourceLayer) start--
+    while (start > 0 && !layers[start].startsGroup) start--
     var end = start
-    while (end + 1 < layers.size && layers[end + 1] !is SourceLayer) end++
+    while (end + 1 < layers.size && !layers[end + 1].startsGroup) end++
     return start..end
 }

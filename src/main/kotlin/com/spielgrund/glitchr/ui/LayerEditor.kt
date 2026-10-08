@@ -74,7 +74,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
 
     private fun buildHeader() {
         val (title, description) = when (layer) {
-            is EffectLayer -> layer.effect.name to layer.effect.description
+            is EffectLayer -> layer.effect.name to layer.effect.description +
+                if (layer.adjustment) ". Adjustment layer: works on all layers below it." else ""
             is ImageLayer -> "Image layer" to "Effects above work on this image. The result lies over the layers below."
             is GeneratorLayer -> "${layer.generator.name} (Generator)" to
                 "${layer.generator.description}. Creates an image the size of the canvas – effects above work on it like on an image layer."
@@ -95,6 +96,16 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             override fun changedUpdate(e: DocumentEvent) = update()
         })
         form.row("Name", name)
+        if (layer is EffectLayer) form.full(JCheckBox("Adjustment layer", layer.adjustment).apply {
+            toolTipText = "On: works on all layers below, like an adjustment layer in Photoshop – effects above it refine it · " +
+                "off: works only on the image or generator below it"
+            addActionListener {
+                layer.adjustment = isSelected
+                host.layerListChanged()
+                host.layerChanged()
+                host.rebuildEditor()
+            }
+        })
     }
 
     private fun buildParams(layer: ParamLayer, title: String) {

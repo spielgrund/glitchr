@@ -188,6 +188,8 @@ private data class LayerDto(
     /** Keyframes of the animated settings, by setting key. */
     val tracks: Map<String, List<KeyDto>> = emptyMap(),
     val seedPerFrame: Boolean = false,
+    /** Effect layers: works on everything below (adjustment layer). */
+    val adjustment: Boolean = false,
 )
 
 private data class AnimationDto(
@@ -229,6 +231,7 @@ private fun LayerMemento.toDto(maskPath: String?, imagePath: String?): LayerDto 
         is EffectMemento -> LayerDto(
             type = "effect", effect = effect.id, name = name, visible = visible, opacity = opacity,
             blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto, tracks = tracksDto(), seedPerFrame = seedPerFrame,
+            adjustment = adjustment,
         )
         is GeneratorMemento -> LayerDto(
             type = "generator", generator = generator.id, name = name, visible = visible, opacity = opacity,
@@ -317,6 +320,7 @@ private fun LayerDto.plainMemento(painted: PaintedMask?, image: (String) -> Pixe
         values = checkedValues(effect.params, effect.defaults(), values),
         seed = seed,
         texts = effect.textDefaults().apply { putAll(texts.filterKeys { it in keys }) },
+        adjustment = adjustment,
     )
 }
 

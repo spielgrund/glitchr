@@ -6,7 +6,7 @@ import com.spielgrund.glitchr.model.GeneratorLayer
 import com.spielgrund.glitchr.model.ImageLayer
 import com.spielgrund.glitchr.model.Layer
 import com.spielgrund.glitchr.model.MaskMode
-import com.spielgrund.glitchr.model.SourceLayer
+import com.spielgrund.glitchr.model.startsGroup
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Image
@@ -54,9 +54,10 @@ class LayerList(
                 border = BorderFactory.createEmptyBorder(8, 10, 8, 10)
             })
         }
-        val firstImage = layers.indexOfFirst { it is SourceLayer }
+        // effects need a group below them to work on; adjustment layers work on whatever is below
+        val firstGroup = layers.indexOfFirst { it.startsGroup }
         for ((index, layer) in layers.withIndex().reversed()) {
-            val orphan = layer is EffectLayer && (firstImage < 0 || index < firstImage)
+            val orphan = layer is EffectLayer && !layer.adjustment && (firstGroup < 0 || index < firstGroup)
             add(row(layer, layer === selected, orphan))
         }
         add(Box.createVerticalGlue())
@@ -66,8 +67,9 @@ class LayerList(
 
     private fun row(layer: Layer, selected: Boolean, orphan: Boolean): JPanel {
         val row = JPanel(BorderLayout(6, 0))
-        val indent = if (layer is EffectLayer) 22 else 6
-        val source = layer is SourceLayer
+        // source and adjustment layers head a group: bold and not indented
+        val source = layer.startsGroup
+        val indent = if (source) 6 else 22
         row.border = BorderFactory.createEmptyBorder(if (source) 4 else 2, indent, if (source) 4 else 2, 8)
         row.maximumSize = Dimension(Int.MAX_VALUE, if (source) 44 else 30)
         row.alignmentX = LEFT_ALIGNMENT
@@ -92,12 +94,14 @@ class LayerList(
         val title = when (layer) {
             is ImageLayer -> layer.name
             is GeneratorLayer -> if (layer.name == layer.generator.name) layer.name else "${layer.name}  ·  ${layer.generator.name}"
-            is EffectLayer -> if (layer.name == layer.effect.name) "↳ ${layer.name}" else "↳ ${layer.name}  ·  ${layer.effect.name}"
+            is EffectLayer -> (if (layer.adjustment) "◑ " else "↳ ") +
+                if (layer.name == layer.effect.name) layer.name else "${layer.name}  ·  ${layer.effect.name}"
         }
         row.add(JLabel(title).apply {
             foreground = if (!layer.visible || orphan) dim else fg
             if (source) font = font.deriveFont(java.awt.Font.BOLD)
             if (layer is GeneratorLayer) toolTipText = "Generator: ${layer.generator.description}"
+            if (layer is EffectLayer && layer.adjustment) toolTipText = "Adjustment layer: ${layer.effect.name} works on all layers below"
             if (orphan) toolTipText = "No image or generator layer below – this effect has nothing to work on"
         }, BorderLayout.CENTER)
 

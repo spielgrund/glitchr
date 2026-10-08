@@ -14,6 +14,7 @@ import com.spielgrund.glitchr.model.ImageLayer
 import com.spielgrund.glitchr.model.Layer
 import com.spielgrund.glitchr.model.MaskSpace
 import com.spielgrund.glitchr.model.groupRange
+import com.spielgrund.glitchr.model.startsGroup
 import com.spielgrund.glitchr.model.Renderer
 import com.spielgrund.glitchr.model.SourceLayer
 import com.spielgrund.glitchr.project.ProjectFile
@@ -308,14 +309,17 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     private fun layerPanel(): JPanel {
         val addButton = JButton("+ Effect ▾").apply { isFocusable = false }
         val popup = JPopupMenu().apply {
-            for (category in Effects.categories) add(JMenu(category.name).apply {
-                for (effect in category.effects) add(JMenuItem(effect.name).apply {
-                    toolTipText = effect.description
-                    addActionListener { addLayer(effect) }
-                })
-            })
+            for (menu in effectMenus { addLayer(it) }) add(menu)
         }
         addButton.addActionListener { popup.show(addButton, 0, addButton.height) }
+        val adjustmentButton = JButton("+ Adjustment ▾").apply {
+            isFocusable = false
+            toolTipText = "An effect that works on all layers below it, like an adjustment layer in Photoshop"
+        }
+        val adjustmentPopup = JPopupMenu().apply {
+            for (menu in effectMenus { addLayer(it, adjustment = true) }) add(menu)
+        }
+        adjustmentButton.addActionListener { adjustmentPopup.show(adjustmentButton, 0, adjustmentButton.height) }
         val generatorButton = JButton("+ Generator ▾").apply {
             isFocusable = false
             toolTipText = "New layer that creates a pattern or noise without an image – effects above work on it"
@@ -328,13 +332,20 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         }
         generatorButton.addActionListener { generatorPopup.show(generatorButton, 0, generatorButton.height) }
 
-        val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 4, 4)).apply {
+        // wraps onto a second row when the sidebar is too narrow for all buttons
+        val buttons = JPanel(WrapLayout(FlowLayout.LEFT, 4, 4)).apply {
             add(generatorButton)
             add(addButton)
-            add(small("▲", "Layer up (Ctrl+PgUp)") { moveSelected(1) })
-            add(small("▼", "Layer down (Ctrl+PgDn)") { moveSelected(-1) })
-            add(small("⧉", "Duplicate layer (Ctrl+J)") { duplicateSelected() })
-            add(small("✕", "Delete layer (Del)") { deleteSelected() })
+            add(adjustmentButton)
+            // the four layer buttons stay together when the row wraps
+            add(JPanel(FlowLayout(FlowLayout.LEFT, 4, 0)).apply {
+                isOpaque = false
+                border = BorderFactory.createEmptyBorder(0, -4, 0, -4)
+                add(small("▲", "Layer up (Ctrl+PgUp)") { moveSelected(1) })
+                add(small("▼", "Layer down (Ctrl+PgDn)") { moveSelected(-1) })
+                add(small("⧉", "Duplicate layer (Ctrl+J)") { duplicateSelected() })
+                add(small("✕", "Delete layer (Del)") { deleteSelected() })
+            })
         }
         return JPanel(BorderLayout()).apply {
             add(JLabel("Layers").apply {
@@ -384,13 +395,9 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 })
             })
             add(JMenu("Add effect").apply {
-                for (category in Effects.categories) add(JMenu(category.name).apply {
-                    for (effect in category.effects) add(JMenuItem(effect.name).apply {
-                        toolTipText = effect.description
-                        addActionListener { addLayer(effect) }
-                    })
-                })
+                for (menu in effectMenus { addLayer(it) }) add(menu)
             })
+            add(adjustmentMenu())
             add(item("Duplicate", KeyEvent.VK_J) { duplicateSelected() })
             add(JMenuItem("Delete").apply {
                 accelerator = KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0)
@@ -444,12 +451,32 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
 
     // ---------------------------------------------------------------- layers
 
-    private fun addLayer(effect: Effect) {
-        val layer = EffectLayer(effect)
-        val index = selected?.let { layers.indexOf(it) + 1 } ?: layers.size
+    /** The effects by category as submenus; [pick] gets the chosen effect. */
+    private fun effectMenus(pick: (Effect) -> Unit) = Effects.categories.map { category ->
+        JMenu(category.name).apply {
+            for (effect in category.effects) add(JMenuItem(effect.name).apply {
+                toolTipText = effect.description
+                addActionListener { pick(effect) }
+            })
+        }
+    }
+
+    private fun adjustmentMenu() = JMenu("Add adjustment layer").apply {
+        toolTipText = "An effect that works on all layers below it, like an adjustment layer in Photoshop"
+        for (menu in effectMenus { addLayer(it, adjustment = true) }) add(menu)
+    }
+
+    /**
+     * Adds an effect layer above the selected layer. An [adjustment] layer works on
+     * everything below it, so it goes above the selected layer's whole group.
+     */
+    private fun addLayer(effect: Effect, adjustment: Boolean = false) {
+        val layer = EffectLayer(effect).also { it.adjustment = adjustment }
+        val index = selected?.let { if (adjustment) groupRange(layers, layers.indexOf(it)).last + 1 else layers.indexOf(it) + 1 } ?: layers.size
         layers.add(index, layer)
         select(layer)
         changed()
+        if (adjustment) status.text = "Adjustment layer “${effect.name}” inserted – it works on all layers below"
     }
 
     /** Adds a picture as a new image layer above the selected layer's group, shrunk to fit and centered. */
@@ -482,11 +509,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         status.text = "Generator “${generator.name}” inserted"
     }
 
-    /** The selected layer's index range: for a source layer its whole group (with its effects). */
+    /** The selected layer's index range: for a source or adjustment layer its whole group (with its effects). */
     private fun selectedRange(): IntRange? {
         val layer = selected ?: return null
         val index = layers.indexOf(layer)
-        return if (layer is SourceLayer) groupRange(layers, index) else index..index
+        return if (layer.startsGroup) groupRange(layers, index) else index..index
     }
 
     private fun duplicateSelected() {
@@ -505,13 +532,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     }
 
     /**
-     * +1 = up (towards the top of the stack). Effect layers move one step; image layers
-     * move together with their effects past the neighbouring group.
+     * +1 = up (towards the top of the stack). Effect layers move one step; image and
+     * adjustment layers move together with their effects past the neighbouring group.
      */
     private fun moveSelected(delta: Int) {
         val layer = selected ?: return
         val range = selectedRange() ?: return
-        if (layer is EffectLayer) {
+        if (!layer.startsGroup) {
             val to = range.first + delta
             if (to !in layers.indices) return
             layers.removeAt(range.first)
