@@ -101,6 +101,8 @@ The effects are sorted into categories in the “+ Effect ▾” menu (and under
 | Displace | Shifts the picture's pixels along noise (Perlin, fractal, ridged, Worley, value, white); seamless with a gradient mask |
 | Flow | Draw a flow direction into the picture with the mouse (arrows on the canvas, the right mouse button/Alt wipes strokes away); the picture travels along the direction (offset −400 to 400 %, 100 % = one complete repeat) – whole with repeats at the edge, in sections that keep starting over, or as a loop in a band along the arrows (whatever arrives at the arrow tip jumps to the start), with hard or soft edges; follow the flow or directly like a UV offset; reach of the strokes, continue or stand still away from them, base direction without strokes |
 | Turbulence | Colors flow as on water or a soap film: a swirling, slowly changing flow (divergence-free – it folds and stretches instead of piling up) draws the colors out into fine, tangled streaks – swirl strength, swirl size, fineness, passes, change; direction and direction strength also drive the color into long paths. The whole picture flows or only a threshold range (brightness, saturation, hue …), fading out softly (feather, “Show range”). The streaks stay sharp because only the origin of every pixel is tracked and the picture is read just once at the end; anti-aliasing (off, 2 × 2, 4 × 4) reads several times where streaks become finer than a pixel. Film colors lay rainbow streaks like a soap or oil film along the brightness lines on top (own gradient, film bands) |
+| Polar coordinates | Bends the picture into a circle (its width runs around the center, the top lands in the middle) or unrolls a circle back into a strip; little planet (stereographic: the bottom becomes a small globe, the top reaches out to the corners) and an endless tunnel with depth fade; radius, flip inside/out, rotation, repeat around the circle, twist into a spiral, hide the seam by mirroring; center draggable in the picture; anti-aliasing (off, 2 × 2, 4 × 4) |
+| Sphere | A ball in the picture: bulge or pinch inside a circle, a globe with the whole picture wrapped around it (turn – animatable to spin – and tilt), a glass ball that shows the picture upside down like a lens ball (refraction, backdrop zoom, reflection at the rim) or a chrome mirror ball; repeat and seamless wrapping, picture, transparent or black around the ball; shading, light direction, highlight and its size; center draggable in the picture; anti-aliasing (off, 2 × 2, 4 × 4 inside the ball, the rim always 4 × 4) |
 | Kaleidoscope | Folds the picture into 2–32 segments; rotation, source angle, offset, center, zoom, mirroring; up to 6 levels of “fold within the fold” with their own segment count, distance, rotation and scale |
 | Feedback | Video feedback on the picture: copies of the picture, its edges or blobs over each other again and again – larger, smaller, rotated, offset, with color shift (like the Feedback generator, see above) |
 | Blob-Echo | Splits the picture into areas (like Particles) and copies all areas – or just a pie slice of each area (1–360°, direction selectable) – over the picture again and again in a chosen direction, from the largest to the smallest area, up to the edge or a fixed number of times; very large areas (usually the background) can be left out; spacing, fade, copies behind their own area, above everything or behind all areas |
@@ -176,6 +178,54 @@ longer side of the canvas.
 
 Effects with randomness are reproducible; “Reroll” gives a different result.
 
+## Animation
+
+A project can have one timeline: “Create animation…” in the timeline below the canvas (or the
+Animation menu) gives it a length in seconds – or in bars at a tempo in BPM – and a frame rate. Then right-click any setting – a slider,
+choice, switch or color of an effect or generator, an image layer's X, Y, scale and rotation, or the
+opacity of any layer – and choose **Add keyframe**. (Without an animation, the first keyframe creates
+one of 4 s at 25 fps, i.e. 100 frames.)
+
+- A diamond before a setting shows that it is animated: ◆ there is a keyframe at the current frame,
+  ◇ there is none. Clicking the diamond sets or removes the keyframe.
+- Once a setting is animated, every change at another frame becomes a keyframe there by itself –
+  with the slider, on the canvas (moving, scaling, rotating an image, dragging a handle) or with “Defaults”.
+- The timeline lists the animated settings under their layer. Drag in the ruler to move through
+  time; drag keyframes to move them (Shift/Ctrl adds to the selection, Ctrl+A selects all), Delete
+  removes them, a double-click jumps to one. Right-click a keyframe for how it runs into the next:
+  **Linear** (◆), **Ease in/out** (●, the default) or **Hold** (■, jumps at the next keyframe).
+  Choices and switches always jump.
+  **All linear** and **All ease** in the timeline bar set every keyframe of all layers at once.
+- Play / pause (Ctrl+P), frame by frame (Ctrl+Left / Ctrl+Right), first and last frame, previous and
+  next keyframe, loop. Frames are rendered ahead on a background thread; the green bar under the
+  ruler shows which are ready. The first run plays as fast as the effects allow, every further loop
+  at the full frame rate. About a third of Java's memory is used for these frames.
+- **New random value every frame** (for every layer with randomness) gives each frame its own
+  seed: block glitches, JPEG artifacts, slice shifts and noise flicker by themselves, without keyframes.
+- Settings… changes length and frame rate; keyframes keep their time when the frame rate changes.
+  “Time in” switches between seconds (fps) and bars & beats (BPM, beats per bar): the length is then
+  given in bars, and the ruler, frame counter and tooltips count bar.beat.sixteenth from 1.1.1. The
+  ♩ BPM button in the timeline switches the display quickly; the frames themselves stay the same.
+  In bars & beats, dragged keyframes and the playhead snap to the nearest beat or to the last frame
+  (the other selected keyframes move along); the ⇥ Snap button switches snapping off and on, and
+  Shift while dragging does the opposite of the button.
+  Animation → Remove animation deletes the timeline and all keyframes.
+- Undo covers keyframes and the timeline; moving the playhead is no undo step. Projects store the
+  timeline and all keyframes.
+
+Sliders store whole numbers, so a setting with a small range moves in visible steps between keyframes.
+
+**Export animation…** (Ctrl+Shift+E):
+
+| Format | |
+| --- | --- |
+| GIF | One palette of 256 colors for the whole animation (median cut over frames spread across it, so colors don't flicker), optional Floyd–Steinberg dithering, endless loop; delays in hundredths of a second, rounded so the total length stays right |
+| MP4 | H.264 via JCodec (pure Java, nothing to install); sides rounded up to even numbers |
+| PNG sequence | `name_0001.png`, `name_0002.png` … with transparency, e.g. for After Effects, Premiere or ffmpeg |
+
+Size 100 %, 75 %, 50 %, 33 % or 25 %; GIF and MP4 put transparent parts on black or white. Frames already
+rendered for playback are reused; the export runs in the background and can be cancelled.
+
 ## Masks
 
 - **Brush / selection**: paint into the mask with tools or select parts of the picture.
@@ -228,6 +278,9 @@ For very large images with many layers give it more memory: `java -Xmx8g -jar ta
 | Layer up / down | Ctrl+PgUp / Ctrl+PgDn |
 | Show mask | Ctrl+M |
 | Show original | Ctrl+B |
+| Play / pause animation | Ctrl+P |
+| Previous / next frame | Ctrl+Left / Ctrl+Right |
+| Export animation | Ctrl+Shift+E |
 | Zoom | Ctrl+mouse wheel, Ctrl+Plus/Minus, Ctrl+0 (fit), Ctrl+1 (100 %) |
 | Pan the view | Space + drag or middle mouse button |
 

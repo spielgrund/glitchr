@@ -91,7 +91,7 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Displace, Flow, Turbulence, Kaleidoscope, Feedback, BlobEcho)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Displace, Flow, Turbulence, Polar, Sphere, Kaleidoscope, Feedback, BlobEcho)),
         EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, Filler, Blur, Sharpen)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, Ridgelines, Particles, UvTexture)),

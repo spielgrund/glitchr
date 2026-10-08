@@ -63,7 +63,7 @@ class EffectsTest {
     fun `every effect sits in exactly one category`() {
         val ids = Effects.all.map { it.id }
         assertEquals(ids.size, ids.toSet().size, "duplicate: ${ids.groupBy { it }.filter { it.value.size > 1 }.keys}")
-        assertEquals(48, ids.size)
+        assertEquals(50, ids.size)
         for (category in Effects.categories) assertFalse(category.effects.isEmpty(), category.name)
     }
 

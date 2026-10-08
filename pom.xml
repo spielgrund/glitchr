@@ -121,6 +121,13 @@
             <version>2.11.0</version>
         </dependency>
 
+        <!-- MP4 (H.264) export of animations, pure Java -->
+        <dependency>
+            <groupId>org.jcodec</groupId>
+            <artifactId>jcodec-javase</artifactId>
+            <version>0.2.5</version>
+        </dependency>
+
         <!-- Additional ImageIO formats for opening images -->
         <dependency>
             <groupId>com.twelvemonkeys.imageio</groupId>

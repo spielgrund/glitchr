@@ -7,6 +7,10 @@ import com.spielgrund.glitchr.effects.Param
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.model.BlendMode
 import com.spielgrund.glitchr.model.DocState
+import com.spielgrund.glitchr.model.Easing
+import com.spielgrund.glitchr.model.Keyframe
+import com.spielgrund.glitchr.model.Timeline
+import com.spielgrund.glitchr.model.Track
 import com.spielgrund.glitchr.model.EffectMemento
 import com.spielgrund.glitchr.model.GeneratorMemento
 import com.spielgrund.glitchr.model.ImageMemento
@@ -40,7 +44,7 @@ object ProjectFile {
     const val EXTENSION = "glitchr"
     private const val JSON_ENTRY = "project.json"
     private const val V1_SOURCE_ENTRY = "source.png"
-    private const val FORMAT_VERSION = 2
+    private const val FORMAT_VERSION = 3
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun isProject(file: File) = file.extension.equals(EXTENSION, ignoreCase = true)
@@ -54,6 +58,7 @@ object ProjectFile {
             width = state.width,
             height = state.height,
             selected = state.layers.indexOfFirst { it.id == state.selectedId }.takeIf { it >= 0 },
+            animation = state.timeline?.let { AnimationDto(it.fps, it.frames, it.bpm, it.beatsPerBar, it.beats) },
             layers = state.layers.mapIndexed { i, layer ->
                 val maskPath = layer.mask.painted?.let { "masks/$i.png".also { path -> masks[path] = layer.mask } }
                 val imagePath = (layer as? ImageMemento)?.let { images.getOrPut(it.image) { "images/${images.size}.png" } }
@@ -115,7 +120,10 @@ object ProjectFile {
             layers += layerDto.toMemento(painted, ::image)
         }
         val offset = if (v1Source != null) 1 else 0
-        return DocState(width, height, dto.sourceName, layers).apply {
+        val timeline = dto.animation?.let {
+            Timeline(it.fps.coerceIn(1, 240), it.frames.coerceIn(1, 100_000), it.bpm.coerceIn(1.0, 999.0), it.beatsPerBar.coerceIn(1, 32), it.beats)
+        }
+        return DocState(width, height, dto.sourceName, layers, timeline).apply {
             selectedId = dto.selected?.let { layers.getOrNull(it + offset)?.id } ?: layers.lastOrNull()?.id
         }
     }
@@ -155,6 +163,7 @@ private data class ProjectDto(
     val height: Int = 0,
     val selected: Int? = null,
     val layers: List<LayerDto> = emptyList(),
+    val animation: AnimationDto? = null,
 )
 
 private data class LayerDto(
@@ -176,7 +185,21 @@ private data class LayerDto(
     val rotation: Double = 0.0,
     val smooth: Boolean = true,
     val mask: MaskDto = MaskDto(),
+    /** Keyframes of the animated settings, by setting key. */
+    val tracks: Map<String, List<KeyDto>> = emptyMap(),
+    val seedPerFrame: Boolean = false,
 )
+
+private data class AnimationDto(
+    val fps: Int = 25,
+    val frames: Int = 125,
+    val bpm: Double = 120.0,
+    val beatsPerBar: Int = 4,
+    /** Times in bars and beats instead of seconds; older projects have none. */
+    val beats: Boolean = false,
+)
+
+private data class KeyDto(val frame: Int = 0, val value: Double = 0.0, val easing: String = Easing.EASE.name)
 
 private data class MaskDto(
     val mode: String = MaskMode.OFF.name,
@@ -205,20 +228,37 @@ private fun LayerMemento.toDto(maskPath: String?, imagePath: String?): LayerDto 
     return when (this) {
         is EffectMemento -> LayerDto(
             type = "effect", effect = effect.id, name = name, visible = visible, opacity = opacity,
-            blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto,
+            blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto, tracks = tracksDto(), seedPerFrame = seedPerFrame,
         )
         is GeneratorMemento -> LayerDto(
             type = "generator", generator = generator.id, name = name, visible = visible, opacity = opacity,
-            blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto,
+            blend = blend.name, values = values, texts = texts, seed = seed, mask = maskDto, tracks = tracksDto(), seedPerFrame = seedPerFrame,
         )
         is ImageMemento -> LayerDto(
             type = "image", name = name, visible = visible, opacity = opacity, blend = blend.name,
-            image = imagePath, x = x, y = y, scale = scale, rotation = rotation, smooth = smooth, mask = maskDto,
+            image = imagePath, x = x, y = y, scale = scale, rotation = rotation, smooth = smooth, mask = maskDto, tracks = tracksDto(),
         )
     }
 }
 
 private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels): LayerMemento {
+    val plain = plainMemento(painted, image)
+    if (tracks.isEmpty() && !seedPerFrame) return plain
+    // the layer knows which of its settings can be animated and how they blend
+    val layer = plain.toLayer()
+    val loaded = tracks.filterKeys { it in layer.animatableKeys() }.mapNotNull { (key, keys) ->
+        val frames = keys.map { Keyframe(it.frame.coerceAtLeast(0), it.value, enumOr(it.easing, Easing.EASE)) }
+            .groupBy { it.frame }.map { it.value.last() }.sortedBy { it.frame }
+        if (frames.isEmpty()) null else key to Track(layer.kindOf(key), frames)
+    }.toMap()
+    return when (plain) {
+        is EffectMemento -> plain.copy(tracks = loaded, seedPerFrame = seedPerFrame)
+        is GeneratorMemento -> plain.copy(tracks = loaded, seedPerFrame = seedPerFrame)
+        is ImageMemento -> plain.copy(tracks = loaded)
+    }
+}
+
+private fun LayerDto.plainMemento(painted: PaintedMask?, image: (String) -> Pixels): LayerMemento {
     val maskMemento = MaskMemento(
         mode = enumOr(mask.mode, MaskMode.OFF),
         invert = mask.invert,
@@ -309,3 +349,5 @@ private fun List<Double>.toRel(defaultX: Double, defaultY: Double) =
 
 private inline fun <reified T : Enum<T>> enumOr(name: String, default: T): T =
     enumValues<T>().firstOrNull { it.name == name } ?: default
+
+private fun LayerMemento.tracksDto() = tracks.mapValues { (_, track) -> track.keys.map { KeyDto(it.frame, it.value, it.easing.name) } }

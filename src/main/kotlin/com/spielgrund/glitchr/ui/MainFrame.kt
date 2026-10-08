@@ -5,6 +5,7 @@ import com.spielgrund.glitchr.effects.Effects
 import com.spielgrund.glitchr.effects.Generator
 import com.spielgrund.glitchr.effects.Generators
 import com.spielgrund.glitchr.image.Pixels
+import com.spielgrund.glitchr.model.Animator
 import com.spielgrund.glitchr.model.DocState
 import com.spielgrund.glitchr.model.EffectLayer
 import com.spielgrund.glitchr.model.GeneratorLayer
@@ -77,7 +78,32 @@ private class WidthTrackingPanel : JPanel(BorderLayout()), javax.swing.Scrollabl
     override fun getScrollableTracksViewportHeight() = false
 }
 
-class MainFrame : JFrame("GlitchR"), LayerEditorHost {
+/**
+ * Rendered frames of the animation, so playback can run at full speed once a frame is done.
+ * Holds as many frames as fit into [budget]; the least recently used go first. Any edit
+ * clears it ([invalidate]); [version] tells renders that started before an edit apart.
+ */
+private class FrameCache {
+    @Volatile var version = 0
+        private set
+    @Volatile var budget = 64
+    private val frames = object : LinkedHashMap<Int, Pixels>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Pixels>) = size > budget
+    }
+
+    @Synchronized fun get(frame: Int): Pixels? = frames[frame]
+    @Synchronized fun contains(frame: Int) = frames.containsKey(frame)
+    @Synchronized fun put(frame: Int, pixels: Pixels, ofVersion: Int) {
+        if (ofVersion == version) frames[frame] = pixels
+    }
+
+    @Synchronized fun invalidate() {
+        version++
+        frames.clear()
+    }
+}
+
+class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     override val brush = Brush()
     private val canvas = GlitchCanvas(brush)
     private val layerList = LayerList(::select, ::toggleVisible) { renderer.generated(it.id) }
@@ -120,6 +146,26 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private val renderer = Renderer()
     private val renderExecutor = Executors.newSingleThreadExecutor { Thread(it, "glitch-render").apply { isDaemon = true } }
     private val generation = AtomicInteger()
+
+    // ---- animation
+    /** The animation's length and frame rate; null: no animation. */
+    override var timeline: com.spielgrund.glitchr.model.Timeline? = null
+        private set
+    @Volatile override var currentFrame = 0
+        private set
+    @Volatile override var isPlaying = false
+        private set
+    override var loopPlayback = true
+    private val timelinePanel = TimelinePanel(this)
+    private val frameCache = FrameCache()
+
+    /** Playback renders ahead on its own thread and renderer, so the interactive one keeps its cache. */
+    private val animRenderer = Renderer()
+    private val animExecutor = Executors.newSingleThreadExecutor { Thread(it, "glitch-animation").apply { isDaemon = true } }
+    private var playTimer: javax.swing.Timer? = null
+
+    /** The editor follows the playhead with a short delay, so scrubbing stays smooth. */
+    private val editorFollowTimer = javax.swing.Timer(120) { rebuildEditor() }.apply { isRepeats = false }
 
     override var showMask: Boolean
         get() = canvas.showMask
@@ -198,7 +244,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             preferredSize = Dimension(360, 0)
         }
 
-        val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scroll, sidebar).apply {
+        // the timeline lies below the canvas
+        val left = JSplitPane(JSplitPane.VERTICAL_SPLIT, scroll, timelinePanel).apply {
+            resizeWeight = 1.0
+            border = BorderFactory.createEmptyBorder()
+            isContinuousLayout = true
+        }
+        val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, sidebar).apply {
             resizeWeight = 1.0
             border = BorderFactory.createEmptyBorder()
         }
@@ -236,6 +288,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private fun toolbarLeft() = JPanel(FlowLayout(FlowLayout.LEFT, 6, 4)).apply {
         add(small("New…", "Empty canvas of any size, without an image (Ctrl+N)") { newDialog() })
         add(small("Open…", "Open an image or project (Ctrl+O)") { openDialog() })
+        add(small("Close", "Close the picture and start empty – then paste or drop an image (Ctrl+W)") { closeDocument() })
         add(small("+ Image…", "Insert an image as a new layer (Ctrl+I) – or just drag it into the window") { insertImageDialog() })
         add(small("Save", "Save the project with all layers and masks (Ctrl+S)") { save() })
         add(small("Export…", "Save the result as an image (Ctrl+E)") { exportDialog() })
@@ -315,6 +368,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             add(item("Export image…", KeyEvent.VK_E) { exportDialog() })
             add(item("Copy result", KeyEvent.VK_C, InputEvent.SHIFT_DOWN_MASK) { copy() })
             addSeparator()
+            add(item("Close", KeyEvent.VK_W) { closeDocument() })
             add(JMenuItem("Quit").apply { addActionListener { if (confirmDiscard()) exitProcess(0) } })
         })
         add(JMenu("Edit").apply {
@@ -349,6 +403,21 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             add(JMenuItem("Apply all layers to the image").apply {
                 toolTipText = "The result becomes a single image layer, all layers are replaced"
                 addActionListener { flatten() }
+            })
+        })
+        add(JMenu("Animation").apply {
+            add(JMenuItem("Create animation…").apply { addActionListener { createAnimation() } })
+            add(JMenuItem("Animation settings…").apply { addActionListener { animationSettings() } })
+            addSeparator()
+            add(item("Play / pause", KeyEvent.VK_P) { togglePlay() })
+            add(item("Previous frame", KeyEvent.VK_LEFT) { seek(currentFrame - 1) })
+            add(item("Next frame", KeyEvent.VK_RIGHT) { seek(currentFrame + 1) })
+            addSeparator()
+            add(item("Export animation…", KeyEvent.VK_E, InputEvent.SHIFT_DOWN_MASK) { exportAnimation() })
+            addSeparator()
+            add(JMenuItem("Remove animation").apply {
+                toolTipText = "Deletes the timeline and all keyframes; every setting keeps its value at the current frame"
+                addActionListener { removeAnimation() }
             })
         })
         add(JMenu("View").apply {
@@ -477,7 +546,10 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         rebuildEditor()
     }
 
-    private fun refreshLayers() = layerList.update(layers, selected)
+    private fun refreshLayers() {
+        layerList.update(layers, selected)
+        timelinePanel.refresh()
+    }
 
     /** Replaces all layers by one image layer holding the current result. */
     private fun flatten() {
@@ -523,15 +595,27 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         if (focusMaskMode) SwingUtilities.invokeLater { editor?.focusMaskMode() }
     }
 
-    private fun changed() {
+    /**
+     * Something in the document changed. With [captureKeys], edits of animated settings
+     * become keyframes at the current frame (not when the timeline itself moved keyframes).
+     */
+    private fun changed(captureKeys: Boolean = true) {
+        // playback stops, but the editor isn't rebuilt: the edit may be a slider drag in progress
+        if (isPlaying) stopPlayback(rebuildEditor = false)
+        if (captureKeys && timeline != null && Animator.captureEdits(layers, currentFrame)) editor()?.refreshMarkers()
+        frameCache.invalidate()
+        timelinePanel.refresh()
         dirty = true
         requestRender()
         commitTimer.restart()
     }
 
+    private fun editor() = editorBox.components.firstOrNull() as? LayerEditor
+
     // ---------------------------------------------------------------- undo
 
-    private fun capture() = DocState(docWidth, docHeight, docName, layers.map { it.memento() }).apply { selectedId = selected?.id }
+    private fun capture() =
+        DocState(docWidth, docHeight, docName, layers.map { it.memento() }, timeline).apply { selectedId = selected?.id }
 
     private fun commitHistory() {
         // a brush stroke or handle drag becomes one step when the mouse is released
@@ -561,8 +645,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         docWidth = state.width
         docHeight = state.height
         docName = state.name
+        stopPlayback(rebuildEditor = false)
         layers.clear()
         layers.addAll(state.layers.map { it.toLayer() })
+        timeline = state.timeline
+        currentFrame = currentFrame.coerceIn(0, (timeline?.frames ?: 1) - 1)
+        Animator.syncToFrame(layers, currentFrame)
+        frameCache.invalidate()
         if (resized) {
             result = null
             resultImage = null
@@ -586,25 +675,36 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
      * Renders on a background thread. Requests that pile up while a render runs are
      * collapsed: only the newest one is rendered next.
      */
+    /** The newest render request whose picture is on screen; older results that arrive late are not shown. */
+    private var shownGeneration = 0
+
     private fun requestRender() {
         if (!hasDocument) return
         val width = docWidth
         val height = docHeight
         val gen = generation.incrementAndGet()
-        val states = (if (originalButton.isSelected) layers.filterIsInstance<SourceLayer>() else layers).map { it.state() }
+        val frame = currentFrame
+        val original = originalButton.isSelected
+        val states = (if (original) layers.filterIsInstance<SourceLayer>() else layers).map { it.animated().at(frame) }
+        val cacheVersion = frameCache.version
+        val animated = timeline != null && !original
         status.text = "Rendering…"
         renderExecutor.execute {
             if (generation.get() != gen) return@execute
             val start = System.nanoTime()
             try {
                 val out = renderer.render(width, height, states)
+                if (animated) frameCache.put(frame, out, cacheVersion)
                 val image = out.toImage()
                 val ms = (System.nanoTime() - start) / 1_000_000
                 SwingUtilities.invokeLater {
+                    if (gen < shownGeneration) return@invokeLater
+                    shownGeneration = gen
                     result = out
                     resultImage = image
                     showCurrentImage()
                     refreshGeneratorThumbnails()
+                    if (animated) timelinePanel.refreshPlayhead()
                     updateStatus(if (generation.get() == gen) "$ms ms" else "Rendering…")
                 }
             } catch (e: OutOfMemoryError) {
@@ -636,6 +736,454 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
             append("  ·  ${layers.size} layer${if (layers.size == 1) "" else "s"}")
             if (extra != null) append("  ·  $extra")
         }
+    }
+
+    // ---------------------------------------------------------------- animation
+
+    override val timelineLayers: List<Layer> get() = layers
+    override val selectedLayer get() = selected
+    override fun selectLayer(layer: Layer) = select(layer)
+    override fun isCached(frame: Int) = frameCache.contains(frame)
+
+    /** Moves the playhead; the layers show their settings at that frame. */
+    override fun seek(frame: Int) {
+        val t = timeline ?: return
+        if (isPlaying) stopPlayback()
+        val f = frame.coerceIn(0, t.frames - 1)
+        if (f == currentFrame) return
+        showFrame(f)
+        editorFollowTimer.restart()
+    }
+
+    private fun showFrame(frame: Int) {
+        currentFrame = frame
+        Animator.syncToFrame(layers, frame)
+        canvas.refreshOverlay()
+        val cached = if (originalButton.isSelected) null else frameCache.get(frame)
+        if (cached != null) display(cached) else requestRender()
+        timelinePanel.refreshPlayhead()
+    }
+
+    /** Shows an already rendered frame; renders still running for older requests won't replace it. */
+    private fun display(frame: Pixels) {
+        shownGeneration = generation.incrementAndGet()
+        result = frame
+        resultImage = frame.toImage()
+        showCurrentImage()
+    }
+
+    override fun animHook(layer: Layer, key: String) = AnimHook(
+        state = {
+            val track = layer.tracks[key]
+            when {
+                track == null -> KeyState.NONE
+                track.keyAt(currentFrame) != null -> KeyState.KEY
+                else -> KeyState.ANIMATED
+            }
+        },
+        toggle = {
+            if (layer.tracks[key]?.keyAt(currentFrame) != null) Animator.removeKey(layer, key, currentFrame) else addKeyframe(layer, key)
+            keysEdited()
+        },
+        menu = { keyMenu(layer, key) },
+    )
+
+    /** Adds a keyframe with the setting's current value; without an animation, a default one is created first. */
+    private fun addKeyframe(layer: Layer, key: String) {
+        if (!hasDocument) return
+        if (timeline == null) {
+            timeline = com.spielgrund.glitchr.model.Timeline.DEFAULT
+            currentFrame = 0
+            status.text = "Animation created: ${timeline!!.length()} at ${timeline!!.fps} fps – change it under Settings… in the timeline"
+        }
+        Animator.addKey(layer, key, currentFrame)
+    }
+
+    private fun keyMenu(layer: Layer, key: String) = JPopupMenu().apply {
+        val track = layer.tracks[key]
+        val here = track?.keyAt(currentFrame)
+        val label = layer.propertyLabel(key)
+        if (here == null) {
+            add(JMenuItem("Add keyframe").apply {
+                toolTipText = if (timeline == null) "Creates an animation (5 s, 25 fps) and animates “$label”" else "“$label” at frame ${currentFrame + 1}"
+                addActionListener { addKeyframe(layer, key); keysEdited() }
+            })
+        } else {
+            add(JMenuItem("Remove keyframe").apply {
+                addActionListener { Animator.removeKey(layer, key, currentFrame); keysEdited() }
+            })
+        }
+        if (track != null) {
+            add(JMenuItem("Remove animation").apply {
+                toolTipText = "Deletes all keyframes of “$label”; it keeps its current value"
+                addActionListener { layer.tracks.remove(key); keysEdited() }
+            })
+            addSeparator()
+            val previous = track.keys.lastOrNull { it.frame < currentFrame }
+            val next = track.keys.firstOrNull { it.frame > currentFrame }
+            add(JMenuItem("Previous keyframe").apply {
+                isEnabled = previous != null
+                addActionListener { previous?.let { seek(it.frame) } }
+            })
+            add(JMenuItem("Next keyframe").apply {
+                isEnabled = next != null
+                addActionListener { next?.let { seek(it.frame) } }
+            })
+        }
+    }
+
+    override fun keysEdited() {
+        Animator.syncToFrame(layers, currentFrame)
+        canvas.refreshOverlay()
+        rebuildEditor()
+        changed(captureKeys = false)
+    }
+
+    override fun togglePlay() = if (isPlaying) stopPlayback() else startPlayback()
+
+    /** How many full-size frames the cache may hold: about a third of the memory Java may use. */
+    private fun cacheBudget(): Int {
+        val bytes = docWidth.toLong() * docHeight * 4
+        return (Runtime.getRuntime().maxMemory() * 0.35 / bytes).toInt().coerceIn(4, 5000)
+    }
+
+    /**
+     * Plays the animation. Frames are rendered ahead on their own thread; playback waits for a
+     * frame that isn't ready yet, so the first run is as fast as the effects allow and every
+     * further loop plays at the full frame rate.
+     */
+    private fun startPlayback() {
+        val t = timeline ?: return
+        if (!hasDocument || isPlaying) return
+        if (originalButton.isSelected) {
+            originalButton.isSelected = false
+            requestRender()
+        }
+        commitHistory()
+        if (!loopPlayback && currentFrame >= t.frames - 1) showFrame(0)
+        isPlaying = true
+        frameCache.budget = cacheBudget()
+        val snapshots = layers.map { it.animated() }
+        val version = frameCache.version
+        val width = docWidth
+        val height = docHeight
+        animExecutor.execute { prerender(snapshots, width, height, t, version) }
+        playTimer = javax.swing.Timer(maxOf(1, 1000 / t.fps)) { tick() }.apply {
+            initialDelay = 0
+            start()
+        }
+        timelinePanel.refreshPlayhead()
+    }
+
+    private fun prerender(snapshots: List<com.spielgrund.glitchr.model.AnimatedLayer>, width: Int, height: Int, t: com.spielgrund.glitchr.model.Timeline, version: Int) {
+        try {
+            while (isPlaying && frameCache.version == version) {
+                val from = currentFrame
+                val next = (0 until t.frames).map { (from + it) % t.frames }.firstOrNull { !frameCache.contains(it) } ?: break
+                // never further ahead than the cache holds, or it would push out the frames about to be played
+                if ((next - from + t.frames) % t.frames >= frameCache.budget - 1) {
+                    Thread.sleep(15)
+                    continue
+                }
+                val out = animRenderer.render(width, height, snapshots.map { it.at(next) })
+                frameCache.put(next, out, version)
+                SwingUtilities.invokeLater { timelinePanel.refreshPlayhead() }
+            }
+        } catch (e: OutOfMemoryError) {
+            SwingUtilities.invokeLater {
+                stopPlayback()
+                status.text = "Out of memory – start GlitchR with more memory (java -Xmx8g -jar …)"
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            SwingUtilities.invokeLater {
+                stopPlayback()
+                status.text = "Error while rendering: ${e.message}"
+            }
+        }
+    }
+
+    private fun tick() {
+        val t = timeline ?: return stopPlayback()
+        val next = when {
+            currentFrame + 1 < t.frames -> currentFrame + 1
+            loopPlayback -> 0
+            else -> return stopPlayback()
+        }
+        val frame = frameCache.get(next)
+        if (frame == null) {
+            status.text = "Rendering frame ${next + 1} of ${t.frames}…"
+            return
+        }
+        currentFrame = next
+        // the fields follow, so an edit during playback is compared with the right frame
+        Animator.syncToFrame(layers, next)
+        display(frame)
+        timelinePanel.refreshPlayhead()
+        updateStatus("▶ ${t.fps} fps")
+    }
+
+    private fun stopPlayback(rebuildEditor: Boolean = true) {
+        if (!isPlaying) return
+        isPlaying = false
+        playTimer?.stop()
+        playTimer = null
+        Animator.syncToFrame(layers, currentFrame)
+        canvas.refreshOverlay()
+        if (rebuildEditor) rebuildEditor()
+        timelinePanel.refreshPlayhead()
+        updateStatus()
+    }
+
+    override fun createAnimation() {
+        if (!hasDocument) {
+            status.text = "Open an image or create a canvas first"
+            return
+        }
+        if (timeline != null) return animationSettings()
+        val t = timelineDialog("Create animation", com.spielgrund.glitchr.model.Timeline.DEFAULT) ?: return
+        timeline = t
+        currentFrame = 0
+        Animator.syncToFrame(layers, 0)
+        rebuildEditor()
+        changed(captureKeys = false)
+        status.text = "Animation created – right-click any setting → Add keyframe"
+    }
+
+    override fun animationSettings() {
+        val old = timeline ?: return createAnimation()
+        val t = timelineDialog("Animation settings", old) ?: return
+        stopPlayback()
+        Animator.rescale(layers, old.fps, t.fps)
+        timeline = t
+        currentFrame = (currentFrame.toLong() * t.fps / old.fps).toInt().coerceIn(0, t.frames - 1)
+        keysEdited()
+    }
+
+    private fun removeAnimation() {
+        if (timeline == null) return
+        val answer = JOptionPane.showConfirmDialog(
+            this, "Remove the timeline and all keyframes? Every setting keeps its value at the current frame.",
+            "Remove animation", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE,
+        )
+        if (answer != JOptionPane.OK_OPTION) return
+        stopPlayback()
+        for (layer in layers) layer.tracks.clear()
+        timeline = null
+        currentFrame = 0
+        rebuildEditor()
+        changed(captureKeys = false)
+    }
+
+    override fun setBeats(beats: Boolean) {
+        val t = timeline ?: return
+        if (t.beats == beats) return
+        // only the display changes: the frames and everything rendered stay valid
+        timeline = t.copy(beats = beats)
+        timelinePanel.refresh()
+        dirty = true
+        commitTimer.restart()
+    }
+
+    /**
+     * Asks for length, frame rate and time base; null if cancelled. In seconds the length
+     * is given in seconds, in beats in bars at the tempo (BPM) and time signature.
+     */
+    private fun timelineDialog(title: String, current: com.spielgrund.glitchr.model.Timeline): com.spielgrund.glitchr.model.Timeline? {
+        val timeBase = javax.swing.JComboBox(arrayOf("Seconds (fps)", "Bars & beats (BPM)")).apply {
+            selectedIndex = if (current.beats) 1 else 0
+        }
+        val length = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(if (current.beats) current.bars else current.seconds, 0.01, 10_000.0, 0.5)).apply {
+            editor = javax.swing.JSpinner.NumberEditor(this, "0.00")
+        }
+        val bpm = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(current.bpm, 1.0, 999.0, 1.0)).apply {
+            editor = javax.swing.JSpinner.NumberEditor(this, "0.##")
+        }
+        val beatsPerBar = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(current.beatsPerBar, 1, 32, 1))
+        val fpsBox = javax.swing.JComboBox(arrayOf(8, 10, 12, 15, 20, 24, 25, 30, 50, 60)).apply {
+            isEditable = true
+            selectedItem = current.fps
+        }
+        val lengthLabel = JLabel()
+        val framesLabel = JLabel()
+        fun beats() = timeBase.selectedIndex == 1
+        fun fps() = (fpsBox.editor.item?.toString() ?: fpsBox.selectedItem?.toString())?.trim()?.toIntOrNull()?.coerceIn(1, 240) ?: current.fps
+        fun result() = com.spielgrund.glitchr.model.Timeline(fps(), 1, bpm.value as Double, beatsPerBar.value as Int, beats()).let { t ->
+            val l = length.value as Double
+            t.copy(frames = if (t.beats) t.framesForBars(l) else Math.round(l * t.fps).toInt().coerceAtLeast(1))
+        }
+        fun update() {
+            val t = result()
+            lengthLabel.text = if (beats()) "Length (bars)" else "Length (seconds)"
+            bpm.isEnabled = beats()
+            beatsPerBar.isEnabled = beats()
+            framesLabel.text = if (beats()) "= ${t.frames} frames · ${timecode(t.frames, t.fps)}" else "= ${t.frames} frames"
+        }
+        // switching the time base keeps the length and converts the number
+        var wasBeats = beats()
+        timeBase.addActionListener {
+            if (beats() != wasBeats) {
+                val l = length.value as Double
+                val t = result().let { it.copy(frames = if (wasBeats) it.framesForBars(l) else Math.round(l * it.fps).toInt().coerceAtLeast(1)) }
+                wasBeats = beats()
+                length.value = (if (wasBeats) t.bars else t.seconds).coerceAtLeast(0.01)
+            }
+            update()
+        }
+        length.addChangeListener { update() }
+        bpm.addChangeListener { update() }
+        beatsPerBar.addChangeListener { update() }
+        fpsBox.addActionListener { update() }
+        update()
+        val form = JPanel(java.awt.GridBagLayout())
+        val c = java.awt.GridBagConstraints().apply {
+            insets = java.awt.Insets(3, 3, 3, 3)
+            anchor = java.awt.GridBagConstraints.WEST
+            fill = java.awt.GridBagConstraints.HORIZONTAL
+        }
+        val rows = listOf(
+            JLabel("Time in") to timeBase, lengthLabel to length, JLabel("Tempo (BPM)") to bpm,
+            JLabel("Beats per bar") to beatsPerBar, JLabel("Frames per second") to fpsBox, JLabel() to framesLabel,
+        )
+        for ((row, pair) in rows.withIndex()) {
+            c.gridy = row
+            c.gridx = 0
+            form.add(pair.first, c)
+            c.gridx = 1
+            form.add(pair.second, c)
+        }
+        val answer = JOptionPane.showConfirmDialog(this, form, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+        if (answer != JOptionPane.OK_OPTION) return null
+        return result()
+    }
+
+    override fun exportAnimation() {
+        val t = timeline
+        if (t == null || !hasDocument) {
+            status.text = "No animation yet – create one in the timeline first"
+            return
+        }
+        stopPlayback()
+        commitHistory()
+        val settings = exportDialog(t) ?: return
+        val ext = settings.format.extension
+        val chooser = JFileChooser(prefs.get(PREF_DIR, null)).apply {
+            dialogTitle = "Export animation as ${settings.format.label}"
+            fileFilter = FileNameExtensionFilter(settings.format.label, ext)
+            selectedFile = File(currentDirectory, "${docName}_glitch.$ext")
+        }
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return
+        var file = chooser.selectedFile
+        if (!file.extension.equals(ext, ignoreCase = true)) file = File(file.parentFile, "${file.name}.$ext")
+        val check = if (settings.format == com.spielgrund.glitchr.export.AnimFormat.PNG)
+            File(file.parentFile, "${file.nameWithoutExtension}_${"1".padStart(maxOf(4, t.frames.toString().length), '0')}.png") else file
+        if (check.exists() && JOptionPane.showConfirmDialog(this, "Overwrite \"${check.name}\"?", "Export", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return
+        prefs.put(PREF_DIR, file.parent ?: "")
+
+        val monitor = javax.swing.ProgressMonitor(this, "Exporting animation…", "", 0, t.frames).apply {
+            millisToDecideToPopup = 0
+            millisToPopup = 0
+        }
+        val snapshots = layers.map { it.animated() }
+        val version = frameCache.version
+        val width = docWidth
+        val height = docHeight
+        val target = file
+        Thread({
+            val exportRenderer = Renderer()
+            var cancelled = false
+            try {
+                val written = com.spielgrund.glitchr.export.AnimationExport.export(
+                    t.frames, t.fps, settings, target,
+                    render = { f ->
+                        // frames played before are reused, as long as nothing changed since
+                        frameCache.get(f)?.takeIf { frameCache.version == version } ?: exportRenderer.render(width, height, snapshots.map { it.at(f) })
+                    },
+                    progress = { n ->
+                        SwingUtilities.invokeLater {
+                            monitor.setProgress(n)
+                            monitor.note = "Frame $n of ${t.frames}"
+                        }
+                        cancelled = monitor.isCanceled
+                        !cancelled
+                    },
+                )
+                SwingUtilities.invokeLater {
+                    monitor.close()
+                    if (cancelled) {
+                        // a half-written GIF or MP4 is of no use
+                        if (settings.format != com.spielgrund.glitchr.export.AnimFormat.PNG) written.forEach { it.delete() }
+                        status.text = "Export cancelled"
+                    } else {
+                        status.text = "Exported: ${written.first().absolutePath}" + if (written.size > 1) " … (${written.size} files)" else ""
+                    }
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+                SwingUtilities.invokeLater {
+                    monitor.close()
+                    JOptionPane.showMessageDialog(this, "Export failed:\n${e.message ?: e.javaClass.simpleName}", "Export", JOptionPane.ERROR_MESSAGE)
+                }
+            }
+        }, "glitch-export").apply { isDaemon = true }.start()
+    }
+
+    /** Asks for format, size and the format's options; null if cancelled. */
+    private fun exportDialog(t: com.spielgrund.glitchr.model.Timeline): com.spielgrund.glitchr.export.ExportSettings? {
+        val formats = com.spielgrund.glitchr.export.AnimFormat.entries.toTypedArray()
+        val formatBox = javax.swing.JComboBox(formats).apply {
+            selectedItem = formats.firstOrNull { it.name == prefs.get("animFormat", "") } ?: formats[0]
+        }
+        val scales = listOf(100, 75, 50, 33, 25)
+        val sizeBox = javax.swing.JComboBox(scales.map { s ->
+            "$s %  (${Math.round(docWidth * s / 100.0)} × ${Math.round(docHeight * s / 100.0)} px)"
+        }.toTypedArray()).apply { selectedIndex = scales.indexOf(prefs.getInt("animScale", 100)).coerceAtLeast(0) }
+        val backgroundBox = javax.swing.JComboBox(arrayOf("Black", "White")).apply { selectedIndex = prefs.getInt("animBackground", 0) }
+        val dither = javax.swing.JCheckBox("Dithering", prefs.getBoolean("animDither", true)).apply {
+            toolTipText = "GIF has only 256 colors: dithering mixes them into finer gradients (larger files)"
+        }
+        val loop = javax.swing.JCheckBox("Loop forever", prefs.getBoolean("animLoop", true))
+        fun update() {
+            val f = formatBox.selectedItem
+            backgroundBox.isEnabled = f != com.spielgrund.glitchr.export.AnimFormat.PNG
+            dither.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.GIF
+            loop.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.GIF
+        }
+        formatBox.addActionListener { update() }
+        update()
+        val form = JPanel(java.awt.GridBagLayout())
+        val c = java.awt.GridBagConstraints().apply {
+            insets = java.awt.Insets(3, 3, 3, 3)
+            anchor = java.awt.GridBagConstraints.WEST
+            fill = java.awt.GridBagConstraints.HORIZONTAL
+        }
+        val rows = listOf(
+            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "" to dither, "" to loop,
+            "" to JLabel("<html><span style='color:gray'>${t.frames} frames · ${t.fps} fps · ${timecode(t.frames, t.fps)}${if (t.beats) " · " + t.length() + " at " + bpmText(t.bpm) + " BPM" else ""}<br>" +
+                "Background: under transparent parts (GIF and MP4 have none; PNG keeps it)</span></html>"),
+        )
+        for ((row, pair) in rows.withIndex()) {
+            c.gridy = row
+            c.gridx = 0
+            form.add(JLabel(pair.first), c)
+            c.gridx = 1
+            form.add(pair.second, c)
+        }
+        val answer = JOptionPane.showConfirmDialog(this, form, "Export animation", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+        if (answer != JOptionPane.OK_OPTION) return null
+        val format = formatBox.selectedItem as com.spielgrund.glitchr.export.AnimFormat
+        prefs.put("animFormat", format.name)
+        prefs.putInt("animScale", scales[sizeBox.selectedIndex])
+        prefs.putInt("animBackground", backgroundBox.selectedIndex)
+        prefs.putBoolean("animDither", dither.isSelected)
+        prefs.putBoolean("animLoop", loop.isSelected)
+        return com.spielgrund.glitchr.export.ExportSettings(
+            format = format,
+            scale = scales[sizeBox.selectedIndex] / 100.0,
+            background = if (backgroundBox.selectedIndex == 1) 0xFFFFFF else 0x000000,
+            dither = dither.isSelected,
+            loop = loop.isSelected,
+        )
     }
 
     // ---------------------------------------------------------------- files
@@ -670,7 +1218,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
     private fun newDocument(width: Int, height: Int, name: String, first: Layer?) {
         commitTimer.stop()
         history.clear()
+        stopPlayback(rebuildEditor = false)
         layers.clear()
+        timeline = null
+        currentFrame = 0
+        frameCache.invalidate()
         docWidth = width
         docHeight = height
         docName = name
@@ -690,6 +1242,36 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost {
         updateUndoItems()
         dirty = false
         updateStatus()
+    }
+
+    /**
+     * Closes the document and returns to the empty start: the next image opened, dropped
+     * or pasted starts a new document of its own size.
+     */
+    private fun closeDocument() {
+        if (!hasDocument || !confirmDiscard()) return
+        commitTimer.stop()
+        generation.incrementAndGet() // renders still running won't show up anymore
+        history.clear()
+        stopPlayback(rebuildEditor = false)
+        layers.clear()
+        timeline = null
+        currentFrame = 0
+        frameCache.invalidate()
+        docWidth = 0
+        docHeight = 0
+        docName = "image"
+        projectFile = null
+        result = null
+        resultImage = null
+        originalButton.isSelected = false
+        select(null)
+        showCurrentImage()
+        canvas.refreshOverlay()
+        updateUndoItems()
+        dirty = false
+        updateStatus()
+        status.text = "Closed – paste (Ctrl+V), open or drop an image to start"
     }
 
     /**

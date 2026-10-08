@@ -2,6 +2,7 @@ package com.spielgrund.glitchr.ui
 
 import com.spielgrund.glitchr.effects.FlowStrokes
 import com.spielgrund.glitchr.effects.Param
+import com.spielgrund.glitchr.model.AnimKeys
 import com.spielgrund.glitchr.model.BlendMode
 import com.spielgrund.glitchr.model.EffectLayer
 import com.spielgrund.glitchr.model.GeneratorLayer
@@ -44,6 +45,9 @@ interface LayerEditorHost {
 
     /** Name, visibility or mask mode changed: the layer list must be redrawn. */
     fun layerListChanged()
+
+    /** Animation of a setting of [layer] for the editor row (diamond and right-click menu). */
+    fun animHook(layer: Layer, key: String): AnimHook
 
     /** Values were replaced wholesale: rebuild the editor. */
     fun rebuildEditor(focusMaskMode: Boolean = false)
@@ -106,17 +110,17 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             when (p) {
                 is Param.Slider -> {
                     val max = host.imageSize?.let { (w, h) -> p.maxFor(w, h) } ?: p.max
-                    form.row(p.label, SliderField(p.min, max, value, p.default.coerceAtMost(max), p.unit, p.decimals, set), p.tip)
+                    form.row(p.label, SliderField(p.min, max, value, p.default.coerceAtMost(max), p.unit, p.decimals, set), p.tip, anim(p.key))
                 }
                 is Param.Choice -> form.row(p.label, JComboBox(p.options.toTypedArray()).apply {
                     selectedIndex = value
                     addActionListener { set(selectedIndex) }
-                }, p.tip)
+                }, p.tip, anim(p.key))
                 is Param.Toggle -> form.full(JCheckBox(p.label, value != 0).apply {
                     toolTipText = p.tip
                     addActionListener { set(if (isSelected) 1 else 0) }
-                })
-                is Param.Color -> form.row(p.label, ColorField(value, p.label, set), p.tip)
+                }, anim(p.key))
+                is Param.Color -> form.row(p.label, ColorField(value, p.label, set), p.tip, anim(p.key))
                 is Param.Heading -> form.section(p.label)
                 is Param.Flow -> buildFlow(layer, p)
                 is Param.Ramp -> form.full(RampField(layer.texts[p.key] ?: p.defaultText) { text ->
@@ -166,6 +170,13 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             }
         })
         form.full(buttons)
+        if (layer.random) {
+            val l = this.layer
+            form.full(JCheckBox("New random value every frame", l.seedPerFrame).apply {
+                toolTipText = "In the animation every frame gets its own random value – the glitch flickers by itself, without keyframes"
+                addActionListener { l.seedPerFrame = isSelected; host.layerChanged() }
+            })
+        }
     }
 
     /** Drawn flow strokes: they are edited on the canvas, here they can be undone or cleared. */
@@ -215,8 +226,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 addChangeListener { set(this.value as Int) }
             }
         val limit = 100_000
-        form.row("X", spinner(layer.x, -limit, limit) { if (it != layer.x.roundToInt()) { layer.x = it.toDouble(); host.layerChanged() } })
-        form.row("Y", spinner(layer.y, -limit, limit) { if (it != layer.y.roundToInt()) { layer.y = it.toDouble(); host.layerChanged() } })
+        form.row("X", spinner(layer.x, -limit, limit) { if (it != layer.x.roundToInt()) { layer.x = it.toDouble(); host.layerChanged() } }, anim = anim(AnimKeys.X))
+        form.row("Y", spinner(layer.y, -limit, limit) { if (it != layer.y.roundToInt()) { layer.y = it.toDouble(); host.layerChanged() } }, anim = anim(AnimKeys.Y))
         form.row("Scale", SliderField(1, 1000, (layer.scale * 100).roundToInt(), 100, "%") { percent ->
             val s = percent / 100.0
             if ((layer.scale * 100).roundToInt() == percent) return@SliderField
@@ -226,13 +237,13 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             layer.x = b.centerX - layer.image.width * s / 2
             layer.y = b.centerY - layer.image.height * s / 2
             host.layerChanged()
-        }, "Double-click the slider: 100 %")
+        }, "Double-click the slider: 100 %", anim(AnimKeys.SCALE))
         form.row("Rotation", SliderField(-1800, 1800, (layer.rotation * 10).roundToInt(), 0, "°", 1) { tenths ->
             if ((layer.rotation * 10).roundToInt() == tenths) return@SliderField
             // around the middle of the picture: position and size stay
             layer.rotation = tenths / 10.0
             host.layerChanged()
-        }, "Around the middle of the image. In the picture: Shift + drag a corner")
+        }, "Around the middle of the image. In the picture: Shift + drag a corner", anim(AnimKeys.ROTATION))
         form.full(JCheckBox("Smooth scaling", layer.smooth).apply {
             toolTipText = "Off: hard pixels (nearest neighbor) when enlarging"
             addActionListener { layer.smooth = isSelected; host.layerChanged() }
@@ -264,7 +275,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         form.row("Opacity", SliderField(0, 100, layer.opacity, 100, "%") {
             layer.opacity = it
             host.layerChanged()
-        })
+        }, anim = anim(AnimKeys.OPACITY))
         form.row("Blend mode", JComboBox(BlendMode.entries.toTypedArray()).apply {
             selectedItem = layer.blend
             addActionListener {
@@ -396,6 +407,12 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             MaskTool.WAND -> "A click selects similar colors of the original picture, the right mouse button (or Alt) subtracts them."
         } + " Space + drag pans the view."))
     }
+
+    /** The animation hook of a setting of this layer. */
+    private fun anim(key: String) = host.animHook(layer, key)
+
+    /** Updates the diamonds after the frame or the keyframes changed. */
+    fun refreshMarkers() = form.markers.forEach { it.refresh() }
 
     /** Focuses the mask mode box, so keyboard users stay where they were after a rebuild. */
     fun focusMaskMode() {
