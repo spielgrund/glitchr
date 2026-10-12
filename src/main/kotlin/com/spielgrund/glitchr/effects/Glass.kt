@@ -60,12 +60,12 @@ object Glass : Effect("glass", "Glass", "Patterned glass: glass blocks, reeded g
         Param.Choice("pattern1", "Glass", patterns, REEDED, PATTERN_TIP),
         Param.Slider("size1", "Size", 4, 1000, 24, " px", canvasMax = true),
         Param.Slider("strength1", "Refraction", -300, 300, 100, " %", "How far the slope shifts the picture – negative: curved the other way"),
-        Param.Slider("angle1", "Angle", 0, 179, 0, "°"),
+        Param.Slider("angle1", "Angle", 0, 17900, 0, "°", decimals = 2),
         Param.Heading("pattern2Heading", "Pattern 2"),
         Param.Choice("pattern2", "Glass", patterns, NONE, "Laid over pattern 1 – the slopes add up. $PATTERN_TIP"),
         Param.Slider("size2", "Size", 4, 1000, 12, " px", canvasMax = true),
         Param.Slider("strength2", "Refraction", -300, 300, 40, " %"),
-        Param.Slider("angle2", "Angle", 0, 179, 90, "°"),
+        Param.Slider("angle2", "Angle", 0, 17900, 9000, "°", decimals = 2),
         Param.Heading("glassHeading", "Glass"),
         Param.Slider(
             "offset", "Offset", 0, 1000, 0, " px",
@@ -86,8 +86,8 @@ object Glass : Effect("glass", "Glass", "Patterned glass: glass blocks, reeded g
         Param.Slider("paneGlow", "Edge glow", 0, 100, 0, " %", "The edges of the pieces of glass glow in their color"),
         Param.Slider("reflection", "Reflection", 0, 100, 0, " %", "Slanted light reflections, different for every piece of glass"),
         Param.Heading("lightHeading", "Light"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°"),
-        Param.Slider("lightHeight", "Light height", 5, 90, 45, "°"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", decimals = 2),
+        Param.Slider("lightHeight", "Light height", 500, 9000, 4500, "°", decimals = 2),
         Param.Slider("shading", "Shading", 0, 100, 35, " %"),
         Param.Slider("gloss", "Gloss", 0, 100, 40, " %"),
         Param.Slider("glossSize", "Gloss size", 1, 100, 40, " %"),
@@ -269,8 +269,8 @@ object Glass : Effect("glass", "Glass", "Patterned glass: glass blocks, reeded g
         val w = src.width
         val h = src.height
         val layers = listOf(
-            Layer(v["pattern1"], v["size1"].toDouble(), v["strength1"] / 100.0, Math.toRadians(v["angle1"].toDouble())),
-            Layer(v["pattern2"], v["size2"].toDouble(), v["strength2"] / 100.0, Math.toRadians(v["angle2"].toDouble())),
+            Layer(v["pattern1"], v["size1"].toDouble(), v["strength1"] / 100.0, Math.toRadians((v["angle1"] / 100.0).toDouble())),
+            Layer(v["pattern2"], v["size2"].toDouble(), v["strength2"] / 100.0, Math.toRadians((v["angle2"] / 100.0).toDouble())),
         ).filter { it.kind != NONE }
         val amount = v["amount"] / 100.0
         val dispersion = v["dispersion"] / 100.0 * 0.35
@@ -282,8 +282,8 @@ object Glass : Effect("glass", "Glass", "Patterned glass: glass blocks, reeded g
         val shading = v["shading"] / 100.0
         val gloss = v["gloss"] / 100.0
         val shininess = 4 + (1 - v["glossSize"] / 100.0).pow(2) * 200
-        val la = Math.toRadians(v["lightAngle"].toDouble())
-        val le = Math.toRadians(v["lightHeight"].toDouble())
+        val la = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
+        val le = Math.toRadians((v["lightHeight"] / 100.0).toDouble())
         val lx = cos(la) * cos(le)
         val ly = sin(la) * cos(le)
         val lz = sin(le)

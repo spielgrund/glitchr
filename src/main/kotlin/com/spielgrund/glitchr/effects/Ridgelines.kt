@@ -36,7 +36,7 @@ import kotlin.math.sin
 object Ridgelines : Effect("ridgelines", "Spectroscope", "Stacked lines that pile up with the picture – like “Unknown Pleasures”") {
     override val params = listOf(
         Param.Slider("spacing", "Line spacing", 3, 200, 12, " px"),
-        Param.Slider("angle", "Angle", 0, 359, 0, "°", "Rotates the lines; the mountains always grow across the lines"),
+        Param.Slider("angle", "Angle", 0, 35900, 0, "°", "Rotates the lines; the mountains always grow across the lines", decimals = 2),
         Param.Slider("height", "Height", 0, 1000, 80, " px", "How high a line piles up at the brightest spot", canvasMax = true),
         Param.Choice("source", "Source", listOf("Picture brightness", "Picture darkness", "Noise only"), tip = "What lifts the lines; “Noise only” gives the record cover without a picture"),
         Param.Slider("peaks", "Peaks", 50, 400, 200, " %", "Higher values leave only the brightest spots standing as pointed mountains"),
@@ -66,7 +66,7 @@ object Ridgelines : Effect("ridgelines", "Spectroscope", "Stacked lines that pil
         val focus = v["focus"] / 100.0
         // the lines are laid out in a turned frame that just covers the picture;
         // at 0° it is the picture itself
-        val angle = Math.toRadians(v["angle"].toDouble())
+        val angle = Math.toRadians((v["angle"] / 100.0).toDouble())
         val cos = cos(angle)
         val sin = sin(angle)
         val frameW = abs(cos) * w + abs(sin) * h

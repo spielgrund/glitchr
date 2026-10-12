@@ -77,8 +77,8 @@ object DiffGrowth : Effect("diffgrowth", "Differential Growth", "Curves grow, fo
         Param.Slider("creaseWidth", "Joint width", 1, 60, 9, " px"),
         Param.Choice("background", "Outside", listOf("Picture", "Black", "Transparent")),
         Param.Heading("lightHeading", "Light"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°"),
-        Param.Slider("lightHeight", "Light height", 5, 90, 45, "°"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", decimals = 2),
+        Param.Slider("lightHeight", "Light height", 500, 9000, 4500, "°", decimals = 2),
         Param.Slider("shading", "Shading", 0, 100, 60, " %"),
         Param.Slider("gloss", "Gloss", 0, 100, 45, " %"),
         Param.Slider("glossSize", "Gloss size", 1, 100, 35, " %"),
@@ -371,8 +371,8 @@ object DiffGrowth : Effect("diffgrowth", "Differential Growth", "Curves grow, fo
         val shading = v["shading"] / 100.0
         val gloss = v["gloss"] / 100.0
         val shininess = 4 + (1 - v["glossSize"] / 100.0).pow(2) * 200
-        val la = Math.toRadians(v["lightAngle"].toDouble())
-        val le = Math.toRadians(v["lightHeight"].toDouble())
+        val la = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
+        val le = Math.toRadians((v["lightHeight"] / 100.0).toDouble())
         val lx = cos(la) * cos(le)
         val ly = sin(la) * cos(le)
         val lz = sin(le)

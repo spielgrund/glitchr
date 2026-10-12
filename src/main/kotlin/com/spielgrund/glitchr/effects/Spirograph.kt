@@ -40,7 +40,7 @@ object Spirograph : Effect("spirograph", "Spirograph", "A wheel rolls inside a t
         Param.Slider("passHole", "Hole per pass", -50, 50, 0, " %", "The pen moves to a different hole from pass to pass"),
         Param.Heading("styleHeading", "Display"),
         Param.Slider("size", "Size", 5, 150, 92, " %", "Radius relative to half the shorter side"),
-        Param.Slider("rotation", "Rotation", 0, 359, 0, "°"),
+        Param.Slider("rotation", "Rotation", 0, 35900, 0, "°", decimals = 2),
         Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
         Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
         Param.Slider("lineWidth", "Line width", 1, 200, 12, " px", decimals = 1),
@@ -72,7 +72,7 @@ object Spirograph : Effect("spirograph", "Spirograph", "A wheel rolls inside a t
         g.stroke = BasicStroke(v["lineWidth"] / 10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
         g.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, v["lineOpacity"] / 100f)
         g.translate(w * v["centerX"] / 100.0, h * v["centerY"] / 100.0)
-        g.rotate(v["rotation"] * PI / 180)
+        g.rotate((v["rotation"] / 100.0) * PI / 180)
 
         val inside = v["mode"] == 0
         val ring = v["ring"].toDouble()

@@ -50,7 +50,7 @@ object ColorCorrect : Effect("colorcorrect", "Color correction", "Exposure, tone
         Param.Slider("highlights", "Highlights", -100, 100, 0, " %", "Negative brings bright areas back"),
         Param.Slider("shadows", "Shadows", -100, 100, 0, " %", "Positive brightens dark areas"),
         Param.Heading("hslHeading", "HSL"),
-        Param.Slider("hue", "Hue", -180, 180, 0, "°"),
+        Param.Slider("hue", "Hue", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider(
             "saturation", "Saturation", 0, 1000, 100, " %",
             "Pushes every channel away from the pixel's grey – high values overdrive like old Photoshop",
@@ -95,7 +95,7 @@ object ColorCorrect : Effect("colorcorrect", "Color correction", "Exposure, tone
         val contrast = v["contrast"] / 100.0
         val highlights = v["highlights"] / 100.0
         val shadows = v["shadows"] / 100.0
-        val hue = v["hue"] / 360.0
+        val hue = (v["hue"] / 100.0) / 360.0
         val saturation = v["saturation"] / 100.0
         val lightness = v["lightness"] / 100.0
         val vibrance = v["vibrance"] / 100.0

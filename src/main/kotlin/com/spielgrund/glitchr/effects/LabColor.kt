@@ -40,7 +40,7 @@ object LabColor : Effect("lab", "LAB colors", "Change colors in LAB color space:
         Param.Slider("bGain", "Strength", -400, 400, 100, " %", "Negative swaps blue and yellow"),
         Param.Heading("lchHeading", "Chroma and hue (LCh)"),
         Param.Slider("chroma", "Chroma", 0, 400, 150, " %", "0 %: grey, 100 %: unchanged, above ever more colorful – without changing the lightness"),
-        Param.Slider("hue", "Rotate hue", -180, 180, 0, "°"),
+        Param.Slider("hue", "Rotate hue", -18000, 18000, 0, "°", decimals = 2),
         Param.Heading("glitchHeading", "Glitch"),
         Param.Choice("swap", "Swap channels", swaps, tip = "L is converted to the range of a and b for this (and back)"),
         Param.Slider("steps", "Steps", 0, 64, 0, tip = "Cuts L, a and b into this many steps; 0 = stepless"),
@@ -73,7 +73,7 @@ object LabColor : Effect("lab", "LAB colors", "Change colors in LAB color space:
         val bShift = v["bShift"].toDouble()
         val bGain = v["bGain"] / 100.0
         val chroma = v["chroma"] / 100.0
-        val hue = v["hue"] * PI / 180
+        val hue = (v["hue"] / 100.0) * PI / 180
         val hueCos = cos(hue)
         val hueSin = sin(hue)
         val swap = v["swap"]

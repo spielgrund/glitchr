@@ -57,7 +57,7 @@ object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction d
         Param.Choice("method", "Method", listOf("Follow the flow", "Direct (UV offset)"), tip = "Follow the flow: the picture travels along the curves · Direct: every point moves straight in its direction, like a UV offset"),
         Param.Slider("reach", "Reach", 5, 1000, 120, " px", "How far around itself a stroke works"),
         Param.Choice("outside", "Outside", listOf("Continue direction", "Standstill"), tip = "What happens away from the strokes"),
-        Param.Slider("baseAngle", "Base direction", 0, 359, 0, "°", "Direction without drawn strokes; 0° = to the right"),
+        Param.Slider("baseAngle", "Base direction", 0, 35900, 0, "°", "Direction without drawn strokes; 0° = to the right", decimals = 2),
     )
 
     override val random = false
@@ -354,7 +354,7 @@ object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction d
         val cols = max(1, ceil(w / cell).toInt())
         val rows = max(1, ceil(h / cell).toInt())
         val field = Field(w, h, cell, cols, rows)
-        val base = Math.toRadians(v["baseAngle"].toDouble())
+        val base = Math.toRadians((v["baseAngle"] / 100.0).toDouble())
         val baseX = cos(base)
         val baseY = sin(base)
         val still = v["outside"] == 1

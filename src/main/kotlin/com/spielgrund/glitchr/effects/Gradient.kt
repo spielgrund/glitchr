@@ -32,7 +32,7 @@ object Gradient : Effect("gradient", "Gradient", "Color gradient: linear, mirror
         Param.Toggle("useMid", "Middle color", false, "The gradient runs through a third color in the middle"),
         Param.Color("mid", "Middle color", 0xFF4FA3),
         Param.Slider("midPos", "Position of the middle color", 1, 99, 50, " %"),
-        Param.Slider("angle", "Angle", 0, 359, 90, "°", "Direction of the gradient; for angle: where it starts"),
+        Param.Slider("angle", "Angle", 0, 35900, 9000, "°", "Direction of the gradient; for angle: where it starts", decimals = 2),
         Param.Slider("centerX", "Center X", -50, 150, 50, " %"),
         Param.Slider("centerY", "Center Y", -50, 150, 50, " %"),
         Param.Slider("size", "Size", 5, 400, 100, " %", "100 %: the gradient spans the whole canvas"),
@@ -49,7 +49,7 @@ object Gradient : Effect("gradient", "Gradient", "Color gradient: linear, mirror
         val w = src.width
         val h = src.height
         val type = v["type"]
-        val a = v["angle"] * PI / 180
+        val a = (v["angle"] / 100.0) * PI / 180
         val ux = cos(a)
         val uy = sin(a)
         val cx = w * v["centerX"] / 100.0

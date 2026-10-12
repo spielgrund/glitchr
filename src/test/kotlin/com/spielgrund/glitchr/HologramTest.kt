@@ -20,7 +20,7 @@ class HologramTest {
 
     @Test
     fun `turning the card changes the foil`() {
-        assertTrue(!run("rotation" to -30).data.contentEquals(run("rotation" to 30).data))
+        assertTrue(!run("rotation" to -3000).data.contentEquals(run("rotation" to 3000).data))
     }
 
     @Test
@@ -31,7 +31,7 @@ class HologramTest {
 
     @Test
     fun `parallax moves the areas against each other when turned`() {
-        val moved = run(*none, "parallax" to 100, "rotation" to 60)
+        val moved = run(*none, "parallax" to 100, "rotation" to 6000)
         assertTrue(!moved.data.contentEquals(src.data), "Parallax")
         // not turned, nothing moves
         assertContentEquals(src.data, run(*none, "parallax" to 100, "rotation" to 0).data)
@@ -44,7 +44,7 @@ class HologramTest {
             for (y in 0 until 100) for (x in 0 until 200) p.data[y * 200 + x] = if (x < 100) 0xFFFF0000.toInt() else 0xFF0000FF.toInt()
         }
         for (edge in 0..1) {
-            val out = Hologram.apply(halves, Hologram.defaultValues(mapOf(*none, "parallax" to 200, "rotation" to 90, "parallaxEdge" to edge)), 7L)
+            val out = Hologram.apply(halves, Hologram.defaultValues(mapOf(*none, "parallax" to 200, "rotation" to 9000, "parallaxEdge" to edge)), 7L)
             assertTrue((0 until 100).all { y -> (0 until 95).all { x -> out[x, y] == 0xFFFF0000.toInt() } }, "edge $edge: only red on the left")
             assertTrue((0 until 100).all { y -> (105 until 200).all { x -> out[x, y] == 0xFF0000FF.toInt() } }, "edge $edge: only blue on the right")
         }
@@ -86,8 +86,8 @@ class HologramTest {
     @Test
     fun `diamond sparkles flash with the turn and have a size`() {
         fun sparkles(vararg c: Pair<String, Int>) = run(*none, "style" to 2, "sparkle" to 100, *c)
-        val a = sparkles("rotation" to 10)
-        val b = sparkles("rotation" to 40)
+        val a = sparkles("rotation" to 1000)
+        val b = sparkles("rotation" to 4000)
         assertTrue(!a.data.contentEquals(src.data), "sparks visible")
         assertTrue(!a.data.contentEquals(b.data), "different sparks when turned")
         fun lit(p: com.spielgrund.glitchr.image.Pixels) = p.data.indices.count { p.data[it] != src.data[it] }

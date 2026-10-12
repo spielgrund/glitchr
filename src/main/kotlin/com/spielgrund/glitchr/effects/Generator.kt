@@ -52,7 +52,7 @@ class Generator(
         val scale = v[POS_SCALE] / 1000.0
         return transformPixels(
             made, offsetX = v[POS_X] / 10.0, offsetY = v[POS_Y] / 10.0, scaleX = scale, scaleY = scale,
-            rotation = v[POS_ROTATION] / 10.0, edge = Transform.edgeOf(v[POS_EDGE]),
+            rotation = v[POS_ROTATION] / 100.0, edge = Transform.edgeOf(v[POS_EDGE]),
         )
     }
 
@@ -76,7 +76,7 @@ class Generator(
             Param.Slider(POS_X, "Shift X", -50000, 50000, 0, " px", decimals = 1),
             Param.Slider(POS_Y, "Shift Y", -50000, 50000, 0, " px", decimals = 1),
             Param.Slider(POS_SCALE, "Scale", 10, 10000, 1000, " %", decimals = 1, tip = "Around the middle of the canvas"),
-            Param.Slider(POS_ROTATION, "Rotation", -1800, 1800, 0, "°", decimals = 1, tip = "Around the middle of the canvas"),
+            Param.Slider(POS_ROTATION, "Rotation", -18000, 18000, 0, "°", decimals = 2, tip = "Around the middle of the canvas"),
             Param.Choice(POS_EDGE, "Edge", Transform.edgeOptions, 0, "What comes in from outside the generated picture"),
         )
     }

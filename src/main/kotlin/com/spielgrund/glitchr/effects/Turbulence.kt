@@ -47,7 +47,7 @@ object Turbulence : Effect("turbulence", "Turbulence", "Colors flow as on water 
         Param.Slider("swirlDetail", "Fineness", 1, 6, 4, tip = "How many ever smaller swirls are added"),
         Param.Slider("swirlSteps", "Passes", 1, 300, 80, tip = "The more, the finer the streaks are drawn out and folded"),
         Param.Slider("swirlEvolve", "Change", 0, 100, 30, " %", "How fast the flow changes – 0 %: standing swirls, more: tangled folds"),
-        Param.Slider("direction", "Direction", 0, 359, 0, "°", "The color also drifts in this direction – long, drawn-out paths"),
+        Param.Slider("direction", "Direction", 0, 35900, 0, "°", "The color also drifts in this direction – long, drawn-out paths", decimals = 2),
         Param.Slider("directionStrength", "Direction strength", 0, 200, 0, " %"),
         Param.Heading("filmHeading", "Film"),
         Param.Slider("film", "Film colors", 0, 100, 25, " %", "Rainbow streaks like a soap or oil film, along the brightness lines"),
@@ -74,7 +74,7 @@ object Turbulence : Effect("turbulence", "Turbulence", "Colors flow as on water 
         val octaves = v["swirlDetail"]
         val steps = v["swirlSteps"]
         val evolve = v["swirlEvolve"] / 100.0 * 0.03
-        val angle = Math.toRadians(v["direction"].toDouble())
+        val angle = Math.toRadians((v["direction"] / 100.0).toDouble())
         val drift = v["directionStrength"] / 100.0
         val driftX = (cos(angle) * drift).toFloat()
         val driftY = (sin(angle) * drift).toFloat()

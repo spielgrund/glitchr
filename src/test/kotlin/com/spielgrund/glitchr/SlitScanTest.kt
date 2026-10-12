@@ -34,7 +34,7 @@ class SlitScanTest {
 
     @Test
     fun `at 90 degrees the columns slide down`() {
-        val out = run("size" to 1, "offset" to 239, "angle" to 90)
+        val out = run("size" to 1, "offset" to 239, "angle" to 9000)
         // column x (counted from the right, the start at 90°) moves down
         val k = 239 - 100
         assertEquals(src[100, Math.floorMod(30 - k, 160)], out[100, 30])

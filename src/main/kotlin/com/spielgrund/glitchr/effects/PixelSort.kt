@@ -24,7 +24,7 @@ object PixelSort : Effect("pixelsort", "Pixelsort", "Sorts runs of pixels within
     private val keys = listOf("Brightness", "Hue", "Saturation", "Red", "Green", "Blue")
 
     override val params = listOf(
-        Param.Slider("angle", "Angle", 0, 359, 0, "°", "Sorting direction: 0° to the right, 90° down, 180° to the left, 270° up"),
+        Param.Slider("angle", "Angle", 0, 35900, 0, "°", "Sorting direction: 0° to the right, 90° down, 180° to the left, 270° up", decimals = 2),
         Param.Choice("key", "Sort by", keys),
         Param.Slider("lower", "Lower threshold", 0, 255, 60, tip = "Pixels darker than this end a run"),
         Param.Slider("upper", "Upper threshold", 0, 255, 220, tip = "Pixels brighter than this end a run"),
@@ -41,7 +41,7 @@ object PixelSort : Effect("pixelsort", "Pixelsort", "Sorts runs of pixels within
         val hi = max(v["lower"], v["upper"])
         val invert = v.bool("invert")
         val jitter = v["jitter"] / 100f
-        val angle = v["angle"]
+        val angle = (v["angle"] / 100.0)
         val a = Math.toRadians(angle.toDouble())
 
         return withBlocks(src, v["block"], seed, horizontalBands = abs(cos(a)) >= abs(sin(a))) { img, n ->
@@ -71,8 +71,8 @@ object PixelSort : Effect("pixelsort", "Pixelsort", "Sorts runs of pixels within
      * pixel along the main axis and follow the slope on the other axis, so every pixel
      * lies on exactly one line. [indices] lists a line's pixels in sorting direction.
      */
-    internal class Lines(private val w: Int, private val h: Int, angleDeg: Int) {
-        private val a = Math.toRadians(angleDeg.toDouble())
+    internal class Lines(private val w: Int, private val h: Int, angleDeg: Double) {
+        private val a = Math.toRadians(angleDeg)
         private val alongX = abs(cos(a)) >= abs(sin(a))
         private val forward = if (alongX) cos(a) > 0 else sin(a) > 0
         private val mainSize = if (alongX) w else h

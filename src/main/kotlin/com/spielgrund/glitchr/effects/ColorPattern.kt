@@ -57,7 +57,7 @@ abstract class TilePattern(
         add(Param.Choice("pattern", "Pattern", names))
         add(Param.Slider("colors", "Colors", 2, 12, 5, tip = "How many of the picture's most striking colors are used"))
         add(Param.Slider("size", "Size", 4, 600, defaultSize, " px"))
-        add(Param.Slider("angle", "Angle", 0, 179, 0, "°"))
+        add(Param.Slider("angle", "Angle", 0, 17900, 0, "°", decimals = 2))
         val mappings = listOf("By picture", "Random", "In order", "Black/white", "Gradient", "Gradient per band", "Stripe gradient")
         add(
             Param.Choice(
@@ -70,7 +70,7 @@ abstract class TilePattern(
         add(Param.Color("color1", "Gradient color 1", 0x14125A, "For the gradients"))
         add(Param.Color("color2", "Gradient color 2", 0x19C3A0, "For the gradients"))
         add(Param.Color("background", "Background color", 0xFFFFFF, "For the gradients: color between the lines"))
-        add(Param.Slider("gradientAngle", "Gradient angle", 0, 359, 45, "°", "Direction of the gradient across the picture"))
+        add(Param.Slider("gradientAngle", "Gradient angle", 0, 35900, 4500, "°", "Direction of the gradient across the picture", decimals = 2))
         add(Param.Choice("smoothing", "Anti-aliasing", listOf("Off", "Normal (3×3)", "High (5×5)"), 1, "Several samples per pixel for smooth edges"))
         if (withBands) {
             add(Param.Slider("bands", "Bands", 2, 24, 8, tip = "Lines in nested patterns (angles, meander, diamonds, squares, triangles, cubes)"))
@@ -113,7 +113,7 @@ abstract class TilePattern(
         val stroke = if (withBands) v["stroke"] / 100.0 else 0.22
         val armLength = if (withBands) v["length"] / 100.0 else 1.0
         val s = v["size"].toDouble()
-        val a = v["angle"] * PI / 180
+        val a = (v["angle"] / 100.0) * PI / 180
         val ca = cos(a)
         val sa = sin(a)
         val pattern = first + v["pattern"]
@@ -125,7 +125,7 @@ abstract class TilePattern(
         val color1 = v["color1"]
         val color2 = v["color2"]
         val backColor = v["background"]
-        val ga = v["gradientAngle"] * PI / 180
+        val ga = (v["gradientAngle"] / 100.0) * PI / 180
         val gx = cos(ga)
         val gy = sin(ga)
         // half the picture's extent along the gradient direction

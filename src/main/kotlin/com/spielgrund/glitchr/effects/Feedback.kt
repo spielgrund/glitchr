@@ -67,14 +67,14 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         Param.Slider("steps", "Steps", 1, 100, 12, tip = "How many copies are laid over each other"),
         Param.Heading("transformHeading", "Per step"),
         Param.Slider("scale", "Scale", 500, 2000, 920, " %", decimals = 1, tip = "Below 100 %: every copy smaller (a tunnel, into the blobs), above it larger (out of them)"),
-        Param.Slider("rotation", "Rotation", -1800, 1800, 0, "°", decimals = 1),
+        Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("offsetX", "Offset X", -5000, 5000, 0, " px", decimals = 1, tip = "Is scaled and rotated too – together with a rotation, spirals appear"),
         Param.Slider("offsetY", "Offset Y", -5000, 5000, 0, " px", decimals = 1),
         Param.Slider("centerX", "Center X", 0, 100, 50, " %", "Scaling and rotation happen around this point (blobs: each around its own middle)"),
         Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
         Param.Choice("edge", "Edge", edges, tip = "What lies outside a shrunken or shifted copy (not for blobs)"),
         Param.Heading("hslHeading", "Color per step (HSL)"),
-        Param.Slider("hue", "Hue", -180, 180, 0, "°"),
+        Param.Slider("hue", "Hue", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("saturation", "Saturation", -50, 50, 0, " %"),
         Param.Slider("lightness", "Brightness", -50, 50, 0, " %"),
         Param.Heading("linesHeading", "Edges and blobs"),
@@ -182,12 +182,12 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         val source = v["source"]
         val cx = w * v["centerX"] / 100.0
         val cy = h * v["centerY"] / 100.0
-        val transform = Steps(steps, v["scale"] / 1000.0, Math.toRadians(v["rotation"] / 10.0), v["offsetX"] / 10.0, v["offsetY"] / 10.0)
+        val transform = Steps(steps, v["scale"] / 1000.0, Math.toRadians(v["rotation"] / 100.0), v["offsetX"] / 10.0, v["offsetY"] / 10.0)
         val edge = when (v["edge"]) { 1 -> Edge.WRAP; 2 -> Edge.MIRROR; 3 -> Edge.CLAMP; else -> null }
         val blend = BlendMode.entries[v["blend"]]
         val opacity = v["opacity"] / 100f
         val fade = 1 - v["fade"] / 100f
-        val hue = v["hue"] / 360.0
+        val hue = (v["hue"] / 100.0) / 360.0
         val saturation = v["saturation"] / 100.0
         val lightness = v["lightness"] / 100.0
         val shiftColors = hue != 0.0 || saturation != 0.0 || lightness != 0.0

@@ -29,7 +29,7 @@ class FlowTest {
                 assertEquals(src[Math.floorMod(x - 60, 240), y], out[x, y], "method $method at $x,$y")
             }
         }
-        val down = run("", "shift" to 25, "baseAngle" to 90)
+        val down = run("", "shift" to 25, "baseAngle" to 9000)
         assertEquals(src[50, Math.floorMod(5 - 40, 160)], down[50, 5])
         // 100 % is one full repetition: the picture is back in place
         assertTrue(run("", "shift" to 100, "method" to 1).data.contentEquals(src.data))

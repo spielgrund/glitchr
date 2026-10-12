@@ -47,15 +47,15 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
         Param.Choice("background", "Around the ball", backgrounds, tip = "What stays outside the ball (globe, glass and mirror ball)"),
         Param.Heading("shapeHeading", "Shape"),
         Param.Slider("amount", "Bulge", -100, 100, 100, " %", "Bulge / pinch: positive swells outwards, negative pinches inwards"),
-        Param.Slider("turn", "Turn", -360, 360, 0, "°", "Globe and mirror ball: turns the ball around its vertical axis – animate it to let it spin"),
-        Param.Slider("tilt", "Tilt", -90, 90, 0, "°", "Globe and mirror ball: tips the ball forwards or backwards"),
+        Param.Slider("turn", "Turn", -36000, 36000, 0, "°", "Globe and mirror ball: turns the ball around its vertical axis – animate it to let it spin", decimals = 2),
+        Param.Slider("tilt", "Tilt", -9000, 9000, 0, "°", "Globe and mirror ball: tips the ball forwards or backwards", decimals = 2),
         Param.Slider("repeat", "Repeat", 1, 8, 1, tip = "Globe and mirror ball: how often the picture runs around the ball"),
         Param.Toggle("seamless", "Hide seam", true, "Globe and mirror ball: runs the picture forth and mirrored back, so its ends meet without a seam"),
         Param.Slider("ior", "Refraction", 100, 250, 150, decimals = 2, tip = "Glass ball: refractive index – 1.00 bends nothing, 1.50 is glass, higher bends more"),
         Param.Slider("zoom", "Backdrop zoom", 10, 400, 100, " %", "Glass ball: enlarges the picture seen through the ball"),
         Param.Heading("lightHeading", "Light"),
         Param.Slider("shading", "Shading", 0, 100, 50, " %", "Brightens the side facing the light and darkens the other one"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "Where the light comes from; 225° = from the top left"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", "Where the light comes from; 225° = from the top left", decimals = 2),
         Param.Slider("highlight", "Highlight", 0, 100, 40, " %", "Shiny spot where the light is reflected"),
         Param.Slider("gloss", "Highlight size", 1, 100, 30, " %", "Small: a sharp spot · large: a broad sheen"),
         Param.Choice(
@@ -77,8 +77,8 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
         val radius = max(1.0, min(w, h) / 2.0 * v["radius"] / 100.0)
         val background = v["background"]
         val amount = v["amount"] / 100.0
-        val turn = v["turn"] * PI / 180
-        val tilt = v["tilt"] * PI / 180
+        val turn = (v["turn"] / 100.0) * PI / 180
+        val tilt = (v["tilt"] / 100.0) * PI / 180
         val repeat = v["repeat"].toDouble()
         val seamless = v.bool("seamless")
         val ior = v["ior"] / 100.0
@@ -87,7 +87,7 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
         val shading = v["shading"] / 100.0 * if (mode == BULGE) abs(amount) else 1.0
         val highlight = v["highlight"] / 100.0 * if (mode == BULGE) abs(amount) else 1.0
         val shininess = 4 + 200 * (1 - v["gloss"] / 100.0).pow(2)
-        val lightAngle = v["lightAngle"] * PI / 180
+        val lightAngle = (v["lightAngle"] / 100.0) * PI / 180
         // light from the chosen side and somewhat from the front
         val lx = cos(lightAngle) * 0.6
         val ly = sin(lightAngle) * 0.6

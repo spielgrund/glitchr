@@ -199,7 +199,7 @@ class Renderer {
                 val h = height * scale
                 val cx = width / 2.0 + value(Generator.POS_X, 0) / 10.0
                 val cy = height / 2.0 + value(Generator.POS_Y, 0) / 10.0
-                MaskSpace(cx - w / 2, cy - h / 2, w, h, Math.toRadians(value(Generator.POS_ROTATION, 0) / 10.0))
+                MaskSpace(cx - w / 2, cy - h / 2, w, h, Math.toRadians(value(Generator.POS_ROTATION, 0) / 100.0))
             }
         }
 

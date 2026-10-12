@@ -32,8 +32,8 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
     private val patterns = listOf("Off", "Stars", "Crosses", "Circles", "Dots", "Diamonds", "Mixed")
 
     override val params = listOf(
-        Param.Slider("rotation", "Rotation", -90, 90, 20, "°", "Turns the card: the colors travel across the areas, deeper areas react more strongly"),
-        Param.Slider("axis", "Rotation axis", 0, 359, 0, "°", "In which direction the card is tilted; 0° = left/right"),
+        Param.Slider("rotation", "Rotation", -9000, 9000, 2000, "°", "Turns the card: the colors travel across the areas, deeper areas react more strongly", decimals = 2),
+        Param.Slider("axis", "Rotation axis", 0, 35900, 0, "°", "In which direction the card is tilted; 0° = left/right", decimals = 2),
         Param.Slider("areas", "Areas", 0, 100, 50, " %", "How coarsely the picture is split into areas"),
         Param.Slider("tilt", "Tilt", 0, 100, 60, " %", "How differently the areas are tilted: each catches the light at a different angle, and its stripe pattern is rotated against the rotation axis (up to 60° at 100 %)"),
         Param.Slider("depth", "Depth", 0, 100, 40, " %", "How far apart the areas lie in depth: deeper ones shimmer faster when turned"),
@@ -69,7 +69,7 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
         Param.Slider("fringe", "Glow fringe", 0, 100, 40, " %", "Red radiates further than blue: colored fringes around the lights"),
         Param.Slider("streak", "Light streaks", 0, 100, 30, " %", "Long light streaks through the brightest spots, as with an anamorphic lens"),
         Param.Slider("streakLength", "Streak length", 10, 800, 160, " px"),
-        Param.Slider("streakAngle", "Streak angle", 0, 179, 0, "°", "0° = horizontal"),
+        Param.Slider("streakAngle", "Streak angle", 0, 17900, 0, "°", "0° = horizontal", decimals = 2),
         Param.Choice("tonemap", "Tone mapping", listOf("Off", "Filmic"), 1, "Filmic: bright spots roll off softly instead of burning out, highlights and shadows can be controlled separately"),
         Param.Slider("exposure", "Exposure", -200, 200, 0, " %", "Hundredths of a stop: −100 % halves the light, +100 % doubles it"),
         Param.Slider("highlights", "Highlights", 0, 300, 60, " %", "Filmic shoulder up to 100 %: the highlights roll off softly instead of burning out; above 100 % the highlights get even more contrast, bright spots become crisper, the shadows stay"),
@@ -96,8 +96,8 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
         val count = blobs.area.size
         val tilt = v["tilt"] / 100.0
         val depth = v["depth"] / 100.0
-        val rotation = Math.toRadians(v["rotation"].toDouble())
-        val axis = Math.toRadians(v["axis"].toDouble())
+        val rotation = Math.toRadians((v["rotation"] / 100.0).toDouble())
+        val axis = Math.toRadians((v["axis"] / 100.0).toDouble())
         val ax = cos(axis)
         val ay = sin(axis)
         val style = v["style"]
@@ -248,7 +248,7 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
             val sg: FloatArray?
             val sb: FloatArray?
             if (streak > 0) {
-                val angle = Math.toRadians(v["streakAngle"].toDouble())
+                val angle = Math.toRadians((v["streakAngle"] / 100.0).toDouble())
                 val length = v["streakLength"].toDouble()
                 sr = streaks(lightR, w, h, cos(angle), sin(angle), length * (1 + fringe * 0.3))
                 sg = streaks(lightG, w, h, cos(angle), sin(angle), length)
@@ -310,7 +310,7 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
      * stops, a filmic shoulder that rolls the lights off softly instead of clipping them
      * ([highlights] = how much), and a toe that deepens or lifts the shadows.
      */
-    private fun tonemap(out: Pixels, exposure: Double, highlights: Double, shadows: Double) {
+    internal fun tonemap(out: Pixels, exposure: Double, highlights: Double, shadows: Double) {
         val gain = Math.pow(2.0, exposure)
         // the curve on the linear brightness, looked up from a table
         val table = DoubleArray(1024) { k ->
@@ -473,7 +473,7 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
     }
 
     /** Long streaks through the bright spots of [plane], along ([dx], [dy]), fading over [length]. */
-    private fun streaks(plane: FloatArray, w: Int, h: Int, dx: Double, dy: Double, length: Double): FloatArray {
+    internal fun streaks(plane: FloatArray, w: Int, h: Int, dx: Double, dy: Double, length: Double): FloatArray {
         val out = FloatArray(w * h)
         val taps = 40
         parallelRows(h) { y ->

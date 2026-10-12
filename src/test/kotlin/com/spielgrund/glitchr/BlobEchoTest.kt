@@ -24,7 +24,7 @@ class BlobEchoTest {
         for (k in 1..3) assertTrue(white(out, 35 + 40 * k, 55), "copy $k")
         assertTrue(!white(out, 35 + 40 * 4, 55), "no more than three")
         assertTrue(!white(out, 35, 20) && !white(out, 35, 95), "nothing above or below")
-        val down = run("direction" to 90, "copies" to 1, "spacing" to 35)
+        val down = run("direction" to 9000, "copies" to 1, "spacing" to 35)
         assertTrue(white(down, 35, 55 + 35))
     }
 
@@ -47,7 +47,7 @@ class BlobEchoTest {
     @Test
     fun `only the slice of each area is copied`() {
         // a quarter slice opening upwards: the copy has the square's upper middle, not its lower half
-        val out = run("direction" to 0, "copies" to 1, "spacing" to 60, "slice" to 90, "sliceAngle" to 270)
+        val out = run("direction" to 0, "copies" to 1, "spacing" to 60, "slice" to 9000, "sliceAngle" to 27000)
         assertTrue(white(out, 35 + 60, 45), "upper part copied")
         assertTrue(!white(out, 35 + 60, 65), "lower part not")
         assertTrue(!white(out, 22 + 60, 55), "left edge not")

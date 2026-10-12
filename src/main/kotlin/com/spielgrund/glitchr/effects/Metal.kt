@@ -78,19 +78,19 @@ object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, go
         Param.Choice("surface", "Surface", surfaces, BRUSHED),
         Param.Slider("surfaceSize", "Size", 1, 200, 6, " px", canvasMax = true),
         Param.Slider("surfaceStrength", "Strength", 0, 200, 50, " %"),
-        Param.Slider("brushAngle", "Direction", 0, 179, 0, "°", "Direction of the brush strokes"),
+        Param.Slider("brushAngle", "Direction", 0, 17900, 0, "°", "Direction of the brush strokes", decimals = 2),
         Param.Heading("envHeading", "Reflection"),
         Param.Choice(
             "env", "Environment", environments, HORIZON,
             "Chrome horizon: sky above, dark ground below – the classic chrome look · Studio: dark room with bright softboxes · " +
                 "Stripes: light and dark bands · Picture: reflects the picture itself",
         ),
-        Param.Slider("horizon", "Horizon", -60, 60, 15, "°", "Where the horizon lies in flat spots – higher: more ground"),
-        Param.Slider("envAngle", "Rotation", -180, 180, 0, "°", "Rotates the environment"),
+        Param.Slider("horizon", "Horizon", -6000, 6000, 1500, "°", "Where the horizon lies in flat spots – higher: more ground", decimals = 2),
+        Param.Slider("envAngle", "Rotation", -18000, 18000, 0, "°", "Rotates the environment", decimals = 2),
         Param.Slider("roughness", "Roughness", 0, 100, 15, " %", "Makes the reflection blurry and the gloss wider"),
         Param.Heading("lightHeading", "Light"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°"),
-        Param.Slider("lightHeight", "Light height", 5, 90, 45, "°"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", decimals = 2),
+        Param.Slider("lightHeight", "Light height", 500, 9000, 4500, "°", decimals = 2),
         Param.Slider("gloss", "Gloss", 0, 200, 80, " %"),
         Param.Slider("shading", "Shading", 0, 100, 30, " %", "Darkens areas that face away from the light"),
         Param.Heading("outHeading", "Output"),
@@ -141,7 +141,7 @@ object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, go
         val sAmp = v["surfaceStrength"] / 100.0
         if (surface != 0 && sAmp > 0) {
             val noise = Noise(seed)
-            val ba = Math.toRadians(v["brushAngle"].toDouble())
+            val ba = Math.toRadians((v["brushAngle"] / 100.0).toDouble())
             val bc = cos(ba)
             val bs = sin(ba)
             parallelRows(h) { y ->
@@ -182,8 +182,8 @@ object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, go
             }
         } else null
 
-        val tilt = Math.toRadians(v["horizon"].toDouble())
-        val envRot = Math.toRadians(v["envAngle"].toDouble())
+        val tilt = Math.toRadians((v["horizon"] / 100.0).toDouble())
+        val envRot = Math.toRadians((v["envAngle"] / 100.0).toDouble())
         val soft = 0.01 + roughness * 0.5
 
         /** The environment's color in direction (rx, ry, rz) – rz towards the viewer, ry down – written into [out], 0..1. */
@@ -231,8 +231,8 @@ object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, go
             }
         }
 
-        val la = Math.toRadians(v["lightAngle"].toDouble())
-        val le = Math.toRadians(v["lightHeight"].toDouble())
+        val la = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
+        val le = Math.toRadians((v["lightHeight"] / 100.0).toDouble())
         val lx = cos(la) * cos(le)
         val ly = sin(la) * cos(le)
         val lz = sin(le)

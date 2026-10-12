@@ -26,7 +26,7 @@ object PixelStretch : Effect("pixelstretch", "Pixelstretch", "Stretches pixels i
             "variant", "Variant", listOf("Overlay", "Push"),
             tip = "Overlay: the stretched pixels lie over the following ones. Push: the following pixels are pushed on by the length",
         ),
-        Param.Slider("angle", "Angle", 0, 359, 90, "°", "Direction: 0° to the right, 90° down, 180° to the left, 270° up"),
+        Param.Slider("angle", "Angle", 0, 35900, 9000, "°", "Direction: 0° to the right, 90° down, 180° to the left, 270° up", decimals = 2),
         Param.Choice("thresholdMode", "Threshold by", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
         Param.Slider("lower", "Lower threshold", 0, 255, 160, tip = "Pixels with a smaller value are not stretched; for hue it may lie above the upper one (a range across red)"),
         Param.Slider("upper", "Upper threshold", 0, 255, 255, tip = "Pixels with a larger value are not stretched"),
@@ -47,7 +47,7 @@ object PixelStretch : Effect("pixelstretch", "Pixelstretch", "Stretches pixels i
         val invert = v.bool("invert")
         val push = v["variant"] == 1
         val jitter = v["jitter"] / 100f
-        val angle = v["angle"]
+        val angle = (v["angle"] / 100.0)
         val a = Math.toRadians(angle.toDouble())
         // fully transparent pixels (outside the picture) are never pulled
         fun selected(c: Int) = alpha(c) != 0 && thresholdSelects(c, mode, lower, upper, invert)

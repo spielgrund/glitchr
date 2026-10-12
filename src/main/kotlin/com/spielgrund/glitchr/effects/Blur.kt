@@ -31,7 +31,7 @@ object Blur : Effect("blur", "Blur", "Blur: Gauss, box, directional, radial and 
     override val params = listOf(
         Param.Choice("type", "Type", types),
         Param.Slider("radius", "Radius", 0, 500, 12, " px", "Strength of the blur; for radial and spin its length at the picture edge"),
-        Param.Slider("angle", "Angle", 0, 359, 0, "°", "For “Direction”"),
+        Param.Slider("angle", "Angle", 0, 35900, 0, "°", "For “Direction”", decimals = 2),
         Param.Slider("centerX", "Center X", 0, 100, 50, " %", "For radial and spin"),
         Param.Slider("centerY", "Center Y", 0, 100, 50, " %", "For radial and spin"),
         Param.Choice("channel", "Channel", channels, tip = "Which channels are blurred; the others stay sharp"),
@@ -210,7 +210,7 @@ object Blur : Effect("blur", "Blur", "Blur: Gauss, box, directional, radial and 
     private fun sampled(a: FloatArray, w: Int, h: Int, type: Int, radius: Int, v: Values): FloatArray {
         if (radius <= 0) return a
         val n = min(2 * radius + 1, 97)
-        val angle = Math.toRadians(v["angle"].toDouble())
+        val angle = Math.toRadians((v["angle"] / 100.0).toDouble())
         val dx = cos(angle)
         val dy = sin(angle)
         val cx = v["centerX"] / 100.0 * w

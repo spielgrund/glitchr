@@ -26,7 +26,7 @@ object Datamosh : Effect("datamosh", "Datamosh", "Macroblocks are dragged along 
         Param.Slider("block", "Block size", 4, 64, 16, " px"),
         Param.Slider("frames", "Frames", 1, 60, 12, tip = "How often the motion is applied; more = longer trails"),
         Param.Slider("speed", "Speed", 0, 40, 5, " px", "Shift per frame"),
-        Param.Slider("angle", "Direction", 0, 359, 0, "°", "Only for “One direction”: 0° to the right, 90° downwards"),
+        Param.Slider("angle", "Direction", 0, 35900, 0, "°", "Only for “One direction”: 0° to the right, 90° downwards", decimals = 2),
         Param.Slider("moving", "Moving blocks", 0, 100, 70, " %"),
         Param.Slider("residual", "Residual", 0, 100, 0, " %", "Mixes some of the original back in every frame, like correction data"),
     )
@@ -40,7 +40,7 @@ object Datamosh : Effect("datamosh", "Datamosh", "Macroblocks are dragged along 
         val bw = ceil(w / block.toDouble()).toInt()
         val bh = ceil(h / block.toDouble()).toInt()
 
-        val vectors = motionField(src, v["motion"], bw, bh, block, speed, Math.toRadians(v["angle"].toDouble()), random)
+        val vectors = motionField(src, v["motion"], bw, bh, block, speed, Math.toRadians((v["angle"] / 100.0).toDouble()), random)
         val moving = v["moving"] / 100f
         val dx = IntArray(bw * bh)
         val dy = IntArray(bw * bh)

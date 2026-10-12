@@ -21,7 +21,7 @@ object SlitScan : Effect("slitscan", "Slitscan", "Cuts the picture into rows and
     private val curves = listOf("Linear", "Exponential", "Random")
 
     override val params = listOf(
-        Param.Slider("angle", "Angle", 0, 359, 0, "°", "Direction of the rows; 0° = horizontal picture rows"),
+        Param.Slider("angle", "Angle", 0, 35900, 0, "°", "Direction of the rows; 0° = horizontal picture rows", decimals = 2),
         Param.Slider("size", "Row size", 1, 500, 4, " px", "Width of a row across its direction"),
         Param.Slider("offset", "Offset", -3000, 3000, 300, " px", "Shift of the last row; negative in the opposite direction"),
         Param.Slider("offsetY", "Offset Y", -3000, 3000, 0, " px", "Shift across the rows: the picture runs through the rows (at 0° on the Y axis); negative in the opposite direction"),
@@ -35,7 +35,7 @@ object SlitScan : Effect("slitscan", "Slitscan", "Cuts the picture into rows and
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
         val w = src.width
         val h = src.height
-        val angle = Math.toRadians(v["angle"].toDouble())
+        val angle = Math.toRadians((v["angle"] / 100.0).toDouble())
         val cos = cos(angle)
         val sin = sin(angle)
         val size = v["size"].toDouble()

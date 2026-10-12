@@ -40,7 +40,7 @@ class EffectOptionsTest {
     fun `pixelsort and pixelbleed build their streaks from blocks`() {
         val block8 = 3 // "8 px"
         assertBlocks(run(PixelSort, "block" to block8), 8, "Pixelsort")
-        assertBlocks(run(PixelSort, "block" to block8, "angle" to 90), 8, "Pixelsort 90°")
+        assertBlocks(run(PixelSort, "block" to block8, "angle" to 9000), 8, "Pixelsort 90°")
         assertBlocks(run(PixelBleed, "block" to block8, "direction" to 2), 8, "Pixelbleed")
         ImageIO.write(run(PixelSort, "block" to 6).toImage(), "png", File(outDir, "pixelsort-random-blocks.png"))
         ImageIO.write(run(PixelBleed, "block" to 4).toImage(), "png", File(outDir, "pixelbleed-16.png"))

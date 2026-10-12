@@ -66,7 +66,7 @@ object UvTexture : Effect("uvtexture", "UV texture", "Lays a pattern over UV coo
         Param.Heading("placeHeading", "Placement"),
         Param.Slider("offsetU", "Shift X", -1000, 1000, 0, " %", decimals = 1),
         Param.Slider("offsetV", "Shift Y", -1000, 1000, 0, " %", decimals = 1),
-        Param.Slider("rotation", "Rotation", -180, 180, 0, "°"),
+        Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("scale", "Scale", 1, 1000, 100, " %"),
         Param.Heading("outHeading", "Output"),
         Param.Choice("blend", "Mix", listOf("Replace", "Multiply", "Soft light")),
@@ -109,7 +109,7 @@ object UvTexture : Effect("uvtexture", "UV texture", "Lays a pattern over UV coo
         val ramp = ColorRamp.parse(v.text("ramp").ifBlank { RampPalette.SUNSET.ramp.format() })
         val offU = v["offsetU"] / 1000.0
         val offV = v["offsetV"] / 1000.0
-        val rot = Math.toRadians(v["rotation"].toDouble())
+        val rot = Math.toRadians((v["rotation"] / 100.0).toDouble())
         val cr = cos(-rot)
         val sr = sin(-rot)
         val scale = max(0.01, v["scale"] / 100.0)

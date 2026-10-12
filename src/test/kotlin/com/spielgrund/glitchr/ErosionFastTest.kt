@@ -28,7 +28,7 @@ class ErosionFastTest {
 
     @Test
     fun `by angle the colors are pulled downstream`() {
-        val down = run(square, "flow" to 2, "angle" to 90, "streak" to 200)
+        val down = run(square, "flow" to 2, "angle" to 9000, "streak" to 200)
         // the white is pulled below the square, nothing of it reaches the rows above
         val below = (50 until 60).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
         val above = (5 until 15).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }

@@ -23,9 +23,9 @@ object BlobEcho : Effect("blobecho", "Blob-Echo", "All areas of the picture are 
     override val params = listOf(
         Param.Slider("areas", "Areas", 0, 100, 50, " %", "How coarsely the picture is split into areas"),
         Param.Slider("maxArea", "Largest area", 1, 100, 15, " %", "Areas covering more than this share of the picture (usually the background) are not copied; 100 % = all"),
-        Param.Slider("direction", "Direction", 0, 359, 0, "°", "In which direction the areas are copied; 0° = to the right"),
-        Param.Slider("slice", "Slice", 1, 360, 360, "°", "Only a pie slice of this angle is copied from every area, with its tip in the area's middle; 360° = the whole area"),
-        Param.Slider("sliceAngle", "Slice direction", 0, 359, 270, "°", "Where the pie slice opens to; 270° = upwards"),
+        Param.Slider("direction", "Direction", 0, 35900, 0, "°", "In which direction the areas are copied; 0° = to the right", decimals = 2),
+        Param.Slider("slice", "Slice", 100, 36000, 36000, "°", "Only a pie slice of this angle is copied from every area, with its tip in the area's middle; 360° = the whole area", decimals = 2),
+        Param.Slider("sliceAngle", "Slice direction", 0, 35900, 27000, "°", "Where the pie slice opens to; 270° = upwards", decimals = 2),
         Param.Toggle("toEdge", "To the edge", true, "The copies run across the whole canvas; off: only as many as set under “Count”"),
         Param.Slider("copies", "Count", 1, 200, 8, "", "How often it is copied when not to the edge"),
         Param.Slider("spacing", "Spacing", 1, 1000, 40, " px", "Distance from copy to copy"),
@@ -46,10 +46,10 @@ object BlobEcho : Effect("blobecho", "Blob-Echo", "All areas of the picture are 
         val copied = BooleanArray(count) { blobs.area[it] <= maxArea }
 
         // of every area only the slice (a wedge from its middle) is copied
-        val slice = Math.toRadians(v["slice"].toDouble())
-        val sliceAxis = Math.toRadians(v["sliceAngle"].toDouble())
+        val slice = Math.toRadians((v["slice"] / 100.0).toDouble())
+        val sliceAxis = Math.toRadians((v["sliceAngle"] / 100.0).toDouble())
         fun inSlice(i: Int, b: Int): Boolean {
-            if (v["slice"] >= 360) return true
+            if ((v["slice"] / 100.0) >= 360) return true
             val c = blobs.center[b]
             val ox = (i % w - c % w).toDouble()
             val oy = (i / w - c / w).toDouble()
@@ -68,7 +68,7 @@ object BlobEcho : Effect("blobecho", "Blob-Echo", "All areas of the picture are 
         // the biggest area first, the smallest last: small ones end up on top
         val order = (0 until count).filter { sizes[it] > 0 }.sortedByDescending { blobs.area[it] }
 
-        val direction = Math.toRadians(v["direction"].toDouble())
+        val direction = Math.toRadians((v["direction"] / 100.0).toDouble())
         val dx = cos(direction)
         val dy = sin(direction)
         val spacing = v["spacing"].toDouble()

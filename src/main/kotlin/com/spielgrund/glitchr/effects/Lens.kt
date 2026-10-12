@@ -55,7 +55,7 @@ object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chro
         Param.Slider("gradientWidth", "Gradient width", 1, 100, 40, " %", "How far the gradient reaches from the edge into the piece (share of the glitch size)"),
         Param.Slider("tilt", "Tilt", 0, 100, 0, " %", "Every piece of glass gets a random tilt (normal); it controls lighting and refraction"),
         Param.Slider("light", "Lighting", 0, 100, 50, " %", "How much the tilted pieces are brightened or darkened by the light"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "Where the light comes from; 225° = from the top left"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", "Where the light comes from; 225° = from the top left", decimals = 2),
         Param.Slider("refraction", "Refraction", 0, 200, 20, " px", "How far every tilted piece shifts the picture in its tilt direction"),
         Param.Slider("crackDirection", "Cracks: vertical → radial", 0, 100, 100, " %", "0 %: the cracks run from top to bottom · 100 %: they radiate outwards from the impact"),
         Param.Slider("crackJag", "Cracks: jaggedness", 0, 100, 70, " %"),
@@ -96,7 +96,7 @@ object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chro
         val gradientWidth = max(1.0, size * 0.5 * v["gradientWidth"] / 100.0)
         val tilt = v["tilt"] / 100.0
         val lightStrength = v["light"] / 100.0
-        val lightAngle = Math.toRadians(v["lightAngle"].toDouble())
+        val lightAngle = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
         // the light shines from lightAngle: a piece tilted towards it gets brighter
         val lightX = cos(lightAngle)
         val lightY = sin(lightAngle)
