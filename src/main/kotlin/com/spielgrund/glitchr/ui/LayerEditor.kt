@@ -8,7 +8,9 @@ import com.spielgrund.glitchr.model.EffectLayer
 import com.spielgrund.glitchr.model.GeneratorLayer
 import com.spielgrund.glitchr.model.ImageLayer
 import com.spielgrund.glitchr.model.Layer
+import com.spielgrund.glitchr.model.MaskBreakup
 import com.spielgrund.glitchr.model.MaskMode
+import com.spielgrund.glitchr.model.ScatterStyle
 import com.spielgrund.glitchr.model.ParamLayer
 import java.awt.FlowLayout
 import javax.swing.JButton
@@ -325,7 +327,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         }
         form.full(JCheckBox("Invert mask", mask.invert).apply {
             addActionListener { mask.invert = isSelected; host.maskChanged() }
-        })
+        }, anim(AnimKeys.MASK_INVERT))
         val thresholdField = SliderField(0, 100, mask.threshold, 50, "%") {
             mask.threshold = it
             host.maskChanged()
@@ -338,7 +340,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 host.maskChanged()
             }
         })
-        form.row("Threshold", thresholdField, "From this mask value the effect works fully")
+        form.row("Threshold", thresholdField, "From this mask value the effect works fully", anim(AnimKeys.MASK_THRESHOLD))
+        buildBreakup()
         form.full(JCheckBox("Show mask (red = no effect)", host.showMask).apply {
             toolTipText = "Shows or hides the red overlay; the mask works either way (Ctrl+M)"
             addActionListener { host.showMask = isSelected }
@@ -347,6 +350,20 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         when (mask.mode) {
             MaskMode.BRUSH -> buildMaskTools()
             MaskMode.LINEAR, MaskMode.RADIAL -> {
+                // the two points as numbers too, so they can be animated
+                val radial = mask.mode == MaskMode.RADIAL
+                fun point(label: String, key: String, get: () -> Double, set: (Double) -> Unit) =
+                    form.row(label, SliderField(-1000, 2000, (get() * 1000).roundToInt(), 0, "%", 1) { tenths ->
+                        if ((get() * 1000).roundToInt() == tenths) return@SliderField
+                        set(tenths / 1000.0)
+                        host.maskChanged()
+                    }, "In % of the picture", anim(key))
+                val a = if (radial) "Center" else "Start"
+                val b = if (radial) "Edge" else "End"
+                point("$a X", AnimKeys.MASK_AX, { mask.handleA.x }) { mask.handleA = mask.handleA.copy(x = it) }
+                point("$a Y", AnimKeys.MASK_AY, { mask.handleA.y }) { mask.handleA = mask.handleA.copy(y = it) }
+                point("$b X", AnimKeys.MASK_BX, { mask.handleB.x }) { mask.handleB = mask.handleB.copy(x = it) }
+                point("$b Y", AnimKeys.MASK_BY, { mask.handleB.y }) { mask.handleB = mask.handleB.copy(y = it) }
                 form.full(JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply {
                     isOpaque = false
                     add(JButton("Reset gradient").apply {
@@ -362,6 +379,41 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             }
             MaskMode.OFF -> {}
         }
+    }
+
+    /** Noise and scattering that roughen the mask and break up its hard edge. */
+    private fun buildBreakup() {
+        val mask = layer.mask
+        fun set(change: (MaskBreakup) -> MaskBreakup) {
+            val next = change(mask.breakup)
+            if (next == mask.breakup) return
+            mask.breakup = next
+            host.maskChanged()
+        }
+        form.row("Noise", SliderField(0, 100, mask.breakup.noise, 0, "%") { n -> set { it.copy(noise = n) } },
+            "White noise added to the mask; with a hard edge it becomes grain", anim(AnimKeys.MASK_NOISE))
+        form.row("Grain", SliderField(1, 64, mask.breakup.grain, 1, "px") { g -> set { it.copy(grain = g) } }, "Size of the noise dots")
+        form.row("Scatter", SliderField(0, 500, mask.breakup.scatter, 0, "px") { s -> set { it.copy(scatter = s) } },
+            "Every pixel reads the mask from a random point up to this far away – tears up the edge", anim(AnimKeys.MASK_SCATTER))
+        form.row("Scatter style", JComboBox(ScatterStyle.entries.toTypedArray()).apply {
+            selectedItem = mask.breakup.style
+            putClientProperty("JComboBox.isTableCellEditor", true)
+            addActionListener { set { it.copy(style = selectedItem as ScatterStyle) } }
+        }, "Single pixels, whole rows or columns, or streaks that smear the mask like pixel sorting")
+        form.row("Streak length", SliderField(1, 1000, mask.breakup.runLength, 40, "px") { r -> set { it.copy(runLength = r) } },
+            "Average length of the streaks")
+        val bottom = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
+        bottom.add(JCheckBox("New every frame", mask.breakup.moving).apply {
+            isOpaque = false
+            toolTipText = "In an animation, noise and scattering change from frame to frame"
+            addActionListener { set { it.copy(moving = isSelected) } }
+        })
+        bottom.add(javax.swing.Box.createHorizontalStrut(8))
+        bottom.add(JButton("Reroll").apply {
+            toolTipText = "New random noise and scattering"
+            addActionListener { set { it.copy(seed = kotlin.random.Random.nextLong()) } }
+        })
+        form.full(bottom)
     }
 
     /** Tool choice and settings for the painted mask. */

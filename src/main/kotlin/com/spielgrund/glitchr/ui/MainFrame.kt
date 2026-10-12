@@ -211,7 +211,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         })
         jMenuBar = menus()
 
-        canvas.onMaskEdited = { changed() }
+        // the editor shows the gradient points as numbers: follow drags on the canvas
+        canvas.onMaskEdited = { changed(); editorFollowTimer.restart() }
         canvas.onFlowEdited = { finished ->
             changed()
             // the editor shows the number of strokes

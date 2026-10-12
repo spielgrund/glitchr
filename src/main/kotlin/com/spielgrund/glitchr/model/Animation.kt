@@ -136,6 +136,19 @@ object AnimKeys {
     const val Y = "@y"
     const val SCALE = "@scale"
     const val ROTATION = "@rotation"
+
+    /** The mask's two gradient points (start/end, or center/edge) in % of the picture, its threshold and inverting. */
+    const val MASK_AX = "@maskAx"
+    const val MASK_AY = "@maskAy"
+    const val MASK_BX = "@maskBx"
+    const val MASK_BY = "@maskBy"
+    const val MASK_THRESHOLD = "@maskThreshold"
+    const val MASK_INVERT = "@maskInvert"
+    const val MASK_NOISE = "@maskNoise"
+    const val MASK_SCATTER = "@maskScatter"
+
+    /** The mask settings every layer can animate. */
+    val MASK = listOf(MASK_AX, MASK_AY, MASK_BX, MASK_BY, MASK_THRESHOLD, MASK_INVERT, MASK_NOISE, MASK_SCATTER)
 }
 
 /** Seed of a "new random value every frame" layer at [frame]; frame 0 keeps the layer's own seed. */
@@ -215,9 +228,12 @@ object Animator {
 data class AnimatedLayer(val state: LayerState, val tracks: Map<String, Track>, val seedPerFrame: Boolean) {
     /** The layer's settings at [frame]. */
     fun at(frame: Int): LayerState {
-        if (tracks.isEmpty() && !seedPerFrame) return state
+        if (tracks.isEmpty() && !seedPerFrame && !state.mask.breakup.moving) return state
         fun num(key: String, base: Double) = tracks[key]?.valueAt(frame) ?: base
         val opacity = num(AnimKeys.OPACITY, state.opacity.toDouble()).roundToInt().coerceIn(0, 100)
+        val (mask, maskVersion) =
+            if (AnimKeys.MASK.none { it in tracks } && !state.mask.breakup.moving) state.mask to state.maskVersion
+            else state.mask.at(tracks, frame, state.maskVersion)
         fun values(base: Map<String, Int>): Map<String, Int> {
             if (tracks.keys.none { !it.startsWith("@") }) return base
             return base.toMutableMap().apply {
@@ -225,8 +241,8 @@ data class AnimatedLayer(val state: LayerState, val tracks: Map<String, Track>, 
             }
         }
         return when (val s = state) {
-            is EffectState -> s.copy(opacity = opacity, values = values(s.values), seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed)
-            is GeneratorState -> s.copy(opacity = opacity, values = values(s.values), seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed)
+            is EffectState -> s.copy(opacity = opacity, mask = mask, maskVersion = maskVersion, values = values(s.values), seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed)
+            is GeneratorState -> s.copy(opacity = opacity, mask = mask, maskVersion = maskVersion, values = values(s.values), seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed)
             is ImageState -> {
                 val scale = num(AnimKeys.SCALE, s.scale).coerceAtLeast(0.001)
                 // like the editor, scaling keeps the middle of the picture where it is – unless the position is animated itself
@@ -234,6 +250,8 @@ data class AnimatedLayer(val state: LayerState, val tracks: Map<String, Track>, 
                 val dy = (s.scale - scale) * s.image.height / 2
                 s.copy(
                     opacity = opacity,
+                    mask = mask,
+                    maskVersion = maskVersion,
                     x = tracks[AnimKeys.X]?.valueAt(frame) ?: (s.x + dx),
                     y = tracks[AnimKeys.Y]?.valueAt(frame) ?: (s.y + dy),
                     scale = scale,

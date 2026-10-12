@@ -113,7 +113,7 @@ The effects are sorted into categories in the “+ Effect ▾” menu (and under
 | --- | --- |
 | Shift | Shifts the picture in X and Y, it repeats at the edge; mirror in X and Y |
 | Transform | Shift (to 0.1 px), scale (1–1000 %, plus stretch X/Y), rotate (to 0.1°) and mirror around a chosen center; transparent, repeated, mirrored or stretched at the edge; smooth or hard pixels |
-| Grid | Repeats the whole picture in columns × rows: stretched, fitted or cropped into each cell; gaps (transparent or in a color), brick offset for rows or columns, grid shift with wrap, mirroring every second column/row or at random |
+| Grid | Repeats the whole picture in columns × rows: stretched, fitted or cropped into each cell; gaps (transparent or in a color), brick offset for rows or columns, grid shift with wrap, mirroring every second column/row or at random; grid rotation, copy rotation (same, alternating, increasing, random, random quarter turns) and copy scale |
 | Displace | Shifts the picture's pixels along noise (Perlin, fractal, ridged, Worley, value, white); seamless with a gradient mask |
 | Flow | Draw a flow direction into the picture with the mouse (arrows on the canvas, the right mouse button/Alt wipes strokes away); the picture travels along the direction (offset −400 to 400 %, 100 % = one complete repeat) – whole with repeats at the edge, in sections that keep starting over, or as a loop in a band along the arrows (whatever arrives at the arrow tip jumps to the start), with hard or soft edges; follow the flow or directly like a UV offset; reach of the strokes, continue or stand still away from them, base direction without strokes |
 | Turbulence | Colors flow as on water or a soap film: a swirling, slowly changing flow (divergence-free – it folds and stretches instead of piling up) draws the colors out into fine, tangled streaks – swirl strength, swirl size, fineness, passes, change; direction and direction strength also drive the color into long paths. The whole picture flows or only a threshold range (brightness, saturation, hue …), fading out softly (feather, “Show range”). The streaks stay sharp because only the origin of every pixel is tracked and the picture is read just once at the end; anti-aliasing (off, 2 × 2, 4 × 4) reads several times where streaks become finer than a pixel. Film colors lay rainbow streaks like a soap or oil film along the brightness lines on top (own gradient, film bands) |
@@ -200,7 +200,7 @@ Effects with randomness are reproducible; “Reroll” gives a different result.
 A project can have one timeline: “Create animation…” in the timeline below the canvas (or the
 Animation menu) gives it a length in seconds – or in bars at a tempo in BPM – and a frame rate. Then right-click any setting – a slider,
 choice, switch or color of an effect or generator, an image layer's X, Y, scale and rotation, or the
-opacity of any layer – and choose **Add keyframe**. (Without an animation, the first keyframe creates
+opacity of any layer, or its mask (the two gradient points, threshold, invert, noise and scatter; painted masks stay still) – and choose **Add keyframe**. (Without an animation, the first keyframe creates
 one of 4 s at 25 fps, i.e. 100 frames.)
 
 - A diamond before a setting shows that it is animated: ◆ there is a keyframe at the current frame,
@@ -254,6 +254,7 @@ rendered for playback are reused; the export runs in the background and can be c
 - **Linear gradient**: drag in the picture; full effect at the white point, none at the black one.
 - **Radial gradient**: drag in the picture; full effect in the middle, none from the circle's edge on.
 - **Hard edge**: makes every mask black/white; from the threshold up the effect works fully, below not at all.
+- **Noise** adds white noise to the mask (grain size in px); **Scatter** makes every pixel read the mask from a random point up to that far away – single pixels, whole rows or columns, or streaks that smear it like pixel sorting (streak length). Both work before the hard edge and tear it up; “Reroll” gives new randomness, “New every frame” lets it change in an animation; noise and scatter are animatable.
   Together with “From picture brightness” this gives a sharp brightness selection.
 - Invert inverts the mask.
 - “Show mask” (toolbar or Ctrl+M) shows and hides the red overlay; the mask works either way.

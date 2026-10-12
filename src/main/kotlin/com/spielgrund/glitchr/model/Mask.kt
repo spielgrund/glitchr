@@ -7,6 +7,7 @@ import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 enum class MaskMode(val label: String) {
@@ -22,6 +23,32 @@ private val versions = AtomicLong()
 
 /** A point in image coordinates relative to the image size (0..1), so it survives a change of image. */
 data class RelPoint(val x: Double, val y: Double)
+
+/** How [MaskBreakup.scatter] moves the mask. */
+enum class ScatterStyle(val label: String) {
+    PIXELS("Pixels"), ROWS("Rows"), COLUMNS("Columns"), STREAKS_X("Streaks →"), STREAKS_Y("Streaks ↓");
+
+    override fun toString() = label
+}
+
+/**
+ * Roughens a mask: white [noise] (0..100 %, in cells of [grain] px) is added to its values,
+ * and [scatter] (px) moves where each pixel reads the mask from – single pixels, whole
+ * rows or columns, or streaks of about [runLength] px that smear one value along them like
+ * pixel sorting. Both work before the hard edge, so they break it up. With [moving], every
+ * frame of an animation gets new randomness.
+ */
+data class MaskBreakup(
+    val noise: Int = 0,
+    val grain: Int = 1,
+    val scatter: Int = 0,
+    val style: ScatterStyle = ScatterStyle.PIXELS,
+    val runLength: Int = 40,
+    val moving: Boolean = false,
+    val seed: Long = 1L,
+) {
+    val isOff get() = noise == 0 && scatter == 0
+}
 
 /**
  * Where a layer's effect shows: 1 = full effect, 0 = the image below.
@@ -48,6 +75,10 @@ class Mask {
     var hardEdge = false
         set(value) { field = value; touch() }
     var threshold = 50
+        set(value) { field = value; touch() }
+
+    /** Noise and scattering that roughen the mask. */
+    var breakup = MaskBreakup()
         set(value) { field = value; touch() }
 
     /** Linear: full effect at the start point, none at the end point. */
@@ -193,7 +224,7 @@ class Mask {
         }
         return MaskMemento(
             mode, invert, linearStart, linearEnd, radialCenter, radialEdge,
-            if (p == null) null else paintedCopy, paintedWidth, paintedHeight, hardEdge, threshold,
+            if (p == null) null else paintedCopy, paintedWidth, paintedHeight, hardEdge, threshold, breakup,
         )
     }
 
@@ -206,6 +237,7 @@ class Mask {
         radialEdge = m.radialEdge
         hardEdge = m.hardEdge
         threshold = m.threshold
+        breakup = m.breakup
         painted = m.painted?.copyOf()
         paintedWidth = m.paintedWidth
         paintedHeight = m.paintedHeight
@@ -224,6 +256,7 @@ class Mask {
         m.radialEdge = radialEdge
         m.hardEdge = hardEdge
         m.threshold = threshold
+        m.breakup = breakup
         m.painted = painted?.copyOf()
         m.paintedWidth = paintedWidth
         m.paintedHeight = paintedHeight
@@ -236,7 +269,7 @@ class Mask {
     fun shape() = MaskShape(
         mode, invert, handleA, handleB,
         painted.takeIf { mode == MaskMode.BRUSH }, paintedWidth, paintedHeight,
-        if (hardEdge) threshold / 100f else null,
+        if (hardEdge) threshold / 100f else null, breakup,
     )
 
     private fun smooth(t: Float) = t * t * (3 - 2 * t)
@@ -255,6 +288,7 @@ data class MaskMemento(
     val paintedHeight: Int,
     val hardEdge: Boolean = false,
     val threshold: Int = 50,
+    val breakup: MaskBreakup = MaskBreakup(),
 )
 
 /** A piece of mask (0..255) covering [rect] of the image, e.g. a selection. */
@@ -316,14 +350,35 @@ class MaskShape(
     private val paintedHeight: Int,
     /** When set, values become 1 from this threshold on and 0 below (before inverting). */
     private val threshold: Float? = null,
+    val breakup: MaskBreakup = MaskBreakup(),
 ) {
     val isOff get() = mode == MaskMode.OFF
+
+    /**
+     * This shape with its animated settings (see [AnimKeys.MASK]) at [frame], and a version
+     * for it derived from [version] that changes whenever the animated settings do.
+     */
+    fun at(tracks: Map<String, Track>, frame: Int, version: Long): Pair<MaskShape, Long> {
+        fun num(key: String, base: Double) = tracks[key]?.valueAt(frame) ?: base
+        val na = RelPoint(num(AnimKeys.MASK_AX, a.x * 100) / 100, num(AnimKeys.MASK_AY, a.y * 100) / 100)
+        val nb = RelPoint(num(AnimKeys.MASK_BX, b.x * 100) / 100, num(AnimKeys.MASK_BY, b.y * 100) / 100)
+        val nt = threshold?.let { num(AnimKeys.MASK_THRESHOLD, (it * 100).toDouble()).roundToInt().coerceIn(0, 100) / 100f }
+        val ni = tracks[AnimKeys.MASK_INVERT]?.let { it.valueAt(frame).roundToInt() != 0 } ?: invert
+        val nr = breakup.copy(
+            noise = num(AnimKeys.MASK_NOISE, breakup.noise.toDouble()).roundToInt().coerceIn(0, 100),
+            scatter = num(AnimKeys.MASK_SCATTER, breakup.scatter.toDouble()).roundToInt().coerceAtLeast(0),
+            seed = if (breakup.moving) seedAt(breakup.seed, frame) else breakup.seed,
+        )
+        return MaskShape(mode, ni, na, nb, painted, paintedWidth, paintedHeight, nt, nr) to
+            version * 1_000_003L + listOf(na, nb, nt, ni, nr).hashCode()
+    }
 
     /**
      * Fills [out] with the mask values 0..1 of row [y] of a [width]×[height] canvas,
      * the mask lying at [space] (the whole canvas unless given).
      */
     fun row(y: Int, width: Int, height: Int, out: FloatArray, space: MaskSpace = MaskSpace.canvas(width, height)) {
+        if (mode != MaskMode.OFF && !breakup.isOff) return roughRow(y, width, height, out, space)
         val sw = space.width
         val sh = space.height
         // every pixel's position in the mask's own (possibly turned) rectangle
@@ -366,6 +421,11 @@ class MaskShape(
                 }
             }
         }
+        finish(out, width)
+    }
+
+    /** Hard edge and inverting, the last steps of every row. */
+    private fun finish(out: FloatArray, width: Int) {
         threshold?.let { t ->
             // a threshold of 0 would make empty areas count; start just above zero instead
             val limit = if (t <= 0f) 1e-4f else t
@@ -373,4 +433,91 @@ class MaskShape(
         }
         if (invert) for (x in 0 until width) out[x] = 1f - out[x]
     }
+
+    /** Like [row], with the [breakup]: each pixel reads the mask at a scattered point, then noise is added. */
+    private fun roughRow(y: Int, width: Int, height: Int, out: FloatArray, space: MaskSpace) {
+        val b = breakup
+        val amount = b.scatter.toDouble()
+        val noise = b.noise / 100f * 2
+        val grain = b.grain.coerceAtLeast(1)
+        val run = b.runLength.coerceAtLeast(1).toDouble()
+        val seed = b.seed.toInt() xor (b.seed ushr 32).toInt()
+        fun spread(h: Int) = (unit(h) * 2 - 1) * amount
+        val local = DoubleArray(2)
+        // a run of streaks: about [run] long, each line of them starts at its own phase
+        fun runStart(pos: Int, line: Int, salt: Int): Int {
+            val length = run * (0.5 + unit(hash(line, salt, seed)))
+            val phase = unit(hash(line, salt + 1, seed)) * length
+            val k = kotlin.math.floor((pos + phase) / length)
+            return (k * length - phase).toInt()
+        }
+        val rowShift = if (b.style == ScatterStyle.ROWS) spread(hash(y, 11, seed)) else 0.0
+        for (x in 0 until width) {
+            var px = x.toDouble()
+            var py = y.toDouble()
+            when (b.style) {
+                ScatterStyle.PIXELS -> {
+                    px += spread(hash(x, y, seed))
+                    py += spread(hash(x, y, seed + 1))
+                }
+                ScatterStyle.ROWS -> px += rowShift
+                ScatterStyle.COLUMNS -> py += spread(hash(x, 13, seed))
+                ScatterStyle.STREAKS_X -> {
+                    val start = runStart(x, y, 17)
+                    px = start + spread(hash(start, y, seed + 2))
+                }
+                ScatterStyle.STREAKS_Y -> {
+                    val start = runStart(y, x, 19)
+                    py = start + spread(hash(x, start, seed + 3))
+                }
+            }
+            space.toLocal(px + 0.5, py + 0.5, local)
+            var v = valueAt(local[0], local[1], space)
+            if (noise > 0) v += (unit(hash(Math.floorDiv(x, grain), Math.floorDiv(y, grain), seed + 5)).toFloat() - 0.5f) * noise
+            out[x] = v.coerceIn(0f, 1f)
+        }
+        finish(out, width)
+    }
+
+    /** The mask value at the point ([lx], [ly]) of the mask's own rectangle [space]. */
+    private fun valueAt(lx: Double, ly: Double, space: MaskSpace): Float {
+        val sw = space.width
+        val sh = space.height
+        return when (mode) {
+            MaskMode.OFF -> 1f
+            MaskMode.BRUSH -> {
+                if (painted == null || paintedWidth == 0 || sw <= 0 || sh <= 0) 0f
+                else {
+                    val px = floor(lx * paintedWidth / sw).toInt().coerceIn(0, paintedWidth - 1)
+                    val py = floor(ly * paintedHeight / sh).toInt().coerceIn(0, paintedHeight - 1)
+                    (painted[py * paintedWidth + px].toInt() and 0xFF) / 255f
+                }
+            }
+            MaskMode.LINEAR -> {
+                val ax = a.x * sw
+                val ay = a.y * sh
+                val dx = b.x * sw - ax
+                val dy = b.y * sh - ay
+                val len2 = dx * dx + dy * dy
+                val t = if (len2 < 1e-9) 0.0 else ((lx - ax) * dx + (ly - ay) * dy) / len2
+                (1.0 - t.coerceIn(0.0, 1.0)).toFloat()
+            }
+            MaskMode.RADIAL -> {
+                val cx = a.x * sw
+                val cy = a.y * sh
+                val r = hypot(b.x * sw - cx, b.y * sh - cy)
+                val t = if (r < 1e-9) 1.0 else hypot(lx - cx, ly - cy) / r
+                (1.0 - t.coerceIn(0.0, 1.0)).toFloat()
+            }
+        }
+    }
+
+    private fun hash(x: Int, y: Int, seed: Int): Int {
+        var h = x * 374761393 + y * 668265263 + seed * 1442695041
+        h = (h xor (h ushr 13)) * 1274126177
+        return h xor (h ushr 16)
+    }
+
+    /** 0..1 from a hash. */
+    private fun unit(h: Int) = (h and 0xFFFFFF) / 16777215.0
 }

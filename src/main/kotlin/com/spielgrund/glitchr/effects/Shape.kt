@@ -35,8 +35,8 @@ object Shape : Effect("shape", "Shape", "Line, triangle, polygon, star, circle o
         Param.Slider("size", "Size", 1, 3000, 250, " px", "Radius; for a line: half its length", canvasMax = true),
         Param.Slider("stretch", "Stretch", 10, 1000, 100, " %", "Width against height; 100 % = regular"),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
-        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas", decimals = 1),
-        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "From the middle of the canvas", decimals = 1),
+        Param.Slider("centerX", "Center X", -20000, 20000, 0, " %", "From the middle of the canvas, in canvas widths", decimals = 2),
+        Param.Slider("centerY", "Center Y", -20000, 20000, 0, " %", "From the middle of the canvas, in canvas heights", decimals = 2),
         Param.Slider("sides", "Corners", 3, 64, 6, tip = "Corners of the polygon, points of the star"),
         Param.Slider("inner", "Star depth", 1, 99, 45, " %", "Inner radius of the star against the outer one"),
         Param.Slider("thickness", "Thickness", 1, 3000, 40, " px", "Line width; ring width", canvasMax = true),
@@ -74,8 +74,8 @@ object Shape : Effect("shape", "Shape", "Line, triangle, polygon, star, circle o
         val rot = Math.toRadians(v["rotation"] / 100.0)
         val cosR = cos(rot)
         val sinR = sin(rot)
-        val cx = w / 2.0 + v["centerX"] / 10.0
-        val cy = h / 2.0 + v["centerY"] / 10.0
+        val cx = w / 2.0 + v["centerX"] / 10000.0 * w
+        val cy = h / 2.0 + v["centerY"] / 10000.0 * h
         val thickness = v["thickness"].toDouble()
         val rounding = v["rounding"].toDouble()
         val soft = v["softness"].toDouble()
@@ -112,6 +112,14 @@ object Shape : Effect("shape", "Shape", "Line, triangle, polygon, star, circle o
                 }
             }
             else -> null
+        }?.also { c ->
+            // centered on their bounds, not on the circle around them: a triangle (or any odd
+            // number of corners) otherwise sits too low, with its tip far above the center
+            val xs = c.filterIndexed { i, _ -> i % 2 == 0 }
+            val ys = c.filterIndexed { i, _ -> i % 2 == 1 }
+            val mx = (xs.min() + xs.max()) / 2
+            val my = (ys.min() + ys.max()) / 2
+            for (i in c.indices) c[i] -= if (i % 2 == 0) mx else my
         }
         val roundCaps = v.bool("roundCaps")
         // the circle and ring are ellipses when stretched: measured in the unstretched frame, scaled back
@@ -135,6 +143,7 @@ object Shape : Effect("shape", "Shape", "Line, triangle, polygon, star, circle o
         // reach of the shape from its center, for the bounding box and the gradients
         val reach = when (shape) {
             0 -> r + thickness / 2
+            1, 2, 3 -> (0 until corners!!.size / 2).maxOf { hypot(corners[2 * it], corners[2 * it + 1]) }
             else -> r * max(sx, sy)
         } + rounding
         val margin = reach + outline / 2 + soft + 2

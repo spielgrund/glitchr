@@ -73,28 +73,82 @@ sealed class Layer(val id: Int) {
     fun animated() = AnimatedLayer(state(), tracks.toMap(), seedPerFrame)
 
     /** The keys of the settings that can be animated, in editor order. */
-    open fun animatableKeys(): List<String> = listOf(AnimKeys.OPACITY)
+    open fun animatableKeys(): List<String> = listOf(AnimKeys.OPACITY) + AnimKeys.MASK
 
     /** Current value of an animatable setting; null if the layer has no such setting. */
-    open fun property(key: String): Double? = if (key == AnimKeys.OPACITY) opacity.toDouble() else null
+    open fun property(key: String): Double? = when (key) {
+        AnimKeys.OPACITY -> opacity.toDouble()
+        AnimKeys.MASK_AX -> mask.handleA.x * 100
+        AnimKeys.MASK_AY -> mask.handleA.y * 100
+        AnimKeys.MASK_BX -> mask.handleB.x * 100
+        AnimKeys.MASK_BY -> mask.handleB.y * 100
+        AnimKeys.MASK_THRESHOLD -> mask.threshold.toDouble()
+        AnimKeys.MASK_INVERT -> if (mask.invert) 1.0 else 0.0
+        AnimKeys.MASK_NOISE -> mask.breakup.noise.toDouble()
+        AnimKeys.MASK_SCATTER -> mask.breakup.scatter.toDouble()
+        else -> null
+    }
 
     /** Sets an animatable setting (rounded the way its field stores it). */
     open fun setProperty(key: String, value: Double) {
-        if (key == AnimKeys.OPACITY) opacity = value.roundToInt().coerceIn(0, 100)
+        when (key) {
+            AnimKeys.OPACITY -> opacity = value.roundToInt().coerceIn(0, 100)
+            AnimKeys.MASK_AX -> mask.handleA = mask.handleA.copy(x = value / 100)
+            AnimKeys.MASK_AY -> mask.handleA = mask.handleA.copy(y = value / 100)
+            AnimKeys.MASK_BX -> mask.handleB = mask.handleB.copy(x = value / 100)
+            AnimKeys.MASK_BY -> mask.handleB = mask.handleB.copy(y = value / 100)
+            AnimKeys.MASK_THRESHOLD -> mask.threshold = value.roundToInt().coerceIn(0, 100)
+            AnimKeys.MASK_INVERT -> mask.invert = value.roundToInt() != 0
+            AnimKeys.MASK_NOISE -> mask.breakup = mask.breakup.copy(noise = value.roundToInt().coerceIn(0, 100))
+            AnimKeys.MASK_SCATTER -> mask.breakup = mask.breakup.copy(scatter = value.roundToInt().coerceAtLeast(0))
+        }
     }
 
     /** [value] the way [setProperty] would store it, to compare it with the field. */
-    open fun quantize(key: String, value: Double): Double = value.roundToInt().toDouble()
+    open fun quantize(key: String, value: Double): Double = if (key in MASK_POINTS) value else value.roundToInt().toDouble()
 
-    open fun kindOf(key: String) = ValueKind.NUMBER
+    open fun kindOf(key: String) = if (key == AnimKeys.MASK_INVERT) ValueKind.STEP else ValueKind.NUMBER
 
     /** Name of a setting for the timeline. */
-    open fun propertyLabel(key: String) = if (key == AnimKeys.OPACITY) "Opacity" else key
+    open fun propertyLabel(key: String) = when (key) {
+        AnimKeys.OPACITY -> "Opacity"
+        AnimKeys.MASK_AX -> "Mask › ${if (mask.mode == MaskMode.RADIAL) "Center" else "Start"} X"
+        AnimKeys.MASK_AY -> "Mask › ${if (mask.mode == MaskMode.RADIAL) "Center" else "Start"} Y"
+        AnimKeys.MASK_BX -> "Mask › ${if (mask.mode == MaskMode.RADIAL) "Edge" else "End"} X"
+        AnimKeys.MASK_BY -> "Mask › ${if (mask.mode == MaskMode.RADIAL) "Edge" else "End"} Y"
+        AnimKeys.MASK_THRESHOLD -> "Mask › Threshold"
+        AnimKeys.MASK_INVERT -> "Mask › Invert"
+        AnimKeys.MASK_NOISE -> "Mask › Noise"
+        AnimKeys.MASK_SCATTER -> "Mask › Scatter"
+        else -> key
+    }
 
     /** The value of an animated setting that undo and saving see: the one at frame 0, so moving along the timeline is no edit. */
     protected fun canonical(key: String, current: Double) = tracks[key]?.let { quantize(key, it.valueAt(0)) } ?: current
 
     protected fun canonicalOpacity() = canonical(AnimKeys.OPACITY, opacity.toDouble()).roundToInt()
+
+    /** The mask with its animated settings at their frame-0 values (the gradient points of its current mode). */
+    protected fun canonicalMask(): MaskMemento {
+        val m = mask.memento()
+        if (AnimKeys.MASK.none { it in tracks }) return m
+        fun at(key: String, current: Double) = canonical(key, current) / 100
+        val a = RelPoint(at(AnimKeys.MASK_AX, mask.handleA.x * 100), at(AnimKeys.MASK_AY, mask.handleA.y * 100))
+        val b = RelPoint(at(AnimKeys.MASK_BX, mask.handleB.x * 100), at(AnimKeys.MASK_BY, mask.handleB.y * 100))
+        val radial = mask.mode == MaskMode.RADIAL
+        return m.copy(
+            linearStart = if (radial) m.linearStart else a,
+            linearEnd = if (radial) m.linearEnd else b,
+            radialCenter = if (radial) a else m.radialCenter,
+            radialEdge = if (radial) b else m.radialEdge,
+            threshold = canonical(AnimKeys.MASK_THRESHOLD, mask.threshold.toDouble()).roundToInt(),
+            invert = canonical(AnimKeys.MASK_INVERT, if (mask.invert) 1.0 else 0.0) != 0.0,
+            breakup = m.breakup.copy(
+                noise = canonical(AnimKeys.MASK_NOISE, m.breakup.noise.toDouble()).roundToInt(),
+                scatter = canonical(AnimKeys.MASK_SCATTER, m.breakup.scatter.toDouble()).roundToInt(),
+            ),
+        )
+    }
 
     protected fun copyCommonTo(copy: Layer) {
         copy.name = "$name copy"
@@ -111,6 +165,9 @@ sealed class Layer(val id: Int) {
         seedPerFrame = m.seedPerFrame
     }
 }
+
+/** The mask's gradient points: stored as they are, not rounded. */
+private val MASK_POINTS = setOf(AnimKeys.MASK_AX, AnimKeys.MASK_AY, AnimKeys.MASK_BX, AnimKeys.MASK_BY)
 
 /** The animatable parameters of an effect or generator: sliders, choices, switches and colors. */
 private fun paramAnimatable(p: Param) = p is Param.Slider || p is Param.Choice || p is Param.Toggle || p is Param.Color
@@ -191,14 +248,14 @@ class EffectLayer(val effect: Effect, id: Int = newId()) : Layer(id), ParamLayer
         copy.adjustment = adjustment
     }
 
-    override fun animatableKeys() = paramKeys() + AnimKeys.OPACITY
+    override fun animatableKeys() = paramKeys() + AnimKeys.OPACITY + AnimKeys.MASK
     override fun property(key: String) = paramProperty(key) ?: super.property(key)
     override fun setProperty(key: String, value: Double) = if (key in values) setParamProperty(key, value) else super.setProperty(key, value)
-    override fun kindOf(key: String) = paramKind(params, key)
+    override fun kindOf(key: String) = if (key in values) paramKind(params, key) else super.kindOf(key)
     override fun propertyLabel(key: String) = if (key in values) paramLabel(params, key) else super.propertyLabel(key)
 
     override fun memento() = EffectMemento(
-        id, name, visible, canonicalOpacity(), blend, mask.memento(), effect, canonicalValues(values), seed, texts.toMap(), tracks.toMap(), seedPerFrame,
+        id, name, visible, canonicalOpacity(), blend, canonicalMask(), effect, canonicalValues(values), seed, texts.toMap(), tracks.toMap(), seedPerFrame,
         adjustment,
     )
 
@@ -234,14 +291,14 @@ class GeneratorLayer(val generator: Generator, id: Int = newId()) : SourceLayer(
         copy.seed = seed
     }
 
-    override fun animatableKeys() = paramKeys() + AnimKeys.OPACITY
+    override fun animatableKeys() = paramKeys() + AnimKeys.OPACITY + AnimKeys.MASK
     override fun property(key: String) = paramProperty(key) ?: super.property(key)
     override fun setProperty(key: String, value: Double) = if (key in values) setParamProperty(key, value) else super.setProperty(key, value)
-    override fun kindOf(key: String) = paramKind(params, key)
+    override fun kindOf(key: String) = if (key in values) paramKind(params, key) else super.kindOf(key)
     override fun propertyLabel(key: String) = if (key in values) paramLabel(params, key) else super.propertyLabel(key)
 
     override fun memento() = GeneratorMemento(
-        id, name, visible, canonicalOpacity(), blend, mask.memento(), generator, canonicalValues(values), seed, texts.toMap(), tracks.toMap(), seedPerFrame,
+        id, name, visible, canonicalOpacity(), blend, canonicalMask(), generator, canonicalValues(values), seed, texts.toMap(), tracks.toMap(), seedPerFrame,
     )
 
     override fun state() = GeneratorState(id, visible, opacity, blend, mask.shape(), mask.version, generator, values.toMap(), seed, texts.toMap())
@@ -293,7 +350,7 @@ class ImageLayer(val image: Pixels, id: Int = newId()) : SourceLayer(id) {
         copy.smooth = smooth
     }
 
-    override fun animatableKeys() = listOf(AnimKeys.X, AnimKeys.Y, AnimKeys.SCALE, AnimKeys.ROTATION, AnimKeys.OPACITY)
+    override fun animatableKeys() = listOf(AnimKeys.X, AnimKeys.Y, AnimKeys.SCALE, AnimKeys.ROTATION, AnimKeys.OPACITY) + AnimKeys.MASK
 
     override fun property(key: String) = when (key) {
         AnimKeys.X -> x
@@ -319,7 +376,8 @@ class ImageLayer(val image: Pixels, id: Int = newId()) : SourceLayer(id) {
         }
     }
 
-    override fun quantize(key: String, value: Double) = if (key == AnimKeys.OPACITY) super.quantize(key, value) else value
+    override fun quantize(key: String, value: Double) =
+        if (key == AnimKeys.X || key == AnimKeys.Y || key == AnimKeys.SCALE || key == AnimKeys.ROTATION) value else super.quantize(key, value)
 
     override fun propertyLabel(key: String) = when (key) {
         AnimKeys.X -> "X"
@@ -337,7 +395,7 @@ class ImageLayer(val image: Pixels, id: Int = newId()) : SourceLayer(id) {
         val x0 = tracks[AnimKeys.X]?.valueAt(0) ?: r(x + (scale - s0) * image.width / 2)
         val y0 = tracks[AnimKeys.Y]?.valueAt(0) ?: r(y + (scale - s0) * image.height / 2)
         return ImageMemento(
-            id, name, visible, canonicalOpacity(), blend, mask.memento(), image, x0, y0, s0, smooth,
+            id, name, visible, canonicalOpacity(), blend, canonicalMask(), image, x0, y0, s0, smooth,
             canonical(AnimKeys.ROTATION, rotation), tracks.toMap(),
         )
     }

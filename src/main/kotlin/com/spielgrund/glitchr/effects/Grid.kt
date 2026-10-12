@@ -5,9 +5,11 @@ import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.image.argb
 import com.spielgrund.glitchr.image.parallelRows
 import com.spielgrund.glitchr.image.sampleBilinear
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Repeats the whole picture in a grid of columns × rows: every cell holds a smaller copy,
@@ -18,6 +20,7 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
     private val fits = listOf("Stretch", "Fit whole picture", "Fill cell")
     private val mirrors = listOf("None", "Every second column", "Every second row", "Both")
     private val gapFills = listOf("Transparent", "Color")
+    private val turns = listOf("All the same", "Alternating", "Increasing", "Random", "Random 90° steps")
 
     override val params = listOf(
         Param.Slider("columns", "Columns", 1, 64, 3),
@@ -32,6 +35,16 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
         Param.Slider("shiftY", "Shift Y", -50000, 50000, 0, " px", "Moves the whole grid; it repeats at the edge", decimals = 1),
         Param.Choice("mirror", "Mirror", mirrors, 0, "Mirrors every second copy, so neighbours meet seamlessly"),
         Param.Toggle("randomMirror", "Random mirror", false, "Mirrors copies at random, horizontally and vertically"),
+
+        Param.Heading("rotationHeading", "Rotation"),
+        Param.Slider("gridRotation", "Grid rotation", -18000, 18000, 0, "°", "Turns the whole grid around the middle of the canvas", decimals = 2),
+        Param.Slider("tileRotation", "Copy rotation", -18000, 18000, 0, "°", "Turns every copy inside its cell", decimals = 2),
+        Param.Choice(
+            "rotationPattern", "Per copy", turns, 0,
+            "All the same angle; alternating left and right like a checkerboard; growing from copy to copy; " +
+                "a random angle up to the copy rotation; or the copy rotation plus random quarter turns",
+        ),
+        Param.Slider("tileScale", "Copy scale", 10, 400, 100, " %", "Size of the copy in its cell; above 100 % it is cut at the cell, e.g. to fill the corners of turned copies"),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -56,7 +69,8 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
             else -> stretchX to stretchY
         }
         // shrunk beforehand by whole steps, so small copies are averaged instead of sparkling
-        val k = max(1, floor(min(scaleX, scaleY)).toInt())
+        val tileScale = v["tileScale"] / 100.0
+        val k = max(1, floor(min(scaleX, scaleY) / tileScale).toInt())
         val small = if (k > 1) shrink(src, k) else src
 
         val rowOffset = v["rowOffset"] / 100.0 * cellW
@@ -65,20 +79,43 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
         val shiftY = v["shiftY"] / 10.0
         val mirror = v["mirror"]
         val randomMirror = v.bool("randomMirror")
+        val gridRot = Math.toRadians(v["gridRotation"] / 100.0)
+        val gridCos = cos(gridRot)
+        val gridSin = sin(gridRot)
+        val tileRot = v["tileRotation"] / 100.0
+        val pattern = v["rotationPattern"]
+
+        /** Angle in radians of the copy in cell ([col], [row]). */
+        fun angleOf(col: Int, row: Int): Double {
+            val c = Math.floorMod(col, cols)
+            val r = Math.floorMod(row, rows)
+            val random = hash(c, r, seed + 1)
+            val degrees = when (pattern) {
+                1 -> if ((col + row) % 2 == 0) tileRot else -tileRot
+                2 -> tileRot * (c + r * cols)
+                3 -> tileRot * ((random ushr 8 and 0xFFFF) / 32767.5 - 1)
+                4 -> tileRot + 90.0 * (random ushr 4 and 3)
+                else -> tileRot
+            }
+            return Math.toRadians(degrees)
+        }
 
         val out = Pixels(w, h)
         parallelRows(h) { y ->
             for (x in 0 until w) {
-                var gx = x + 0.5 - shiftX
-                var gy = y + 0.5 - shiftY
+                // turned back around the middle of the canvas, then shifted
+                val px = x + 0.5 - w / 2.0
+                val py = y + 0.5 - h / 2.0
+                var gx = px * gridCos + py * gridSin + w / 2.0 - shiftX
+                var gy = -px * gridSin + py * gridCos + h / 2.0 - shiftY
                 var row = floor(gy / cellH).toInt()
                 if (Math.floorMod(row, 2) == 1) gx -= rowOffset
                 val col = floor(gx / cellW).toInt()
                 if (Math.floorMod(col, 2) == 1) gy -= columnOffset
                 row = floor(gy / cellH).toInt()
                 // position inside the cell's picture area
-                var u = gx - col * cellW - gap / 2
-                var t = gy - row * cellH - gap / 2
+                val u = gx - col * cellW - gap / 2
+                val t = gy - row * cellH - gap / 2
                 if (u < 0 || u >= cw || t < 0 || t >= ch) {
                     out.data[y * w + x] = empty
                     continue
@@ -90,10 +127,18 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
                     flipX = flipX xor (r and 1 == 1)
                     flipY = flipY xor (r and 2 == 2)
                 }
-                if (flipX) u = cw - u
-                if (flipY) t = ch - t
-                val sx = (u - cw / 2) * scaleX + w / 2.0
-                val sy = (t - ch / 2) * scaleY + h / 2.0
+                // from the cell's middle: turned back, scaled, mirrored
+                val a = angleOf(col, row)
+                val ca = cos(a)
+                val sa = sin(a)
+                val du = u - cw / 2
+                val dt = t - ch / 2
+                var ru = (du * ca + dt * sa) / tileScale
+                var rt = (-du * sa + dt * ca) / tileScale
+                if (flipX) ru = -ru
+                if (flipY) rt = -rt
+                val sx = ru * scaleX + w / 2.0
+                val sy = rt * scaleY + h / 2.0
                 out.data[y * w + x] = if (sx < 0 || sx >= w || sy < 0 || sy >= h) empty
                 else sampleBilinear(small, sx * small.width / w, sy * small.height / h, Edge.CLAMP)
             }

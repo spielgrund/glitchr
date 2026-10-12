@@ -51,4 +51,19 @@ class GridTest {
         assertEquals(red, out[35, 45])
         assertEquals(blue, out[25, 45])
     }
+
+    @Test
+    fun `turned copies`() {
+        // half a turn: every copy has red and blue swapped
+        val out = run("columns" to 3, "rows" to 2, "tileRotation" to 18000)
+        assertEquals(blue, out[5, 15])
+        assertEquals(red, out[35, 15])
+        // alternating: the neighbour turns the other way, which for half a turn looks the same
+        val alt = run("columns" to 2, "rows" to 1, "tileRotation" to 9000, "rotationPattern" to 1, "fit" to 1, "gapFill" to 1)
+        assertEquals(red, alt[30, 15], "first copy turned right: red on top")
+        assertEquals(blue, alt[90, 15], "second copy turned left: blue on top")
+        // turning the whole grid by half a turn turns the picture
+        val grid = run("columns" to 1, "rows" to 1, "gridRotation" to 18000)
+        assertEquals(blue, grid[5, 30])
+    }
 }

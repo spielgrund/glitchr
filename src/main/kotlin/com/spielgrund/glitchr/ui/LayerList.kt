@@ -119,9 +119,17 @@ class LayerList(
             toolTipText = "Mask: ${layer.mask.mode.label}"
         }, BorderLayout.EAST)
 
-        row.addMouseListener(object : MouseAdapter() {
+        // on every part of the row: labels with a tooltip would otherwise swallow the click
+        // (adjustment layers and generators always have one, so they were hard to select)
+        val select = object : MouseAdapter() {
             override fun mousePressed(e: MouseEvent) = onSelect(layer)
-        })
+        }
+        fun install(c: java.awt.Component) {
+            if (c is JCheckBox) return
+            c.addMouseListener(select)
+            (c as? java.awt.Container)?.components?.forEach(::install)
+        }
+        install(row)
         return row
     }
 

@@ -31,7 +31,7 @@ class ShapeTest {
 
     @Test
     fun `edges are antialiased and the center is where it is set`() {
-        val out = run("shape" to 4, "size" to 30, "centerX" to 500)
+        val out = run("shape" to 4, "size" to 30, "centerX" to 2500)
         assertEquals(-1, out[150, 100])
         assertEquals(0xFF000000.toInt(), out[100, 100])
         assertTrue(out.data.any { (it and 0xFF) in 30..220 }, "soft edge pixels")
