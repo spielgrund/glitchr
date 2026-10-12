@@ -94,6 +94,10 @@ object Generators {
             Gradient, withBase = false,
         ),
         Generator(
+            "shape", "Shape", "A geometric shape: line, triangle, polygon, star, circle or ring; filled with a color or a gradient, with outline",
+            Shape, defaultBase = 0x000000,
+        ),
+        Generator(
             "moire", "Moiré", "Two line patterns (lines, rings, rays, spiral, grid, dots …) over each other that form moiré patterns",
             Moire, withBase = false,
         ),
@@ -131,7 +135,7 @@ object Generators {
             hidden = setOf("field", "darkDense"),
         ),
         Generator(
-            "grid", "Grid", "Even grid modules: dots, circles, rays, hatching, stripes, moiré grid", GridModules,
+            "grid", "Grid modules", "Even grid modules: dots, circles, rays, hatching, stripes, moiré grid", GridModules,
             overrides = mapOf("influence" to 0),
             hidden = setOf("influence", "invert", "colorMode"),
         ),
