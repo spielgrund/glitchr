@@ -28,8 +28,14 @@ data class ExportSettings(
     val format: AnimFormat,
     val scale: Double = 1.0,
     val background: Int = 0x000000,
-    val dither: Boolean = true,
+    val dither: Dither = Dither.ORDERED,
     val loop: Boolean = true,
+    /** GIF: colors in the palette, 2..256; fewer make smaller files. */
+    val colors: Int = 256,
+    /** GIF: every frame stores only what changed since the one before; unchanged frames are merged. */
+    val onlyChanges: Boolean = true,
+    /** GIF with [onlyChanges]: pixels that moved less than this (per channel, roughly) count as unchanged. */
+    val tolerance: Int = 0,
 )
 
 /** Writes rendered frames as GIF, MP4 or numbered PNGs. */
@@ -113,41 +119,117 @@ object AnimationExport {
 
     private fun writeGif(frames: Int, fps: Int, s: ExportSettings, file: File, render: (Int) -> Pixels, progress: (Int) -> Boolean): File {
         val out = withExtension(file, "gif")
-        // one palette for the whole animation, from frames spread over it, so colors don't flicker
+        // one palette for the whole animation, from frames spread over it, so colors don't flicker;
+        // when only changes are stored, one entry is kept free for "unchanged" (transparent)
         val samples = (0 until PALETTE_SAMPLES).map { (it * (frames - 1).toDouble() / (PALETTE_SAMPLES - 1)).roundToInt() }.distinct()
         val kept = HashMap<Int, BufferedImage>()
         for (f in samples) kept[f] = prepare(render(f), s.scale, s.background)
-        val palette = Palette.of(kept.values.toList())
+        val colorCount = s.colors.coerceIn(2, 256)
+        val palette = Palette.of(kept.values.toList(), if (s.onlyChanges) colorCount - 1 else colorCount)
+        val clear = if (s.onlyChanges) palette.size else -1
+        val entries = palette.size + if (s.onlyChanges) 1 else 0
+        val tolerance = s.tolerance * s.tolerance * 3
 
         val writer = ImageIO.getImageWritersBySuffix("gif").next()
         out.delete()
         ImageIO.createImageOutputStream(out).use { stream ->
             writer.output = stream
             writer.prepareWriteSequence(null)
+            // what the viewer shows so far, as palette indices
+            var shown: ByteArray? = null
+            // a frame is written only when the next one is known: an unchanged next frame just lengthens it
+            var pendingImage: BufferedImage? = null
+            var pendingX = 0
+            var pendingY = 0
+            var pendingDelay = 0
+            var first = true
+            fun flush() {
+                val img = pendingImage ?: return
+                writer.writeToSequence(
+                    IIOImage(img, null, gifMetadata(writer, img, pendingDelay, s.loop && first, pendingX, pendingY, clear)),
+                    writer.defaultWriteParam,
+                )
+                first = false
+                pendingImage = null
+            }
             for (f in 0 until frames) {
-                val rgb = kept.remove(f) ?: prepare(render(f), s.scale, s.background)
-                val indexed = palette.map(rgb, s.dither)
+                val rgbImage = kept.remove(f) ?: prepare(render(f), s.scale, s.background)
+                val w = rgbImage.width
+                val h = rgbImage.height
+                val rgb = rgbImage.getRGB(0, 0, w, h, null, 0, w)
+                val idx = palette.indices(rgb, w, h, s.dither)
                 // GIF counts in hundredths of a second: spread the rounding so the total stays right
                 val delay = (100.0 * (f + 1) / fps).roundToInt() - (100.0 * f / fps).roundToInt()
-                writer.writeToSequence(IIOImage(indexed, null, gifMetadata(writer, indexed, delay, s.loop && f == 0)), writer.defaultWriteParam)
+                val before = shown
+                if (before == null || !s.onlyChanges) {
+                    flush()
+                    pendingImage = palette.image(idx, w, h, entries)
+                    pendingX = 0
+                    pendingY = 0
+                    pendingDelay = delay
+                    shown = idx
+                } else {
+                    // only the pixels that differ (by more than the tolerance) from what is shown
+                    var x0 = w; var y0 = h; var x1 = -1; var y1 = -1
+                    val changed = BooleanArray(w * h)
+                    for (i in idx.indices) {
+                        if (idx[i] == before[i]) continue
+                        if (tolerance > 0 && palette.distance(rgb[i], before[i].toInt() and 0xFF) <= tolerance) continue
+                        changed[i] = true
+                        val x = i % w
+                        val y = i / w
+                        if (x < x0) x0 = x
+                        if (x > x1) x1 = x
+                        if (y < y0) y0 = y
+                        if (y > y1) y1 = y
+                    }
+                    if (x1 < 0) {
+                        // nothing changed: the frame before simply stays longer
+                        pendingDelay += delay
+                    } else {
+                        flush()
+                        val cw = x1 - x0 + 1
+                        val ch = y1 - y0 + 1
+                        val crop = ByteArray(cw * ch)
+                        for (y in 0 until ch) for (x in 0 until cw) {
+                            val i = (y0 + y) * w + x0 + x
+                            if (changed[i]) {
+                                crop[y * cw + x] = idx[i]
+                                before[i] = idx[i]
+                            } else crop[y * cw + x] = clear.toByte()
+                        }
+                        pendingImage = palette.image(crop, cw, ch, entries)
+                        pendingX = x0
+                        pendingY = y0
+                        pendingDelay = delay
+                    }
+                }
                 if (!progress(f + 1)) break
             }
+            flush()
             writer.endWriteSequence()
         }
         writer.dispose()
         return out
     }
 
-    private fun gifMetadata(writer: javax.imageio.ImageWriter, img: BufferedImage, delay: Int, loop: Boolean): javax.imageio.metadata.IIOMetadata {
+    private fun gifMetadata(
+        writer: javax.imageio.ImageWriter, img: BufferedImage, delay: Int, loop: Boolean, x: Int = 0, y: Int = 0, transparent: Int = -1,
+    ): javax.imageio.metadata.IIOMetadata {
         val meta = writer.getDefaultImageMetadata(ImageTypeSpecifier.createFromRenderedImage(img), writer.defaultWriteParam)
         val format = meta.nativeMetadataFormatName
         val root = meta.getAsTree(format) as IIOMetadataNode
+        node(root, "ImageDescriptor").apply {
+            setAttribute("imageLeftPosition", x.toString())
+            setAttribute("imageTopPosition", y.toString())
+        }
         node(root, "GraphicControlExtension").apply {
-            setAttribute("disposalMethod", "none")
+            // each frame is drawn over the one before; its transparent pixels let that show through
+            setAttribute("disposalMethod", "doNotDispose")
             setAttribute("userInputFlag", "FALSE")
-            setAttribute("transparentColorFlag", "FALSE")
+            setAttribute("transparentColorFlag", if (transparent >= 0) "TRUE" else "FALSE")
             setAttribute("delayTime", delay.coerceAtLeast(1).toString())
-            setAttribute("transparentColorIndex", "0")
+            setAttribute("transparentColorIndex", transparent.coerceAtLeast(0).toString())
         }
         if (loop) {
             val ext = IIOMetadataNode("ApplicationExtension").apply {
@@ -168,13 +250,28 @@ object AnimationExport {
     }
 }
 
+/** How a picture is spread over the few colors of a GIF. */
+enum class Dither(val label: String) {
+    NONE("None"),
+
+    /** Error diffusion: finest gradients, but it changes all over when anything changes – larger animated GIFs. */
+    FLOYD_STEINBERG("Floyd–Steinberg"),
+
+    /** A fixed pattern: a little coarser, but steady from frame to frame, so unchanged parts stay unchanged. */
+    ORDERED("Ordered (steady)");
+
+    override fun toString() = label
+}
+
 /**
  * Up to 256 colors found by median cut, and a lookup from 6 bits per channel to the
- * nearest of them. [map] turns a picture into an indexed one, with Floyd–Steinberg
- * dithering if asked.
+ * nearest of them. [indices] turns a picture into palette indices, dithered if asked.
  */
 class Palette private constructor(private val colors: IntArray) {
     private val lut = ByteArray(64 * 64 * 64)
+
+    /** Number of colors. */
+    val size get() = colors.size
 
     init {
         for (r in 0 until 64) for (g in 0 until 64) for (b in 0 until 64) {
@@ -197,47 +294,96 @@ class Palette private constructor(private val colors: IntArray) {
 
     private fun index(r: Int, g: Int, b: Int) = lut[((r.coerceIn(0, 255) shr 2) shl 12) or ((g.coerceIn(0, 255) shr 2) shl 6) or (b.coerceIn(0, 255) shr 2)].toInt() and 0xFF
 
-    fun map(img: BufferedImage, dither: Boolean): BufferedImage {
-        val w = img.width
-        val h = img.height
-        val rgb = img.getRGB(0, 0, w, h, null, 0, w)
+    /** Squared distance of the RGB color [c] from palette color [i]. */
+    fun distance(c: Int, i: Int): Int {
+        val p = colors[i]
+        val dr = (c shr 16 and 0xFF) - (p shr 16 and 0xFF)
+        val dg = (c shr 8 and 0xFF) - (p shr 8 and 0xFF)
+        val db = (c and 0xFF) - (p and 0xFF)
+        return dr * dr + dg * dg + db * db
+    }
+
+    /** The palette index of every pixel of [rgb] ([w]×[h]). */
+    fun indices(rgb: IntArray, w: Int, h: Int, dither: Dither): ByteArray {
         val idx = ByteArray(w * h)
-        if (!dither) {
-            for (i in rgb.indices) { val c = rgb[i]; idx[i] = index(c shr 16 and 0xFF, c shr 8 and 0xFF, c and 0xFF).toByte() }
-        } else {
-            // errors carried to the right and to the next row
-            var cur = IntArray((w + 2) * 3)
-            var next = IntArray((w + 2) * 3)
-            for (y in 0 until h) {
-                java.util.Arrays.fill(next, 0)
-                for (x in 0 until w) {
+        when (dither) {
+            Dither.NONE -> for (i in rgb.indices) { val c = rgb[i]; idx[i] = index(c shr 16 and 0xFF, c shr 8 and 0xFF, c and 0xFF).toByte() }
+            Dither.ORDERED -> {
+                // a Bayer pattern pushes each pixel up or down by up to about one color step
+                val step = 255.0 / Math.cbrt(colors.size.toDouble())
+                for (y in 0 until h) for (x in 0 until w) {
                     val c = rgb[y * w + x]
-                    val k = (x + 1) * 3
-                    val r = (c shr 16 and 0xFF) + cur[k] / 16
-                    val g = (c shr 8 and 0xFF) + cur[k + 1] / 16
-                    val b = (c and 0xFF) + cur[k + 2] / 16
-                    val i = index(r, g, b)
-                    idx[y * w + x] = i.toByte()
-                    val p = colors[i]
-                    val er = r.coerceIn(0, 255) - (p shr 16 and 0xFF)
-                    val eg = g.coerceIn(0, 255) - (p shr 8 and 0xFF)
-                    val eb = b.coerceIn(0, 255) - (p and 0xFF)
-                    cur[k + 3] += er * 7; cur[k + 4] += eg * 7; cur[k + 5] += eb * 7
-                    next[k - 3] += er * 3; next[k - 2] += eg * 3; next[k - 1] += eb * 3
-                    next[k] += er * 5; next[k + 1] += eg * 5; next[k + 2] += eb * 5
-                    next[k + 3] += er; next[k + 4] += eg; next[k + 5] += eb
+                    val o = ((BAYER[(y and 7) * 8 + (x and 7)] + 0.5) / 64 - 0.5) * step
+                    val d = o.roundToInt()
+                    idx[y * w + x] = index((c shr 16 and 0xFF) + d, (c shr 8 and 0xFF) + d, (c and 0xFF) + d).toByte()
                 }
-                val t = cur; cur = next; next = t
+            }
+            Dither.FLOYD_STEINBERG -> {
+                // errors carried to the right and to the next row
+                var cur = IntArray((w + 2) * 3)
+                var next = IntArray((w + 2) * 3)
+                for (y in 0 until h) {
+                    java.util.Arrays.fill(next, 0)
+                    for (x in 0 until w) {
+                        val c = rgb[y * w + x]
+                        val k = (x + 1) * 3
+                        val r = (c shr 16 and 0xFF) + cur[k] / 16
+                        val g = (c shr 8 and 0xFF) + cur[k + 1] / 16
+                        val b = (c and 0xFF) + cur[k + 2] / 16
+                        val i = index(r, g, b)
+                        idx[y * w + x] = i.toByte()
+                        val p = colors[i]
+                        val er = r.coerceIn(0, 255) - (p shr 16 and 0xFF)
+                        val eg = g.coerceIn(0, 255) - (p shr 8 and 0xFF)
+                        val eb = b.coerceIn(0, 255) - (p and 0xFF)
+                        cur[k + 3] += er * 7; cur[k + 4] += eg * 7; cur[k + 5] += eb * 7
+                        next[k - 3] += er * 3; next[k - 2] += eg * 3; next[k - 1] += eb * 3
+                        next[k] += er * 5; next[k + 1] += eg * 5; next[k + 2] += eb * 5
+                        next[k + 3] += er; next[k + 4] += eg; next[k + 5] += eb
+                    }
+                    val t = cur; cur = next; next = t
+                }
             }
         }
-        val n = colors.size
-        val model = IndexColorModel(8, n, ByteArray(n) { (colors[it] shr 16).toByte() }, ByteArray(n) { (colors[it] shr 8).toByte() }, ByteArray(n) { colors[it].toByte() })
-        val out = BufferedImage(w, h, BufferedImage.TYPE_BYTE_INDEXED, model)
-        out.raster.setDataElements(0, 0, w, h, idx)
+        return idx
+    }
+
+    /**
+     * An indexed picture of [w]×[h] from [idx], with a color table of [entries] (the palette,
+     * plus a transparent entry if there is one), using as few bits per pixel as that needs:
+     * fewer bits make the GIF's compression start smaller.
+     */
+    fun image(idx: ByteArray, w: Int, h: Int, entries: Int): BufferedImage {
+        val bits = when {
+            entries <= 2 -> 1
+            entries <= 4 -> 2
+            entries <= 16 -> 4
+            else -> 8
+        }
+        val n = 1 shl bits
+        fun channel(shift: Int) = ByteArray(n) { if (it < colors.size) (colors[it] shr shift).toByte() else 0 }
+        val model = IndexColorModel(bits, n, channel(16), channel(8), channel(0))
+        val out = if (bits == 8) BufferedImage(w, h, BufferedImage.TYPE_BYTE_INDEXED, model)
+        else BufferedImage(w, h, BufferedImage.TYPE_BYTE_BINARY, model)
+        out.raster.setPixels(0, 0, w, h, IntArray(w * h) { idx[it].toInt() and 0xFF })
         return out
     }
 
+    /** [img] as an indexed picture in this palette. */
+    fun map(img: BufferedImage, dither: Dither): BufferedImage {
+        val w = img.width
+        val h = img.height
+        return image(indices(img.getRGB(0, 0, w, h, null, 0, w), w, h, dither), w, h, colors.size)
+    }
+
     companion object {
+        private val BAYER = intArrayOf(
+            0, 32, 8, 40, 2, 34, 10, 42, 48, 16, 56, 24, 50, 18, 58, 26,
+            12, 44, 4, 36, 14, 46, 6, 38, 60, 28, 52, 20, 62, 30, 54, 22,
+            3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25,
+            15, 47, 7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21,
+        )
+
         /** The palette of [images] (a sample of their pixels). */
         fun of(images: List<BufferedImage>, size: Int = 256): Palette {
             val total = images.sumOf { it.width.toLong() * it.height }

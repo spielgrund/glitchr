@@ -175,7 +175,16 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         }
     }
 
-    override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
+    override fun apply(src: Pixels, v: Values, seed: Long) = render(src, v) { src }
+
+    /** What is copied from one picture: the layer (picture, edges, blobs or alpha edge) and for blobs their copies. */
+    private class Made(val layer: Pixels, val blobs: BlobCopies?)
+
+    /**
+     * Feedback of [src], where copy k is made from [pictureOf] (k) – the picture itself
+     * here, the picture k steps earlier in time for [TimeFeedback].
+     */
+    internal fun render(src: Pixels, v: Values, pictureOf: (Int) -> Pixels): Pixels {
         val w = src.width
         val h = src.height
         val steps = v["steps"]
@@ -195,19 +204,26 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         val finish = v["finish"]
         val finishOpacity = v["finishOpacity"] / 100f
 
-        // the layer that is copied, and for blobs everything to find a blob's copies
-        val blobs = if (source == SOURCE_BLOBS) BlobCopies(src, v, transform, steps) else null
-        val stroke = if (source == SOURCE_ALPHA || v.bool("alphaFrame")) alphaStroke(src, v) else null
-        val layer = when (source) {
-            SOURCE_EDGES -> edgeLayer(src, v)
-            SOURCE_ALPHA -> stroke!!
-            SOURCE_BLOBS -> blobs!!.layer
-            else -> src
-        }.let { base ->
-            // the frame lies on the picture (edges, blobs) and goes into every copy with it
-            if (stroke == null || source == SOURCE_ALPHA) base
-            else Pixels(w, h, IntArray(w * h) { over(base.data[it], stroke.data[it], 1f, BlendMode.NORMAL) })
+        // the layer that is copied, and for blobs everything to find a blob's copies – once per picture
+        fun make(pic: Pixels): Made {
+            val blobs = if (source == SOURCE_BLOBS) BlobCopies(pic, v, transform, steps) else null
+            val stroke = if (source == SOURCE_ALPHA || v.bool("alphaFrame")) alphaStroke(pic, v) else null
+            val layer = when (source) {
+                SOURCE_EDGES -> edgeLayer(pic, v)
+                SOURCE_ALPHA -> stroke!!
+                SOURCE_BLOBS -> blobs!!.layer
+                else -> pic
+            }.let { base ->
+                // the frame lies on the picture (edges, blobs) and goes into every copy with it
+                if (stroke == null || source == SOURCE_ALPHA) base
+                else Pixels(w, h, IntArray(w * h) { over(base.data[it], stroke.data[it], 1f, BlendMode.NORMAL) })
+            }
+            return Made(layer, blobs)
         }
+        val made = java.util.IdentityHashMap<Pixels, Made>()
+        val copies = Array(steps + 1) { k -> made.getOrPut(if (k == 0) src else pictureOf(k)) { make(if (k == 0) src else pictureOf(k)) } }
+        val layer = copies[0].layer
+        val blobs = copies[0].blobs
         val ground: Pixels? = when (if (source == SOURCE_IMAGE) -1 else v["ground"]) {
             0 -> src
             1 -> Pixels(w, h).apply { data.fill(0xFF000000.toInt()) }
@@ -218,13 +234,14 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         val out = Pixels(w, h)
         parallelRows(h) { y ->
             val q = DoubleArray(2)
-            val candidates = blobs?.let { b -> Array(steps + 1) { k -> b.inRow(k, y) } }
+            val candidates = if (blobs != null) Array(steps + 1) { k -> copies[k].blobs!!.inRow(k, y) } else null
             fun copy(k: Int, x: Int): Int {
                 if (!transform.invertible) return 0
-                val c = if (blobs != null) blobs.at(k, x, y, candidates!![k], q)
+                val c = if (blobs != null) copies[k].blobs!!.at(k, x, y, candidates!![k], q)
                 else {
+                    val from = copies[k].layer
                     transform.back(k, x + 0.5, y + 0.5, cx, cy, q)
-                    if (edge == null) sampleTransparent(layer, q[0], q[1]) else sampleBilinear(layer, q[0], q[1], edge)
+                    if (edge == null) sampleTransparent(from, q[0], q[1]) else sampleBilinear(from, q[0], q[1], edge)
                 }
                 return if (shiftColors && alpha(c) > 0) shiftHsl(c, hue * k, saturation * k, lightness * k) else c
             }

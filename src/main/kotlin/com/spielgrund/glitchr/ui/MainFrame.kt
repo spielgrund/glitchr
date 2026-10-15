@@ -160,9 +160,18 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     private val timelinePanel = TimelinePanel(this)
     private val frameCache = FrameCache()
 
-    /** Playback renders ahead on its own thread and renderer, so the interactive one keeps its cache. */
-    private val animRenderer = Renderer()
-    private val animExecutor = Executors.newSingleThreadExecutor { Thread(it, "glitch-animation").apply { isDaemon = true } }
+    /**
+     * Playback renders ahead on several threads, each with its own renderer (a renderer keeps
+     * a cache and renders one frame at a time), so the interactive one keeps its cache too.
+     */
+    private val animRenderers = mutableListOf<Renderer>()
+    private val animExecutor = Executors.newCachedThreadPool { Thread(it, "glitch-animation").apply { isDaemon = true } }
+
+    /** Frames a playback thread is rendering right now, so the others take different ones. */
+    private val claimedFrames = HashSet<Int>()
+
+    /** Counts playbacks: threads of an earlier one stop instead of working alongside the new ones. */
+    @Volatile private var playRun = 0
     private var playTimer: javax.swing.Timer? = null
 
     /** The editor follows the playhead with a short delay, so scrubbing stays smooth. */
@@ -713,15 +722,18 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val gen = generation.incrementAndGet()
         val frame = currentFrame
         val original = originalButton.isSelected
-        val states = (if (original) layers.filterIsInstance<SourceLayer>() else layers).map { it.animated().at(frame) }
+        val snapshots = (if (original) layers.filterIsInstance<SourceLayer>() else layers).map { it.animated() }
+        val states = snapshots.map { it.at(frame) }
         val cacheVersion = frameCache.version
         val animated = timeline != null && !original
+        // time effects see the other frames of the animation
+        val session = timeline?.takeIf { !original }?.let { com.spielgrund.glitchr.model.TimeSession(snapshots, it.frames, width, height) }
         status.text = "Rendering…"
         renderExecutor.execute {
             if (generation.get() != gen) return@execute
             val start = System.nanoTime()
             try {
-                val out = renderer.render(width, height, states)
+                val out = renderer.render(width, height, states, session, frame)
                 if (animated) frameCache.put(frame, out, cacheVersion)
                 val image = out.toImage()
                 val ms = (System.nanoTime() - start) / 1_000_000
@@ -895,7 +907,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val version = frameCache.version
         val width = docWidth
         val height = docHeight
-        animExecutor.execute { prerender(snapshots, width, height, t, version) }
+        val run = ++playRun
+        synchronized(claimedFrames) { claimedFrames.clear() }
+        val workers = renderThreads(snapshots.size)
+        while (animRenderers.size < workers) animRenderers += Renderer()
+        // one time session for all threads, so the frames time effects look at are rendered only once
+        val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height)
+        for (k in 0 until workers) animExecutor.execute { prerender(animRenderers[k], snapshots, session, width, height, t, version, run) }
         playTimer = javax.swing.Timer(maxOf(1, 1000 / t.fps)) { tick() }.apply {
             initialDelay = 0
             start()
@@ -903,18 +921,44 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         timelinePanel.refreshPlayhead()
     }
 
-    private fun prerender(snapshots: List<com.spielgrund.glitchr.model.AnimatedLayer>, width: Int, height: Int, t: com.spielgrund.glitchr.model.Timeline, version: Int) {
+    /**
+     * How many frames are rendered at the same time: half the processor cores (the effects
+     * themselves also work on several cores), at most as many as the memory allows – every
+     * renderer keeps the in-between pictures of all [layerCount] layers.
+     */
+    private fun renderThreads(layerCount: Int): Int {
+        val cores = Runtime.getRuntime().availableProcessors()
+        val perRenderer = docWidth.toLong() * docHeight * 4 * (3L * layerCount + 4)
+        val byMemory = (Runtime.getRuntime().maxMemory() * 0.25 / perRenderer).toInt()
+        return minOf(maxOf(1, cores / 2), byMemory, 8).coerceAtLeast(1)
+    }
+
+    /** One of the playback threads: renders the next frames from the playhead on that aren't rendered or taken yet. */
+    private fun prerender(
+        renderer: Renderer, snapshots: List<com.spielgrund.glitchr.model.AnimatedLayer>, session: com.spielgrund.glitchr.model.TimeSession,
+        width: Int, height: Int,
+        t: com.spielgrund.glitchr.model.Timeline, version: Int, run: Int,
+    ) {
         try {
-            while (isPlaying && frameCache.version == version) {
+            while (isPlaying && frameCache.version == version && playRun == run) {
                 val from = currentFrame
-                val next = (0 until t.frames).map { (from + it) % t.frames }.firstOrNull { !frameCache.contains(it) } ?: break
+                val next = synchronized(claimedFrames) {
+                    (0 until t.frames).map { (from + it) % t.frames }
+                        .firstOrNull { !frameCache.contains(it) && it !in claimedFrames }
+                        ?.also { claimedFrames += it }
+                } ?: break
                 // never further ahead than the cache holds, or it would push out the frames about to be played
                 if ((next - from + t.frames) % t.frames >= frameCache.budget - 1) {
+                    synchronized(claimedFrames) { claimedFrames -= next }
                     Thread.sleep(15)
                     continue
                 }
-                val out = animRenderer.render(width, height, snapshots.map { it.at(next) })
-                frameCache.put(next, out, version)
+                try {
+                    val out = renderer.render(width, height, snapshots.map { it.at(next) }, session, next)
+                    frameCache.put(next, out, version)
+                } finally {
+                    synchronized(claimedFrames) { claimedFrames -= next }
+                }
                 SwingUtilities.invokeLater { timelinePanel.refreshPlayhead() }
             }
         } catch (e: OutOfMemoryError) {
@@ -1117,15 +1161,36 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val width = docWidth
         val height = docHeight
         val target = file
+        val workers = renderThreads(snapshots.size)
         Thread({
-            val exportRenderer = Renderer()
+            // several frames are rendered at once, each thread with its own renderer; the writer
+            // takes them in order and the threads stay a few frames ahead of it
+            val pool = Executors.newFixedThreadPool(workers) { Thread(it, "glitch-export-render").apply { isDaemon = true } }
+            val renderers = ThreadLocal.withInitial { Renderer() }
+            val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height)
+            val pending = HashMap<Int, java.util.concurrent.Future<Pixels>>()
+            var last = -1
+            fun request(f: Int) = pending.getOrPut(f) {
+                pool.submit(java.util.concurrent.Callable {
+                    // frames played before are reused, as long as nothing changed since
+                    frameCache.get(f)?.takeIf { frameCache.version == version } ?: renderers.get().render(width, height, snapshots.map { it.at(f) }, session, f)
+                })
+            }
             var cancelled = false
             try {
                 val written = com.spielgrund.glitchr.export.AnimationExport.export(
                     t.frames, t.fps, settings, target,
                     render = { f ->
-                        // frames played before are reused, as long as nothing changed since
-                        frameCache.get(f)?.takeIf { frameCache.version == version } ?: exportRenderer.render(width, height, snapshots.map { it.at(f) })
+                        // read ahead only while the frames are asked for in order (the GIF palette samples a few first)
+                        if (f == last + 1) for (g in f + 1..minOf(t.frames - 1, f + workers)) request(g)
+                        last = f
+                        try {
+                            request(f).get()
+                        } catch (e: java.util.concurrent.ExecutionException) {
+                            throw e.cause ?: e
+                        } finally {
+                            pending.remove(f)
+                        }
                     },
                     progress = { n ->
                         SwingUtilities.invokeLater {
@@ -1152,6 +1217,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                     monitor.close()
                     JOptionPane.showMessageDialog(this, "Export failed:\n${e.message ?: e.javaClass.simpleName}", "Export", JOptionPane.ERROR_MESSAGE)
                 }
+            } finally {
+                pool.shutdownNow()
             }
         }, "glitch-export").apply { isDaemon = true }.start()
     }
@@ -1167,17 +1234,34 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             "$s %  (${Math.round(docWidth * s / 100.0)} × ${Math.round(docHeight * s / 100.0)} px)"
         }.toTypedArray()).apply { selectedIndex = scales.indexOf(prefs.getInt("animScale", 100)).coerceAtLeast(0) }
         val backgroundBox = javax.swing.JComboBox(arrayOf("Black", "White")).apply { selectedIndex = prefs.getInt("animBackground", 0) }
-        val dither = javax.swing.JCheckBox("Dithering", prefs.getBoolean("animDither", true)).apply {
-            toolTipText = "GIF has only 256 colors: dithering mixes them into finer gradients (larger files)"
+        val ditherModes = com.spielgrund.glitchr.export.Dither.entries.toTypedArray()
+        val dither = javax.swing.JComboBox(ditherModes).apply {
+            selectedItem = ditherModes.firstOrNull { it.name == prefs.get("animDitherMode", "") } ?: com.spielgrund.glitchr.export.Dither.ORDERED
+            toolTipText = "Mixes the few colors into finer gradients. Ordered stays steady from frame to frame and keeps " +
+                "animated GIFs much smaller; Floyd–Steinberg is finer but changes everywhere in every frame"
+        }
+        val colors = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(prefs.getInt("animColors", 256).coerceIn(2, 256), 2, 256, 1)).apply {
+            toolTipText = "Fewer colors make much smaller files (e.g. 64, 32 or 16)"
+        }
+        val onlyChanges = javax.swing.JCheckBox("Store only changes", prefs.getBoolean("animOnlyChanges", true)).apply {
+            toolTipText = "Every frame keeps only the part that changed; unchanged frames are merged. Same look, smaller file"
+        }
+        val tolerance = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(prefs.getInt("animTolerance", 0).coerceIn(0, 64), 0, 64, 1)).apply {
+            toolTipText = "Pixels that changed only this little keep their old color – smaller files for noisy animations; 0 = exact"
         }
         val loop = javax.swing.JCheckBox("Loop forever", prefs.getBoolean("animLoop", true))
         fun update() {
             val f = formatBox.selectedItem
             backgroundBox.isEnabled = f != com.spielgrund.glitchr.export.AnimFormat.PNG
-            dither.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.GIF
-            loop.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.GIF
+            val gif = f == com.spielgrund.glitchr.export.AnimFormat.GIF
+            dither.isEnabled = gif
+            loop.isEnabled = gif
+            colors.isEnabled = gif
+            onlyChanges.isEnabled = gif
+            tolerance.isEnabled = gif && onlyChanges.isSelected
         }
         formatBox.addActionListener { update() }
+        onlyChanges.addActionListener { update() }
         update()
         val form = JPanel(java.awt.GridBagLayout())
         val c = java.awt.GridBagConstraints().apply {
@@ -1186,7 +1270,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             fill = java.awt.GridBagConstraints.HORIZONTAL
         }
         val rows = listOf(
-            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "" to dither, "" to loop,
+            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "GIF colors" to colors, "Dithering" to dither,
+            "" to onlyChanges, "Change tolerance" to tolerance, "" to loop,
             "" to JLabel("<html><span style='color:gray'>${t.frames} frames · ${t.fps} fps · ${timecode(t.frames, t.fps)}${if (t.beats) " · " + t.length() + " at " + bpmText(t.bpm) + " BPM" else ""}<br>" +
                 "Background: under transparent parts (GIF and MP4 have none; PNG keeps it)</span></html>"),
         )
@@ -1203,14 +1288,20 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         prefs.put("animFormat", format.name)
         prefs.putInt("animScale", scales[sizeBox.selectedIndex])
         prefs.putInt("animBackground", backgroundBox.selectedIndex)
-        prefs.putBoolean("animDither", dither.isSelected)
+        prefs.put("animDitherMode", (dither.selectedItem as com.spielgrund.glitchr.export.Dither).name)
+        prefs.putInt("animColors", colors.value as Int)
+        prefs.putBoolean("animOnlyChanges", onlyChanges.isSelected)
+        prefs.putInt("animTolerance", tolerance.value as Int)
         prefs.putBoolean("animLoop", loop.isSelected)
         return com.spielgrund.glitchr.export.ExportSettings(
             format = format,
             scale = scales[sizeBox.selectedIndex] / 100.0,
             background = if (backgroundBox.selectedIndex == 1) 0xFFFFFF else 0x000000,
-            dither = dither.isSelected,
+            dither = dither.selectedItem as com.spielgrund.glitchr.export.Dither,
             loop = loop.isSelected,
+            colors = colors.value as Int,
+            onlyChanges = onlyChanges.isSelected,
+            tolerance = tolerance.value as Int,
         )
     }
 
