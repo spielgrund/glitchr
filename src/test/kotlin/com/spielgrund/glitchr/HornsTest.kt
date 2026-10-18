@@ -63,7 +63,7 @@ class HornsTest {
         val v = Horns.defaultValues(
             mapOf(
                 "hornShape" to 2, "region" to 1, "regionX" to 500, "regionY" to 500, "regionW" to 120, "regionH" to 160,
-                "direction" to 270, "hornLength" to 30, "splitLevels" to 2,
+                "direction" to 27000, "hornLength" to 30, "splitLevels" to 2,
             ),
         )
         val out = Horns.apply(spot, v, 3L)
@@ -72,7 +72,7 @@ class HornsTest {
         assertTrue((0 until 40).any { y -> (60 until 100).any { x -> red(out[x, y]) > 150 } }, "nothing at the top")
         assertTrue((80 until 120).any { y -> (60 until 100).any { x -> red(out[x, y]) > 150 } }, "nothing at the bottom")
         // more levels reach further
-        val one = Horns.apply(spot, Horns.defaultValues(mapOf("hornShape" to 2, "region" to 1, "regionW" to 120, "regionH" to 160, "direction" to 270, "hornLength" to 30, "splitLevels" to 1)), 3L)
+        val one = Horns.apply(spot, Horns.defaultValues(mapOf("hornShape" to 2, "region" to 1, "regionW" to 120, "regionH" to 160, "direction" to 27000, "hornLength" to 30, "splitLevels" to 1)), 3L)
         assertTrue(grown(out) > grown(one), "two levels ${grown(out)}, one ${grown(one)}")
     }
 
@@ -101,8 +101,8 @@ class HornsTest {
             if (hypot(i % 160 + 0.5 - 80, y - 60) < 10) (if (y < 60) argb(255, 240, 30, 30) else argb(255, 30, 30, 240)) else dark
         })
         val base = mapOf("hornShape" to 2, "region" to 1, "regionW" to 150, "regionH" to 200, "hornLength" to 30, "splitLevels" to 1, "splitStems" to 1, "direction" to 0)
-        val up = Horns.apply(halves, Horns.defaultValues(base + ("splitFront" to 270)), 3L)
-        val down = Horns.apply(halves, Horns.defaultValues(base + ("splitFront" to 90)), 3L)
+        val up = Horns.apply(halves, Horns.defaultValues(base + ("splitFront" to 27000)), 3L)
+        val down = Horns.apply(halves, Horns.defaultValues(base + ("splitFront" to 9000)), 3L)
         assertTrue(!up.data.contentEquals(down.data))
     }
 
@@ -112,9 +112,9 @@ class HornsTest {
             val x = i % 160 + 0.5
             if (hypot(x - 80, i / 160 + 0.5 - 60) < 10) (if (x < 80) argb(255, 240, 30, 30) else argb(255, 30, 30, 240)) else dark
         })
-        val base = mapOf("hornShape" to 2, "region" to 1, "regionW" to 150, "regionH" to 200, "hornLength" to 30, "splitLevels" to 1, "splitStems" to 2, "direction" to 270)
+        val base = mapOf("hornShape" to 2, "region" to 1, "regionW" to 150, "regionH" to 200, "hornLength" to 30, "splitLevels" to 1, "splitStems" to 2, "direction" to 27000)
         val plain = Horns.apply(halves, Horns.defaultValues(base), 3L)
-        val turned = Horns.apply(halves, Horns.defaultValues(base + ("splitTilt" to 45)), 3L)
+        val turned = Horns.apply(halves, Horns.defaultValues(base + ("splitTilt" to 4500)), 3L)
         val mirrored = Horns.apply(halves, Horns.defaultValues(base + ("splitMirror" to 1)), 3L)
         assertTrue(!plain.data.contentEquals(turned.data), "rotating changes nothing")
         assertTrue(!plain.data.contentEquals(mirrored.data), "mirroring changes nothing")

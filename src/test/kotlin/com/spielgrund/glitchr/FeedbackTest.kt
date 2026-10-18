@@ -39,7 +39,7 @@ class FeedbackTest {
     @Test
     fun `hue turns further with every step`() {
         val red = Pixels(10, 10, IntArray(100) { argb(255, 255, 0, 0) })
-        fun hueAfter(steps: Int) = Feedback.apply(red, Feedback.defaultValues(mapOf("scale" to 1000, "steps" to steps, "hue" to 120)), 0)[5, 5]
+        fun hueAfter(steps: Int) = Feedback.apply(red, Feedback.defaultValues(mapOf("scale" to 1000, "steps" to steps, "hue" to 12000)), 0)[5, 5]
         val one = hueAfter(1)
         assertTrue(green(one) > 250 && red(one) < 5, "1 step: green")
         val two = hueAfter(2)
@@ -101,7 +101,7 @@ class FeedbackTest {
     @Test
     fun `the first copy or the original can go over everything at the end`() {
         // growing copies cover the picture; laid on top again, the original shows through
-        val grow = mapOf("scale" to 1500, "steps" to 4, "hue" to 90)
+        val grow = mapOf("scale" to 1500, "steps" to 4, "hue" to 9000)
         val covered = Feedback.apply(src, Feedback.defaultValues(grow), 0)
         val original = Feedback.apply(src, Feedback.defaultValues(grow + ("finish" to 2)), 0)
         assertContentEquals(src.data, original.data)

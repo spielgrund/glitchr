@@ -24,7 +24,7 @@ class ErosionTest {
 
     @Test
     fun `by angle the colors are washed in that direction`() {
-        val down = run(square, "flow" to 2, "angle" to 90, "channels" to 0)
+        val down = run(square, "flow" to 2, "angle" to 9000, "channels" to 0)
         val below = (55 until 70).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
         val above = (5 until 18).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
         assertTrue(below > 1000 && above < below / 4, "below $below, above $above")
@@ -39,7 +39,7 @@ class ErosionTest {
 
     @Test
     fun `more generations carry further`() {
-        fun reach(gen: Int) = run(square, "flow" to 2, "angle" to 90, "channels" to 0, "generations" to gen)
+        fun reach(gen: Int) = run(square, "flow" to 2, "angle" to 9000, "channels" to 0, "generations" to gen)
             .let { out -> (50 until 120).count { y -> g(out[60, y]) > 30 } }
         assertTrue(reach(60) > reach(5), "further: ${reach(60)} > ${reach(5)}")
     }
@@ -48,7 +48,7 @@ class ErosionTest {
     fun `coarser precision washes the same way and keeps the picture's detail`() {
         // on this small test picture 8 px would leave only 15 × 15 cells, so up to 4 px
         for (precision in 1..2) {
-            val down = run(square, "flow" to 2, "angle" to 90, "channels" to 0, "precision" to precision)
+            val down = run(square, "flow" to 2, "angle" to 9000, "channels" to 0, "precision" to precision)
             val below = (55 until 70).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
             val above = (5 until 18).sumOf { y -> (50 until 70).sumOf { x -> g(down[x, y]) } }
             assertTrue(below > 1000 && above < below / 4, "precision $precision: below $below, above $above")

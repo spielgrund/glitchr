@@ -47,7 +47,7 @@ object NoiseField : Effect("noisefield", "Noise", "Directional noise with many w
 
     override val params = listOf(
         Param.Choice("type", "Noise", types, default = 4), // Wert-Noise
-        Param.Slider("direction", "Direction", 0, 359, 0, "°", "Direction of the noise; along this direction the start/end values change"),
+        Param.Slider("direction", "Direction", 0, 35900, 0, "°", "Direction of the noise; along this direction the start/end values change", decimals = 2),
         Param.Slider("scaleStart", "Size start", 2, 1000, 2, " px"),
         Param.Slider("scaleEnd", "Size end", 2, 1000, 120, " px"),
         Param.Slider("stretchStart", "Stretch start", 100, 1500, 100, " %", "Pulls the noise into streaks along the direction"),
@@ -83,7 +83,7 @@ object NoiseField : Effect("noisefield", "Noise", "Directional noise with many w
         val h = src.height
         val noise = Noise(seed)
         val type = v["type"]
-        val dir = v["direction"] * PI / 180
+        val dir = (v["direction"] / 100.0) * PI / 180
         val ux = cos(dir)
         val uy = sin(dir)
         // half the picture's extent along the direction, so t runs 0..1 from one side to the other

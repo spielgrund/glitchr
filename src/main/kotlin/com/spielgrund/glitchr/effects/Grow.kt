@@ -66,7 +66,7 @@ object Grow : Effect("grow", "Grow", "Spreading like an infection: the start pix
         Param.Slider("noiseSize", "Noise size", 2, 500, 40, " px"),
         Param.Choice("imageValue", "Picture works via", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
         Param.Slider("imageInfluence", "Picture influence", -200, 200, 0, " %", "Positive: high values (e.g. bright spots) get infected more easily, negative: less easily"),
-        Param.Slider("direction", "Direction", 0, 359, 0, "°", "It prefers to spread in this direction"),
+        Param.Slider("direction", "Direction", 0, 35900, 0, "°", "It prefers to spread in this direction", decimals = 2),
         Param.Slider("directionStrength", "Direction strength", 0, 100, 0, " %"),
         Param.Heading("showHeading", "Display"),
         Param.Choice(
@@ -158,7 +158,7 @@ object Grow : Effect("grow", "Grow", "Spreading like an infection: the start pix
         val imageValue = v["imageValue"]
         val imageInfluence = v["imageInfluence"] / 100.0
         val dirStrength = v["directionStrength"] / 100.0
-        val dirAngle = Math.toRadians(v["direction"].toDouble())
+        val dirAngle = Math.toRadians((v["direction"] / 100.0).toDouble())
         val dirX = cos(dirAngle)
         val dirY = sin(dirAngle)
         val texture = v["texture"] / 100.0

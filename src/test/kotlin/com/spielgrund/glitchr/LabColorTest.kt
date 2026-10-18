@@ -43,7 +43,7 @@ class LabColorTest {
     @Test
     fun `hue turns in LCh, lightness inverts, a flips green and magenta`() {
         val red = argb(255, 220, 40, 60)
-        val turned = one(red, mapOf("hue" to 90))
+        val turned = one(red, mapOf("hue" to 9000))
         val diff = (LabColor.hueOf(turned) - LabColor.hueOf(red) + 360) % 360
         assertTrue(abs(diff - 90) < 8, "hue $diff")
         val inverted = one(argb(255, 30, 30, 30), mapOf("lInvert" to 1))

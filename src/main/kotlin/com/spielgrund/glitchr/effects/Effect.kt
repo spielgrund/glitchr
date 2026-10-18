@@ -91,12 +91,13 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Displace, Flow, Turbulence, Polar, Sphere, Kaleidoscope, Feedback, BlobEcho)),
-        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, Filler, Blur, Sharpen)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, Feedback, BlobEcho, Surf)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, Ridgelines, Particles, UvTexture)),
-        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, Television)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
+        EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
     )
 
     val all: List<Effect> = categories.flatMap { it.effects }
@@ -124,4 +125,38 @@ internal fun channelBits(choice: Int, random: kotlin.random.Random): Int = when 
     2 -> 0x0000FF00
     3 -> 0x000000FF
     else -> 0x00FFFFFF
+}
+
+/** What a [TimeEffect] can see of the animation: its own input at other frames. */
+interface FrameInput {
+    /** The frame being rendered. */
+    val frame: Int
+    val frameCount: Int
+
+    /** The picture this effect receives at frame [f] (0 until [frameCount]). */
+    fun at(f: Int): Pixels
+}
+
+/**
+ * An effect that works with the frames before or after the current one: it gets its own
+ * input at other frames through [FrameInput]. Without an animation [frames] is null and
+ * every other frame is the current picture.
+ */
+abstract class TimeEffect(id: String, name: String, description: String) : Effect(id, name, description) {
+    abstract fun apply(src: Pixels, v: Values, seed: Long, frames: FrameInput?): Pixels
+
+    override fun apply(src: Pixels, v: Values, seed: Long) = apply(src, v, seed, null)
+}
+
+/** "At the ends" of the time effects: what lies before the first and after the last frame. */
+internal fun endsParam() = Param.Choice(
+    "ends", "At the ends", listOf("Hold first/last frame", "Loop"), 1,
+    "Before the first and after the last frame: the first or last one again, or the other end of the animation (for loops)",
+)
+
+/** The input [offset] frames away from the current one; [src] itself without an animation. */
+internal fun FrameInput?.offset(src: Pixels, offset: Int, loop: Boolean): Pixels {
+    if (this == null || offset == 0 || frameCount <= 1) return src
+    val f = if (loop) Math.floorMod(frame + offset, frameCount) else (frame + offset).coerceIn(0, frameCount - 1)
+    return if (f == frame) src else at(f)
 }

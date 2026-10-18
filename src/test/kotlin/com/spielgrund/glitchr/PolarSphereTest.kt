@@ -44,12 +44,12 @@ class PolarSphereTest {
     @Test
     fun `every type keeps the size and is opaque on an opaque picture`() {
         for (mode in 0..3) {
-            val out = Polar.apply(src, Polar.defaultValues(mapOf("mode" to mode, "twist" to 300, "repeat" to 3, "seamless" to 1)), 0L)
+            val out = Polar.apply(src, Polar.defaultValues(mapOf("mode" to mode, "twist" to 30000, "repeat" to 3, "seamless" to 1)), 0L)
             assertEquals(src.width, out.width)
             assertTrue(out.data.all { it ushr 24 == 255 }, "polar type $mode")
         }
         for (mode in 0..3) {
-            val out = Sphere.apply(src, Sphere.defaultValues(mapOf("mode" to mode, "turn" to 40, "tilt" to 20)), 0L)
+            val out = Sphere.apply(src, Sphere.defaultValues(mapOf("mode" to mode, "turn" to 4000, "tilt" to 2000)), 0L)
             assertEquals(src.height, out.height)
             assertTrue(out.data.all { it ushr 24 == 255 }, "sphere type $mode")
         }
@@ -93,7 +93,7 @@ class PolarSphereTest {
     @Test
     fun `turning the globe a full circle looks the same`() {
         val a = Sphere.apply(src, Sphere.defaultValues(mapOf("turn" to 0)), 0L)
-        val b = Sphere.apply(src, Sphere.defaultValues(mapOf("turn" to 360)), 0L)
+        val b = Sphere.apply(src, Sphere.defaultValues(mapOf("turn" to 36000)), 0L)
         for (i in a.data.indices) assertTrue(close(a.data[i], b.data[i], 2), "pixel $i")
     }
 }

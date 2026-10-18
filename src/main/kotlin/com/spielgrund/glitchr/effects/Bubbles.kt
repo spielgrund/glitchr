@@ -67,8 +67,8 @@ object Bubbles : Effect("bubbles", "Bubbles", "Foam: bubbles grow on the thresho
         Param.Slider("sizeInfluence", "Size matters", 0, 100, 50, " %", "100 %: the larger the bubble, the stronger the bulge (full from max. radius)"),
         Param.Heading("lightHeading", "Light"),
         Param.Toggle("lightOn", "Light on", true, "Off: no shading, no gloss, no rim light – the sliders are kept"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "The light comes from this direction (225° = from the top left)"),
-        Param.Slider("lightHeight", "Light height", 5, 90, 40, "°", "Flat: gloss at the rim, 90°: light from the front"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", "The light comes from this direction (225° = from the top left)", decimals = 2),
+        Param.Slider("lightHeight", "Light height", 500, 9000, 4000, "°", "Flat: gloss at the rim, 90°: light from the front", decimals = 2),
         Param.Slider("shading", "Shading", 0, 100, 45, " %", "The side facing away from the light gets darker"),
         Param.Slider("gloss", "Gloss", 0, 100, 60, " %", "Highlight where the light is reflected"),
         Param.Slider("glossSize", "Gloss size", 1, 100, 25, " %"),
@@ -405,8 +405,8 @@ object Bubbles : Effect("bubbles", "Bubbles", "Foam: bubbles grow on the thresho
         private val hz: Double
 
         init {
-            val a = Math.toRadians(v["lightAngle"].toDouble())
-            val e = Math.toRadians(v["lightHeight"].toDouble())
+            val a = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
+            val e = Math.toRadians((v["lightHeight"] / 100.0).toDouble())
             lx = kotlin.math.cos(a) * kotlin.math.cos(e)
             ly = kotlin.math.sin(a) * kotlin.math.cos(e)
             lz = kotlin.math.sin(e)

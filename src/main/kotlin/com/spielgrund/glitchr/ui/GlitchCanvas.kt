@@ -76,6 +76,83 @@ class Brush {
     /** Magic wand: allowed difference per channel (0..255), and whether only connected pixels count. */
     var tolerance = 32
     var contiguous = true
+
+    /** Magic wand: grow along soft gradients (light falling across a surface), stopping at hard edges. */
+    var gradients = true
+
+    /** The last selection (magic wand or “Find”), while it can still be refined; null after any other mask edit. */
+    var lastSelection: SelectionOp? = null
+}
+
+/**
+ * The last selection made on a painted [mask], kept so it can be refined afterwards:
+ * [compute] gives its raw values (0..1, [width] × [height]) for a tolerance; refining puts
+ * back the painted pixels from [before] it and lays the refined values in again – replacing
+ * ([mode] 0), added (1) or taken away (2).
+ */
+class SelectionOp(
+    val mask: com.spielgrund.glitchr.model.Mask,
+    private val before: ByteArray?,
+    val width: Int,
+    val height: Int,
+    val mode: Int,
+    /** Whether it came from the magic wand: then its tolerance can change. */
+    val wand: Boolean,
+    var tolerance: Int,
+    /** The color clicked with the wand, to notice clicks on the same color again. */
+    val seedColor: Int,
+    private val compute: (Int) -> FloatArray,
+) {
+    /** −100..100: less or more selected. */
+    var amount = 0
+
+    /** Smoothing of the outline, in mask pixels. */
+    var smooth = 0
+
+    /** Soft edge, in mask pixels. */
+    var feather = 0
+
+    /** For a selection from “Find”: which kind, so its settings can recompute it while it is live. */
+    var findKind: com.spielgrund.glitchr.effects.AutoSelect.Kind? = null
+
+    private var raw: FloatArray? = null
+    private var rawTolerance = -1
+
+    /** New raw values, e.g. recomputed with other settings of “Find”. */
+    fun setRaw(values: FloatArray) {
+        raw = values
+        rawTolerance = tolerance
+    }
+
+    fun apply() {
+        if (raw == null || rawTolerance != tolerance) {
+            raw = compute(tolerance)
+            rawTolerance = tolerance
+        }
+        val values = refine(raw!!, width, height, amount, smooth, feather)
+        mask.restorePainted(before, width, height)
+        mask.fromValues(values, width, height, mode)
+    }
+
+    companion object {
+        /**
+         * [values] grown or shrunk ([amount] −100..100: blurred, then cut at a lower or higher
+         * level), with a smoothed outline ([smooth]) and a soft edge ([feather]).
+         */
+        fun refine(values: FloatArray, w: Int, h: Int, amount: Int, smooth: Int, feather: Int): FloatArray {
+            var out = values
+            if (amount != 0 || smooth > 0) {
+                // at ±100 % the outline moves by about a fortieth of the picture
+                val reach = kotlin.math.max(2.0, kotlin.math.min(w, h) / 40.0)
+                val sigma = kotlin.math.max(smooth.toDouble(), kotlin.math.abs(amount) / 100.0 * reach)
+                val blurred = if (sigma > 0.3) com.spielgrund.glitchr.effects.Blur.gauss(out, w, h, sigma) else out
+                val level = 0.5f - amount / 100f * 0.45f
+                out = FloatArray(blurred.size) { ((blurred[it] - level) / 0.08f + 0.5f).coerceIn(0f, 1f) }
+            }
+            if (feather > 0) out = com.spielgrund.glitchr.effects.Blur.gauss(out, w, h, feather / 2.0)
+            return out
+        }
+    }
 }
 
 /**
@@ -159,6 +236,18 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     /** Called when the zoom changes. */
     var onZoom: () -> Unit = {}
 
+    /**
+     * Cropping: the part of the canvas to keep (canvas pixels), shown with handles to move
+     * and resize it; null when not cropping. Enter or a double-click inside crops
+     * ([onCropFinish] with true), Escape cancels.
+     */
+    var cropRect: Rectangle2D.Double? = null
+        set(value) {
+            field = value
+            updateCursor(mouse)
+        }
+    var onCropFinish: (apply: Boolean) -> Unit = {}
+
     var zoom = 1.0
         private set
 
@@ -179,6 +268,12 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         addMouseMotionListener(handler)
         addMouseWheelListener(handler)
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { e ->
+            if (cropRect != null && e.id == KeyEvent.KEY_PRESSED && (e.keyCode == KeyEvent.VK_ENTER || e.keyCode == KeyEvent.VK_ESCAPE) &&
+                KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner !is JTextComponent
+            ) {
+                onCropFinish(e.keyCode == KeyEvent.VK_ENTER)
+                return@addKeyEventDispatcher true
+            }
             if (e.keyCode == KeyEvent.VK_SPACE && KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner !is JTextComponent) {
                 val down = e.id == KeyEvent.KEY_PRESSED
                 if (down != spaceDown && (e.id == KeyEvent.KEY_PRESSED || e.id == KeyEvent.KEY_RELEASED)) {
@@ -259,10 +354,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             val y = r.y + dy
             val m = FloatArray(w)
             shape.row(y, w, h, m, space)
-            for (x in r.x until r.x + r.width) {
-                val a = ((1f - m[x]) * 150).toInt()
-                data[y * w + x] = (a shl 24) or 0xFF2828
-            }
+            // a light tint where the effect doesn't work, so the picture stays visible
+            for (x in r.x until r.x + r.width) data[y * w + x] = (((1f - m[x]) * 95).toInt() shl 24) or 0xFF2828
         }
         repaint()
     }
@@ -302,7 +395,68 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         flowKey?.let { paintFlow(g2, it) }
         activeHandle?.let { paintHandle(g2, it) }
         selectionOutline()?.let { paintSelectionOutline(g2, it) }
+        cropRect?.let { paintCrop(g2, it) }
         g2.dispose()
+    }
+
+    /** The crop area: everything outside darkened, a frame with thirds, handles and its size. */
+    private fun paintCrop(g: Graphics2D, r: Rectangle2D.Double) {
+        val s = cropScreen(r)
+        val outside = java.awt.geom.Area(imageBounds()).apply { subtract(java.awt.geom.Area(s)) }
+        g.color = Color(0, 0, 0, 150)
+        g.fill(outside)
+        g.stroke = BasicStroke(1f)
+        g.color = Color(255, 255, 255, 90)
+        for (k in 1..2) {
+            val x = s.x + s.width * k / 3
+            val y = s.y + s.height * k / 3
+            g.draw(Line2D.Double(x, s.y, x, s.y + s.height))
+            g.draw(Line2D.Double(s.x, y, s.x + s.width, y))
+        }
+        g.color = Color.WHITE
+        g.stroke = BasicStroke(1.5f)
+        g.draw(s)
+        for ((hx, hy) in cropHandles(s)) {
+            val h = Rectangle2D.Double(hx - 4, hy - 4, 8.0, 8.0)
+            g.color = Color.WHITE
+            g.fill(h)
+            g.color = Color(0x1E1F22)
+            g.draw(h)
+        }
+        val label = "${r.width.roundToInt()} × ${r.height.roundToInt()} px   ·   Enter: crop   ·   Esc: cancel"
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        val fm = g.fontMetrics
+        val tx = s.x.toInt() + 4
+        val ty = (s.y + s.height).toInt() + fm.ascent + 6
+        g.color = Color(0, 0, 0, 170)
+        g.fillRect(tx - 4, ty - fm.ascent - 2, fm.stringWidth(label) + 8, fm.height + 4)
+        g.color = Color.WHITE
+        g.drawString(label, tx, ty)
+    }
+
+    private fun cropScreen(r: Rectangle2D.Double) =
+        Rectangle2D.Double(originX() + r.x * zoom, originY() + r.y * zoom, r.width * zoom, r.height * zoom)
+
+    /** Corners and edge middles of the crop frame on screen. */
+    private fun cropHandles(s: Rectangle2D.Double) = listOf(
+        s.x to s.y, s.centerX to s.y, s.x + s.width to s.y, s.x + s.width to s.centerY,
+        s.x + s.width to s.y + s.height, s.centerX to s.y + s.height, s.x to s.y + s.height, s.x to s.centerY,
+    )
+
+    /** Which edges of the crop frame are under screen point [p]: bits left 1, right 2, top 4, bottom 8; 16 inside, 0 outside. */
+    private fun cropPart(p: Point): Int {
+        val r = cropRect ?: return 0
+        val s = cropScreen(r)
+        val near = 7.0
+        var edges = 0
+        val inY = p.y >= s.y - near && p.y <= s.y + s.height + near
+        val inX = p.x >= s.x - near && p.x <= s.x + s.width + near
+        if (inY && kotlin.math.abs(p.x - s.x) <= near) edges = edges or 1
+        if (inY && kotlin.math.abs(p.x - (s.x + s.width)) <= near) edges = edges or 2
+        if (inX && kotlin.math.abs(p.y - s.y) <= near) edges = edges or 4
+        if (inX && kotlin.math.abs(p.y - (s.y + s.height)) <= near) edges = edges or 8
+        if (edges != 0) return edges
+        return if (s.contains(p.x.toDouble(), p.y.toDouble())) 16 else 0
     }
 
     private fun paintHint(g: Graphics2D) {
@@ -529,8 +683,19 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
 
     // ---------------------------------------------------------------- coordinates
 
-    private fun originX() = max(MARGIN.toDouble(), (width - (image?.width ?: 0) * zoom) / 2)
-    private fun originY() = max(MARGIN.toDouble(), (height - (image?.height ?: 0) * zoom) / 2)
+    private fun originX() = max(MARGIN.toDouble(), (width - (image?.width ?: 0) * zoom) / 2) + panX
+    private fun originY() = max(MARGIN.toDouble(), (height - (image?.height ?: 0) * zoom) / 2) + panY
+
+    /** How far the picture was moved freely with the middle mouse button or space, beyond scrolling (screen pixels). */
+    private var panX = 0.0
+    private var panY = 0.0
+
+    /** Shows the whole picture, centred again. */
+    fun fit() {
+        panX = 0.0
+        panY = 0.0
+        setZoom(fitZoom())
+    }
 
     private fun imageBounds(): Rectangle {
         val img = image ?: return Rectangle()
@@ -580,7 +745,11 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     // ---------------------------------------------------------------- mouse
 
     private sealed interface Drag
-    private class Pan(val start: Point, val view: Point) : Drag
+    /** Panning: [last] is the previous mouse position on screen. */
+    private class Pan(var last: Point) : Drag
+
+    /** Changing the crop frame: [part] as in [cropPart] (0 = a new frame from [start]), from the frame [from]. */
+    private class CropDrag(val part: Int, val start: Point2D.Double, val from: Rectangle2D.Double) : Drag
     private class Paint(var last: Point2D.Double, val erase: Boolean) : Drag
     private class MoveHandle(val first: Boolean) : Drag
 
@@ -615,6 +784,53 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     ) : Drag
 
     /** Merges a selection (in painted-mask pixels) into the active layer's painted mask. */
+    /**
+     * The magic wand at canvas point [p]: selects similar colors (taking them away with
+     * [subtract]). Clicking the same color again widens the tolerance step by step, from the
+     * mask as it was before the first click; a click on another color starts afresh.
+     */
+    private fun wand(p: Point2D.Double, subtract: Boolean) {
+        val t = maskTarget() ?: return
+        val pixels = t.image ?: return
+        val mask = layer?.mask ?: return
+        val m = toMask(p, t)
+        val x = floor(m.x).toInt()
+        val y = floor(m.y).toInt()
+        if (x !in 0 until pixels.width || y !in 0 until pixels.height) return
+        val color = pixels[x, y]
+        mask.ensurePainted(t.width, t.height)
+        val mode = if (subtract) 2 else 1
+        val last = brush.lastSelection
+        fun close(a: Int, b: Int) = listOf(16, 8, 0).all { kotlin.math.abs((a shr it and 0xFF) - (b shr it and 0xFF)) <= 6 }
+        val op = if (last != null && last.wand && last.mask === mask && last.mode == mode && close(last.seedColor, color)) {
+            last.tolerance = min(255, last.tolerance + 16)
+            last
+        } else {
+            val contiguous = brush.contiguous
+            val gradients = brush.gradients
+            SelectionOp(mask, mask.painted?.copyOf(), t.width, t.height, mode, true, brush.tolerance, color) { tolerance ->
+                val values = FloatArray(t.width * t.height)
+                Selection.similarColor(pixels, x, y, tolerance, contiguous, 0, gradients)?.let { patch ->
+                    val r = patch.rect
+                    for (yy in 0 until r.height) for (xx in 0 until r.width) {
+                        val tx = r.x + xx
+                        val ty = r.y + yy
+                        if (tx in 0 until t.width && ty in 0 until t.height) {
+                            values[ty * t.width + tx] = (patch.data[yy * r.width + xx].toInt() and 0xFF) / 255f
+                        }
+                    }
+                }
+                values
+            }.also {
+                it.feather = (brush.feather * t.width / t.space.width).roundToInt()
+                brush.lastSelection = it
+            }
+        }
+        op.apply()
+        refreshOverlay()
+        onMaskEdited()
+    }
+
     private fun applySelection(patch: MaskPatch?, subtract: Boolean) {
         val t = maskTarget() ?: return
         val mask = layer?.mask ?: return
@@ -641,6 +857,14 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         cursor = when {
             image == null -> Cursor.getDefaultCursor()
             spaceDown || drag is Pan -> Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+            cropRect != null -> when ((drag as? CropDrag)?.part ?: p?.let(::cropPart) ?: 0) {
+                16 -> Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+                1, 2 -> Cursor.getPredefinedCursor(Cursor.E_RESIZE_CURSOR)
+                4, 8 -> Cursor.getPredefinedCursor(Cursor.N_RESIZE_CURSOR)
+                5, 10 -> Cursor.getPredefinedCursor(Cursor.NW_RESIZE_CURSOR)
+                6, 9 -> Cursor.getPredefinedCursor(Cursor.NE_RESIZE_CURSOR)
+                else -> Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
+            }
             imageLayerCursor(p) != null -> imageLayerCursor(p)
             flowKey != null -> Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
             activeHandle != null -> Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
@@ -709,8 +933,18 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             if (image == null) return
             val viewport = parent as? JViewport
             if (SwingUtilities.isMiddleMouseButton(e) || spaceDown) {
-                if (viewport != null) drag = Pan(e.locationOnScreen, viewport.viewPosition)
+                drag = Pan(e.locationOnScreen)
                 updateCursor(e.point)
+                return
+            }
+            cropRect?.let { r ->
+                if (!SwingUtilities.isLeftMouseButton(e)) return
+                val part = cropPart(e.point)
+                if (e.clickCount == 2 && part == 16) {
+                    onCropFinish(true)
+                    return
+                }
+                drag = CropDrag(part, toImage(e.point), r.clone() as Rectangle2D.Double)
                 return
             }
             transforms(e)?.let { l ->
@@ -743,6 +977,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 return
             }
             val mask = layer?.mask ?: return
+            // any other edit of the mask ends the refinable selection
+            if (!(mask.mode == MaskMode.BRUSH && brush.tool == MaskTool.WAND)) brush.lastSelection = null
             when {
                 mask.mode == MaskMode.BRUSH -> {
                     val erase = SwingUtilities.isRightMouseButton(e) || e.isAltDown
@@ -755,14 +991,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                         MaskTool.RECT, MaskTool.ELLIPSE -> drag = ShapeDrag(p, p, brush.tool == MaskTool.ELLIPSE, erase)
                         MaskTool.LASSO -> drag = LassoDrag(Path2D.Double().apply { moveTo(p.x, p.y) }, erase)
                         MaskTool.WAND -> {
-                            val t = maskTarget() ?: return
-                            val pixels = t.image ?: return
-                            val m = toMask(p, t)
-                            val patch = Selection.similarColor(
-                                pixels, floor(m.x).toInt(), floor(m.y).toInt(),
-                                brush.tolerance, brush.contiguous, (brush.feather * t.width / t.space.width).roundToInt(),
-                            )
-                            applySelection(patch, erase)
+                            wand(p, erase)
+                            return
                         }
                     }
                 }
@@ -781,14 +1011,52 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             mouse = e.point
             when (val d = drag) {
                 is Pan -> {
-                    val viewport = parent as? JViewport ?: return
                     val now = e.locationOnScreen
-                    val maxX = max(0, viewport.viewSize.width - viewport.extentSize.width)
-                    val maxY = max(0, viewport.viewSize.height - viewport.extentSize.height)
-                    viewport.viewPosition = Point(
-                        (d.view.x - (now.x - d.start.x)).coerceIn(0, maxX),
-                        (d.view.y - (now.y - d.start.y)).coerceIn(0, maxY),
-                    )
+                    var dx = now.x - d.last.x
+                    var dy = now.y - d.last.y
+                    d.last = now
+                    // scroll as far as the window can; what is left moves the picture itself
+                    (parent as? JViewport)?.let { viewport ->
+                        val maxX = max(0, viewport.viewSize.width - viewport.extentSize.width)
+                        val maxY = max(0, viewport.viewSize.height - viewport.extentSize.height)
+                        val view = viewport.viewPosition
+                        val x = (view.x - dx).coerceIn(0, maxX)
+                        val y = (view.y - dy).coerceIn(0, maxY)
+                        dx -= view.x - x
+                        dy -= view.y - y
+                        viewport.viewPosition = Point(x, y)
+                    }
+                    if (dx != 0 || dy != 0) {
+                        panX += dx
+                        panY += dy
+                        repaint()
+                    }
+                }
+                is CropDrag -> {
+                    val img = image ?: return
+                    val w = img.width.toDouble()
+                    val h = img.height.toDouble()
+                    val p = toImage(e.point).let { Point2D.Double(it.x.coerceIn(0.0, w), it.y.coerceIn(0.0, h)) }
+                    val f = d.from
+                    cropRect = when (d.part) {
+                        // a new frame between where the drag began and the mouse
+                        0 -> Rectangle2D.Double(min(d.start.x, p.x), min(d.start.y, p.y), kotlin.math.abs(p.x - d.start.x), kotlin.math.abs(p.y - d.start.y))
+                        16 -> Rectangle2D.Double(
+                            (f.x + p.x - d.start.x).coerceIn(0.0, w - f.width), (f.y + p.y - d.start.y).coerceIn(0.0, h - f.height), f.width, f.height,
+                        )
+                        else -> {
+                            var x0 = f.x
+                            var y0 = f.y
+                            var x1 = f.x + f.width
+                            var y1 = f.y + f.height
+                            if (d.part and 1 != 0) x0 = p.x
+                            if (d.part and 2 != 0) x1 = p.x
+                            if (d.part and 4 != 0) y0 = p.y
+                            if (d.part and 8 != 0) y1 = p.y
+                            Rectangle2D.Double(min(x0, x1), min(y0, y1), kotlin.math.abs(x1 - x0), kotlin.math.abs(y1 - y0))
+                        }
+                    }
+                    repaint()
                 }
                 is Paint -> {
                     val p = toImage(e.point)

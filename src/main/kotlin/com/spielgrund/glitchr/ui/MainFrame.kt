@@ -160,9 +160,18 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     private val timelinePanel = TimelinePanel(this)
     private val frameCache = FrameCache()
 
-    /** Playback renders ahead on its own thread and renderer, so the interactive one keeps its cache. */
-    private val animRenderer = Renderer()
-    private val animExecutor = Executors.newSingleThreadExecutor { Thread(it, "glitch-animation").apply { isDaemon = true } }
+    /**
+     * Playback renders ahead on several threads, each with its own renderer (a renderer keeps
+     * a cache and renders one frame at a time), so the interactive one keeps its cache too.
+     */
+    private val animRenderers = mutableListOf<Renderer>()
+    private val animExecutor = Executors.newCachedThreadPool { Thread(it, "glitch-animation").apply { isDaemon = true } }
+
+    /** Frames a playback thread is rendering right now, so the others take different ones. */
+    private val claimedFrames = HashSet<Int>()
+
+    /** Counts playbacks: threads of an earlier one stop instead of working alongside the new ones. */
+    @Volatile private var playRun = 0
     private var playTimer: javax.swing.Timer? = null
 
     /** The editor follows the playhead with a short delay, so scrubbing stays smooth. */
@@ -211,7 +220,21 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         })
         jMenuBar = menus()
 
-        canvas.onMaskEdited = { changed() }
+        // the editor shows the gradient points as numbers: follow drags on the canvas
+        canvas.onMaskEdited = { changed(); editorFollowTimer.restart() }
+        canvas.onCropFinish = { apply -> finishCrop(apply) }
+        // Ctrl+0 (fit) and Ctrl+1 (100 %) wherever the focus is, also on the number pad:
+        // the menu shortcuts alone don't reach the menu when the focused field takes the key
+        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { e ->
+            if (e.id != KeyEvent.KEY_PRESSED || !isFocused || e.modifiersEx and (SHORTCUT or InputEvent.SHIFT_DOWN_MASK or InputEvent.ALT_DOWN_MASK) != SHORTCUT) {
+                return@addKeyEventDispatcher false
+            }
+            when (e.keyCode) {
+                KeyEvent.VK_0, KeyEvent.VK_NUMPAD0 -> { canvas.fit(); true }
+                KeyEvent.VK_1, KeyEvent.VK_NUMPAD1 -> { canvas.setZoom(1.0); true }
+                else -> false
+            }
+        }
         canvas.onFlowEdited = { finished ->
             changed()
             // the editor shows the number of strokes
@@ -293,7 +316,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         add(small("+ Image…", "Insert an image as a new layer (Ctrl+I) – or just drag it into the window") { insertImageDialog() })
         add(small("Save", "Save the project with all layers and masks (Ctrl+S)") { save() })
         add(small("Export…", "Save the result as an image (Ctrl+E)") { exportDialog() })
-        add(small("Fit", "Show the whole picture (Ctrl+0)") { canvas.setZoom(canvas.fitZoom()) })
+        add(small("Fit", "Show the whole picture (Ctrl+0)") { canvas.fit() })
         add(originalButton.apply {
             isFocusable = false
             toolTipText = "Shows the image layers without effects (Ctrl+B)"
@@ -386,6 +409,17 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             add(undoItem)
             add(redoItem)
         })
+        add(JMenu("Image").apply {
+            add(JMenuItem("Canvas size…").apply {
+                toolTipText = "Makes the canvas larger or smaller without scaling the content"
+                addActionListener { canvasSizeDialog() }
+            })
+            add(JMenuItem("Scale image…").apply {
+                toolTipText = "Scales the canvas together with everything on it"
+                addActionListener { scaleDialog() }
+            })
+            add(item("Crop", KeyEvent.VK_K) { startCrop() })
+        })
         add(JMenu("Layer").apply {
             add(JMenuItem("Insert image as layer…").apply { addActionListener { insertImageDialog() } })
             add(JMenu("Add generator").apply {
@@ -428,7 +462,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             })
         })
         add(JMenu("View").apply {
-            add(item("Fit", KeyEvent.VK_0) { canvas.setZoom(canvas.fitZoom()) })
+            add(item("Fit", KeyEvent.VK_0) { canvas.fit() })
             add(item("100 %", KeyEvent.VK_1) { canvas.setZoom(1.0) })
             add(item("Zoom in", KeyEvent.VK_PLUS) { canvas.zoomIn() })
             add(item("Zoom out", KeyEvent.VK_MINUS) { canvas.zoomOut() })
@@ -683,7 +717,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             result = null
             resultImage = null
             showCurrentImage()
-            SwingUtilities.invokeLater { canvas.setZoom(canvas.fitZoom()) }
+            SwingUtilities.invokeLater { canvas.fit() }
         }
         select(layers.firstOrNull { it.id == state.selectedId } ?: layers.lastOrNull())
         dirty = true
@@ -712,15 +746,18 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val gen = generation.incrementAndGet()
         val frame = currentFrame
         val original = originalButton.isSelected
-        val states = (if (original) layers.filterIsInstance<SourceLayer>() else layers).map { it.animated().at(frame) }
+        val snapshots = (if (original) layers.filterIsInstance<SourceLayer>() else layers).map { it.animated() }
+        val states = snapshots.map { it.at(frame) }
         val cacheVersion = frameCache.version
         val animated = timeline != null && !original
+        // time effects see the other frames of the animation
+        val session = timeline?.takeIf { !original }?.let { com.spielgrund.glitchr.model.TimeSession(snapshots, it.frames, width, height) }
         status.text = "Rendering…"
         renderExecutor.execute {
             if (generation.get() != gen) return@execute
             val start = System.nanoTime()
             try {
-                val out = renderer.render(width, height, states)
+                val out = renderer.render(width, height, states, session, frame)
                 if (animated) frameCache.put(frame, out, cacheVersion)
                 val image = out.toImage()
                 val ms = (System.nanoTime() - start) / 1_000_000
@@ -894,7 +931,13 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val version = frameCache.version
         val width = docWidth
         val height = docHeight
-        animExecutor.execute { prerender(snapshots, width, height, t, version) }
+        val run = ++playRun
+        synchronized(claimedFrames) { claimedFrames.clear() }
+        val workers = renderThreads(snapshots.size)
+        while (animRenderers.size < workers) animRenderers += Renderer()
+        // one time session for all threads, so the frames time effects look at are rendered only once
+        val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height)
+        for (k in 0 until workers) animExecutor.execute { prerender(animRenderers[k], snapshots, session, width, height, t, version, run) }
         playTimer = javax.swing.Timer(maxOf(1, 1000 / t.fps)) { tick() }.apply {
             initialDelay = 0
             start()
@@ -902,18 +945,44 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         timelinePanel.refreshPlayhead()
     }
 
-    private fun prerender(snapshots: List<com.spielgrund.glitchr.model.AnimatedLayer>, width: Int, height: Int, t: com.spielgrund.glitchr.model.Timeline, version: Int) {
+    /**
+     * How many frames are rendered at the same time: half the processor cores (the effects
+     * themselves also work on several cores), at most as many as the memory allows – every
+     * renderer keeps the in-between pictures of all [layerCount] layers.
+     */
+    private fun renderThreads(layerCount: Int): Int {
+        val cores = Runtime.getRuntime().availableProcessors()
+        val perRenderer = docWidth.toLong() * docHeight * 4 * (3L * layerCount + 4)
+        val byMemory = (Runtime.getRuntime().maxMemory() * 0.25 / perRenderer).toInt()
+        return minOf(maxOf(1, cores / 2), byMemory, 8).coerceAtLeast(1)
+    }
+
+    /** One of the playback threads: renders the next frames from the playhead on that aren't rendered or taken yet. */
+    private fun prerender(
+        renderer: Renderer, snapshots: List<com.spielgrund.glitchr.model.AnimatedLayer>, session: com.spielgrund.glitchr.model.TimeSession,
+        width: Int, height: Int,
+        t: com.spielgrund.glitchr.model.Timeline, version: Int, run: Int,
+    ) {
         try {
-            while (isPlaying && frameCache.version == version) {
+            while (isPlaying && frameCache.version == version && playRun == run) {
                 val from = currentFrame
-                val next = (0 until t.frames).map { (from + it) % t.frames }.firstOrNull { !frameCache.contains(it) } ?: break
+                val next = synchronized(claimedFrames) {
+                    (0 until t.frames).map { (from + it) % t.frames }
+                        .firstOrNull { !frameCache.contains(it) && it !in claimedFrames }
+                        ?.also { claimedFrames += it }
+                } ?: break
                 // never further ahead than the cache holds, or it would push out the frames about to be played
                 if ((next - from + t.frames) % t.frames >= frameCache.budget - 1) {
+                    synchronized(claimedFrames) { claimedFrames -= next }
                     Thread.sleep(15)
                     continue
                 }
-                val out = animRenderer.render(width, height, snapshots.map { it.at(next) })
-                frameCache.put(next, out, version)
+                try {
+                    val out = renderer.render(width, height, snapshots.map { it.at(next) }, session, next)
+                    frameCache.put(next, out, version)
+                } finally {
+                    synchronized(claimedFrames) { claimedFrames -= next }
+                }
                 SwingUtilities.invokeLater { timelinePanel.refreshPlayhead() }
             }
         } catch (e: OutOfMemoryError) {
@@ -1116,15 +1185,36 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val width = docWidth
         val height = docHeight
         val target = file
+        val workers = renderThreads(snapshots.size)
         Thread({
-            val exportRenderer = Renderer()
+            // several frames are rendered at once, each thread with its own renderer; the writer
+            // takes them in order and the threads stay a few frames ahead of it
+            val pool = Executors.newFixedThreadPool(workers) { Thread(it, "glitch-export-render").apply { isDaemon = true } }
+            val renderers = ThreadLocal.withInitial { Renderer() }
+            val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height)
+            val pending = HashMap<Int, java.util.concurrent.Future<Pixels>>()
+            var last = -1
+            fun request(f: Int) = pending.getOrPut(f) {
+                pool.submit(java.util.concurrent.Callable {
+                    // frames played before are reused, as long as nothing changed since
+                    frameCache.get(f)?.takeIf { frameCache.version == version } ?: renderers.get().render(width, height, snapshots.map { it.at(f) }, session, f)
+                })
+            }
             var cancelled = false
             try {
                 val written = com.spielgrund.glitchr.export.AnimationExport.export(
                     t.frames, t.fps, settings, target,
                     render = { f ->
-                        // frames played before are reused, as long as nothing changed since
-                        frameCache.get(f)?.takeIf { frameCache.version == version } ?: exportRenderer.render(width, height, snapshots.map { it.at(f) })
+                        // read ahead only while the frames are asked for in order (the GIF palette samples a few first)
+                        if (f == last + 1) for (g in f + 1..minOf(t.frames - 1, f + workers)) request(g)
+                        last = f
+                        try {
+                            request(f).get()
+                        } catch (e: java.util.concurrent.ExecutionException) {
+                            throw e.cause ?: e
+                        } finally {
+                            pending.remove(f)
+                        }
                     },
                     progress = { n ->
                         SwingUtilities.invokeLater {
@@ -1151,6 +1241,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                     monitor.close()
                     JOptionPane.showMessageDialog(this, "Export failed:\n${e.message ?: e.javaClass.simpleName}", "Export", JOptionPane.ERROR_MESSAGE)
                 }
+            } finally {
+                pool.shutdownNow()
             }
         }, "glitch-export").apply { isDaemon = true }.start()
     }
@@ -1166,17 +1258,34 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             "$s %  (${Math.round(docWidth * s / 100.0)} × ${Math.round(docHeight * s / 100.0)} px)"
         }.toTypedArray()).apply { selectedIndex = scales.indexOf(prefs.getInt("animScale", 100)).coerceAtLeast(0) }
         val backgroundBox = javax.swing.JComboBox(arrayOf("Black", "White")).apply { selectedIndex = prefs.getInt("animBackground", 0) }
-        val dither = javax.swing.JCheckBox("Dithering", prefs.getBoolean("animDither", true)).apply {
-            toolTipText = "GIF has only 256 colors: dithering mixes them into finer gradients (larger files)"
+        val ditherModes = com.spielgrund.glitchr.export.Dither.entries.toTypedArray()
+        val dither = javax.swing.JComboBox(ditherModes).apply {
+            selectedItem = ditherModes.firstOrNull { it.name == prefs.get("animDitherMode", "") } ?: com.spielgrund.glitchr.export.Dither.ORDERED
+            toolTipText = "Mixes the few colors into finer gradients. Ordered stays steady from frame to frame and keeps " +
+                "animated GIFs much smaller; Floyd–Steinberg is finer but changes everywhere in every frame"
+        }
+        val colors = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(prefs.getInt("animColors", 256).coerceIn(2, 256), 2, 256, 1)).apply {
+            toolTipText = "Fewer colors make much smaller files (e.g. 64, 32 or 16)"
+        }
+        val onlyChanges = javax.swing.JCheckBox("Store only changes", prefs.getBoolean("animOnlyChanges", true)).apply {
+            toolTipText = "Every frame keeps only the part that changed; unchanged frames are merged. Same look, smaller file"
+        }
+        val tolerance = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(prefs.getInt("animTolerance", 0).coerceIn(0, 64), 0, 64, 1)).apply {
+            toolTipText = "Pixels that changed only this little keep their old color – smaller files for noisy animations; 0 = exact"
         }
         val loop = javax.swing.JCheckBox("Loop forever", prefs.getBoolean("animLoop", true))
         fun update() {
             val f = formatBox.selectedItem
             backgroundBox.isEnabled = f != com.spielgrund.glitchr.export.AnimFormat.PNG
-            dither.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.GIF
-            loop.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.GIF
+            val gif = f == com.spielgrund.glitchr.export.AnimFormat.GIF
+            dither.isEnabled = gif
+            loop.isEnabled = gif
+            colors.isEnabled = gif
+            onlyChanges.isEnabled = gif
+            tolerance.isEnabled = gif && onlyChanges.isSelected
         }
         formatBox.addActionListener { update() }
+        onlyChanges.addActionListener { update() }
         update()
         val form = JPanel(java.awt.GridBagLayout())
         val c = java.awt.GridBagConstraints().apply {
@@ -1185,7 +1294,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             fill = java.awt.GridBagConstraints.HORIZONTAL
         }
         val rows = listOf(
-            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "" to dither, "" to loop,
+            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "GIF colors" to colors, "Dithering" to dither,
+            "" to onlyChanges, "Change tolerance" to tolerance, "" to loop,
             "" to JLabel("<html><span style='color:gray'>${t.frames} frames · ${t.fps} fps · ${timecode(t.frames, t.fps)}${if (t.beats) " · " + t.length() + " at " + bpmText(t.bpm) + " BPM" else ""}<br>" +
                 "Background: under transparent parts (GIF and MP4 have none; PNG keeps it)</span></html>"),
         )
@@ -1202,15 +1312,163 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         prefs.put("animFormat", format.name)
         prefs.putInt("animScale", scales[sizeBox.selectedIndex])
         prefs.putInt("animBackground", backgroundBox.selectedIndex)
-        prefs.putBoolean("animDither", dither.isSelected)
+        prefs.put("animDitherMode", (dither.selectedItem as com.spielgrund.glitchr.export.Dither).name)
+        prefs.putInt("animColors", colors.value as Int)
+        prefs.putBoolean("animOnlyChanges", onlyChanges.isSelected)
+        prefs.putInt("animTolerance", tolerance.value as Int)
         prefs.putBoolean("animLoop", loop.isSelected)
         return com.spielgrund.glitchr.export.ExportSettings(
             format = format,
             scale = scales[sizeBox.selectedIndex] / 100.0,
             background = if (backgroundBox.selectedIndex == 1) 0xFFFFFF else 0x000000,
-            dither = dither.isSelected,
+            dither = dither.selectedItem as com.spielgrund.glitchr.export.Dither,
             loop = loop.isSelected,
+            colors = colors.value as Int,
+            onlyChanges = onlyChanges.isSelected,
+            tolerance = tolerance.value as Int,
         )
+    }
+
+    // ---------------------------------------------------------------- canvas size
+
+    /**
+     * Gives the document a new canvas of [width] × [height], where every old canvas point p
+     * lies at p · [factor] + ([dx], [dy]); all layers, masks and keyframes go along (see [Resize]).
+     */
+    private fun resizeDocument(width: Int, height: Int, factor: Double, dx: Double, dy: Double, scaleSizes: Boolean = true) {
+        if (!hasDocument || width < 1 || height < 1) return
+        stopPlayback(rebuildEditor = false)
+        commitHistory()
+        // the fields hold the current frame's values: settle them on frame 0's, like saving does
+        Animator.syncToFrame(layers, 0)
+        com.spielgrund.glitchr.model.Resize(docWidth, docHeight, width, height, factor, dx, dy, scaleSizes).apply(layers)
+        Animator.syncToFrame(layers, currentFrame)
+        docWidth = width
+        docHeight = height
+        frameCache.invalidate()
+        result = null
+        resultImage = null
+        showCurrentImage()
+        SwingUtilities.invokeLater {
+            canvas.fit()
+            canvas.refreshOverlay()
+        }
+        rebuildEditor()
+        refreshLayers()
+        dirty = true
+        requestRender()
+        commitHistory()
+        updateStatus()
+    }
+
+    /** Asks for a new canvas size and where the content stays (anchor); the content keeps its size. */
+    private fun canvasSizeDialog() {
+        if (!hasDocument) return
+        val width = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docWidth, 1, 30000, 1))
+        val height = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docHeight, 1, 30000, 1))
+        // 3 × 3 anchor: where the old canvas sits in the new one
+        var anchor = 4
+        val group = javax.swing.ButtonGroup()
+        val anchors = JPanel(java.awt.GridLayout(3, 3, 2, 2))
+        val arrows = listOf("↖", "↑", "↗", "←", "•", "→", "↙", "↓", "↘")
+        for (k in 0 until 9) anchors.add(JToggleButton(arrows[k], k == 4).apply {
+            isFocusable = false
+            margin = java.awt.Insets(2, 6, 2, 6)
+            group.add(this)
+            addActionListener { anchor = k }
+        })
+        val form = JPanel(java.awt.GridBagLayout())
+        val c = java.awt.GridBagConstraints().apply {
+            insets = java.awt.Insets(3, 3, 3, 3)
+            anchor = java.awt.GridBagConstraints.WEST
+        }
+        listOf("Width" to width, "Height" to height, "Anchor" to anchors).forEachIndexed { row, (label, field) ->
+            c.gridy = row
+            c.gridx = 0
+            form.add(JLabel(label), c)
+            c.gridx = 1
+            form.add(field, c)
+        }
+        c.gridy = 3
+        c.gridx = 0
+        c.gridwidth = 2
+        form.add(JLabel("<html><span style='color:gray'>Now $docWidth × $docHeight px. Larger: empty (transparent) space around;<br>smaller: cut off at the sides away from the anchor.</span></html>"), c)
+        if (JOptionPane.showConfirmDialog(this, form, "Canvas size", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return
+        val w = width.value as Int
+        val h = height.value as Int
+        if (w == docWidth && h == docHeight) return
+        val dx = (w - docWidth) * (anchor % 3) / 2.0
+        val dy = (h - docHeight) * (anchor / 3) / 2.0
+        resizeDocument(w, h, 1.0, kotlin.math.round(dx), kotlin.math.round(dy))
+        status.text = "Canvas: $w × $h px"
+    }
+
+    /** Asks for a new size of canvas and content together, in pixels or percent, keeping the proportions. */
+    private fun scaleDialog() {
+        if (!hasDocument) return
+        val percent = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(100.0, 1.0, 2000.0, 1.0))
+        val width = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docWidth, 1, 30000, 1))
+        val height = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docHeight, 1, 30000, 1))
+        val sizes = javax.swing.JCheckBox("Scale sizes in the effects too", true).apply {
+            toolTipText = "Radii, widths and distances in pixels grow and shrink with the picture, so the effects look the same"
+        }
+        // the three fields follow each other; the guard stops them from bouncing
+        var updating = false
+        fun from(f: Double) {
+            if (updating) return
+            updating = true
+            percent.value = f * 100
+            width.value = kotlin.math.max(1, kotlin.math.round(docWidth * f).toInt())
+            height.value = kotlin.math.max(1, kotlin.math.round(docHeight * f).toInt())
+            updating = false
+        }
+        percent.addChangeListener { from((percent.value as Double) / 100) }
+        width.addChangeListener { if (!updating) from((width.value as Int).toDouble() / docWidth) }
+        height.addChangeListener { if (!updating) from((height.value as Int).toDouble() / docHeight) }
+        val form = JPanel(java.awt.GridBagLayout())
+        val c = java.awt.GridBagConstraints().apply {
+            insets = java.awt.Insets(3, 3, 3, 3)
+            anchor = java.awt.GridBagConstraints.WEST
+        }
+        listOf("Size in %" to percent, "Width" to width, "Height" to height, "" to sizes).forEachIndexed { row, (label, field) ->
+            c.gridy = row
+            c.gridx = 0
+            form.add(JLabel(label), c)
+            c.gridx = 1
+            form.add(field, c)
+        }
+        if (JOptionPane.showConfirmDialog(this, form, "Scale image", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return
+        val f = (percent.value as Double) / 100
+        val w = width.value as Int
+        val h = height.value as Int
+        if (w == docWidth && h == docHeight) return
+        resizeDocument(w, h, f, 0.0, 0.0, sizes.isSelected)
+        status.text = "Scaled to $w × $h px"
+    }
+
+    /** Shows the crop frame on the canvas, at first around the whole picture. */
+    private fun startCrop() {
+        if (!hasDocument) return
+        stopPlayback()
+        canvas.cropRect = java.awt.geom.Rectangle2D.Double(0.0, 0.0, docWidth.toDouble(), docHeight.toDouble())
+        canvas.requestFocusInWindow()
+        status.text = "Crop: drag the frame or its edges, or draw a new one · Enter or double-click: crop · Esc: cancel"
+    }
+
+    private fun finishCrop(apply: Boolean) {
+        val r = canvas.cropRect ?: return
+        canvas.cropRect = null
+        val x = kotlin.math.round(r.x).toInt()
+        val y = kotlin.math.round(r.y).toInt()
+        val w = kotlin.math.round(r.x + r.width).toInt() - x
+        val h = kotlin.math.round(r.y + r.height).toInt() - y
+        if (!apply || w < 1 || h < 1 || (w == docWidth && h == docHeight)) {
+            canvas.repaint()
+            updateStatus()
+            return
+        }
+        resizeDocument(w, h, 1.0, -x.toDouble(), -y.toDouble())
+        status.text = "Cropped to $w × $h px"
     }
 
     // ---------------------------------------------------------------- files
@@ -1261,7 +1519,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         select(first)
         showCurrentImage()
         SwingUtilities.invokeLater {
-            canvas.setZoom(canvas.fitZoom())
+            canvas.fit()
             canvas.refreshOverlay()
         }
         requestRender()
@@ -1489,7 +1747,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         projectFile = file
         dirty = false
         SwingUtilities.invokeLater {
-            canvas.setZoom(canvas.fitZoom())
+            canvas.fit()
             canvas.refreshOverlay()
         }
         status.text = "Opened: ${file.absolutePath}"

@@ -30,7 +30,7 @@ import kotlin.math.sqrt
  * follows the cell's brightness – so the picture reappears as a pattern. The brightness
  * is stretched to the picture's own range first, so dark or pale pictures still show.
  */
-object GridModules : Effect("grid", "Grid", "Grid modules whose density, size or direction follows the picture's brightness") {
+object GridModules : Effect("grid", "Grid modules", "Grid modules whose density, size or direction follows the picture's brightness") {
     private val modules = listOf("Dot screen", "Concentric circles", "Rays", "Hatching", "Stripes", "Moiré grid")
 
     override val params = listOf(

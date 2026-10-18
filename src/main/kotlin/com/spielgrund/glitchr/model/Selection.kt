@@ -37,9 +37,15 @@ object Selection {
     /**
      * Magic wand: selects the pixels whose color differs from the one at ([x], [y]) by at
      * most [tolerance] in every channel; only those connected to the start pixel when
-     * [contiguous], otherwise everywhere in the image.
+     * [contiguous], otherwise everywhere in the image. With [gradients] (connected only) the
+     * selection also follows soft gradients, such as light falling across a wall: it grows from
+     * pixel to pixel as long as each step is small; the brightness may drift up to three times
+     * the tolerance from the start color, the hue only half of it, so it stops where another
+     * thing begins even at a soft edge.
      */
-    fun similarColor(image: Pixels, x: Int, y: Int, tolerance: Int, contiguous: Boolean, feather: Int): MaskPatch? {
+    fun similarColor(
+        image: Pixels, x: Int, y: Int, tolerance: Int, contiguous: Boolean, feather: Int, gradients: Boolean = false,
+    ): MaskPatch? {
         val w = image.width
         val h = image.height
         if (x !in 0 until w || y !in 0 until h) return null
@@ -51,7 +57,44 @@ object Selection {
             abs(red(c) - sr) <= tolerance && abs(green(c) - sg) <= tolerance && abs(blue(c) - sb) <= tolerance
 
         val selected = BooleanArray(w * h)
-        if (contiguous) {
+        if (contiguous && gradients) {
+            // from neighbour to neighbour: small steps, within a wider reach of the start color
+            // light falling across a surface changes the brightness, a different thing changes the hue:
+            // brightness may drift far from the start color, the hue only a little; each step stays small
+            val step = (2 + tolerance / 16).coerceAtMost(6)
+            val brightnessReach = tolerance * 3
+            val hueReach = max(6, tolerance / 2)
+            fun lum(c: Int) = (red(c) * 3 + green(c) * 6 + blue(c)) / 10
+            fun hueDiff(a: Int, b: Int) = max(
+                abs((red(a) - green(a)) - (red(b) - green(b))),
+                abs((blue(a) - green(a)) - (blue(b) - green(b))),
+            )
+            fun close(n: Int, c: Int) = abs(lum(n) - lum(c)) <= step && hueDiff(n, c) <= step &&
+                abs(lum(n) - lum(seed)) <= brightnessReach && hueDiff(n, seed) <= hueReach
+            val queue = IntArray(w * h)
+            var head = 0
+            var tail = 0
+            queue[tail++] = y * w + x
+            selected[y * w + x] = true
+            while (head < tail) {
+                val i = queue[head++]
+                val c = image.data[i]
+                val px = i % w
+                val py = i / w
+                fun visit(j: Int) {
+                    if (selected[j]) return
+                    val n = image.data[j]
+                    if (close(n, c)) {
+                        selected[j] = true
+                        queue[tail++] = j
+                    }
+                }
+                if (px > 0) visit(i - 1)
+                if (px < w - 1) visit(i + 1)
+                if (py > 0) visit(i - w)
+                if (py < h - 1) visit(i + w)
+            }
+        } else if (contiguous) {
             // scanline fill: fill a whole run of the row, queue the rows above and below
             val stack = ArrayDeque<Int>()
             stack.addLast(y * w + x)

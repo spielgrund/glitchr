@@ -52,7 +52,7 @@ class Generator(
         val scale = v[POS_SCALE] / 1000.0
         return transformPixels(
             made, offsetX = v[POS_X] / 10.0, offsetY = v[POS_Y] / 10.0, scaleX = scale, scaleY = scale,
-            rotation = v[POS_ROTATION] / 10.0, edge = Transform.edgeOf(v[POS_EDGE]),
+            rotation = v[POS_ROTATION] / 100.0, edge = Transform.edgeOf(v[POS_EDGE]),
         )
     }
 
@@ -76,7 +76,7 @@ class Generator(
             Param.Slider(POS_X, "Shift X", -50000, 50000, 0, " px", decimals = 1),
             Param.Slider(POS_Y, "Shift Y", -50000, 50000, 0, " px", decimals = 1),
             Param.Slider(POS_SCALE, "Scale", 10, 10000, 1000, " %", decimals = 1, tip = "Around the middle of the canvas"),
-            Param.Slider(POS_ROTATION, "Rotation", -1800, 1800, 0, "°", decimals = 1, tip = "Around the middle of the canvas"),
+            Param.Slider(POS_ROTATION, "Rotation", -18000, 18000, 0, "°", decimals = 2, tip = "Around the middle of the canvas"),
             Param.Choice(POS_EDGE, "Edge", Transform.edgeOptions, 0, "What comes in from outside the generated picture"),
         )
     }
@@ -92,6 +92,10 @@ object Generators {
         Generator(
             "gradient", "Gradient", "Color gradient: linear, mirrored, radial, angle, diamond or square; with repeats and steps",
             Gradient, withBase = false,
+        ),
+        Generator(
+            "shape", "Shape", "A geometric shape: line, triangle, polygon, star, circle or ring; filled with a color or a gradient, with outline",
+            Shape, defaultBase = 0x000000,
         ),
         Generator(
             "moire", "Moiré", "Two line patterns (lines, rings, rays, spiral, grid, dots …) over each other that form moiré patterns",
@@ -131,7 +135,7 @@ object Generators {
             hidden = setOf("field", "darkDense"),
         ),
         Generator(
-            "grid", "Grid", "Even grid modules: dots, circles, rays, hatching, stripes, moiré grid", GridModules,
+            "grid", "Grid modules", "Even grid modules: dots, circles, rays, hatching, stripes, moiré grid", GridModules,
             overrides = mapOf("influence" to 0),
             hidden = setOf("influence", "invert", "colorMode"),
         ),
@@ -139,6 +143,12 @@ object Generators {
             "ridgelines", "Spectroscope", "Stacked noise lines like a spectrogram – or the cover of “Unknown Pleasures”", Ridgelines,
             overrides = mapOf("source" to 2, "focus" to 70),
             hidden = setOf("source"),
+            defaultBase = 0x000000,
+        ),
+        Generator(
+            "blackhole", "Black hole", "A black hole with a glowing disk among stars – Interstellar, Luminet 1978, EHT 2019 and 2024",
+            BlackHole,
+            overrides = mapOf("stars" to 35),
             defaultBase = 0x000000,
         ),
         Generator(

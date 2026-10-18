@@ -47,7 +47,7 @@ class ColorCorrectTest {
         val c = one(argb(255, 200, 40, 40), mapOf("saturation" to 0))
         assertTrue(abs(red(c) - green(c)) <= 1 && abs(green(c) - blue(c)) <= 1)
         // hue 120°: red turns green
-        val g = one(argb(255, 200, 40, 40), mapOf("hue" to 120))
+        val g = one(argb(255, 200, 40, 40), mapOf("hue" to 12000))
         assertTrue(green(g) > red(g) && green(g) > blue(g))
     }
 

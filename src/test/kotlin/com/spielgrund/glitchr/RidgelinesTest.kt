@@ -35,7 +35,7 @@ class RidgelinesTest {
         fun fullColumns(p: Pixels) = (0 until p.width).count { x -> (0 until p.height).count { y -> p[x, y] and 0xFF > 128 } > p.height * 0.9 }
         val flat = out(0)
         assertTrue(fullRows(flat) > 0 && fullColumns(flat) == 0, "0°: horizontal")
-        val turned = out(90)
+        val turned = out(9000)
         assertTrue(fullColumns(turned) > 0 && fullRows(turned) == 0, "90°: vertical")
     }
 }

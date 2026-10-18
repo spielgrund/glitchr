@@ -41,9 +41,9 @@ object Polar : Effect("polar", "Polar coordinates", "Bends the picture into a ci
         ),
         Param.Slider("radius", "Radius", 5, 400, 100, " %", "Size of the circle, planet or tunnel opening (100 % = half the shorter side)"),
         Param.Toggle("invert", "Flip inside/out", false, "Swaps which edge of the picture lies in the middle"),
-        Param.Slider("rotation", "Rotation", 0, 359, 0, "°"),
+        Param.Slider("rotation", "Rotation", 0, 35900, 0, "°", decimals = 2),
         Param.Slider("repeat", "Repeat", 1, 16, 1, tip = "How often the picture runs around the circle"),
-        Param.Slider("twist", "Twist", -1440, 1440, 0, "°", "Turns the outside against the middle into a spiral (per radius)"),
+        Param.Slider("twist", "Twist", -144000, 144000, 0, "°", "Turns the outside against the middle into a spiral (per radius)", decimals = 2),
         Param.Slider("fade", "Depth fade", 0, 100, 50, " %", "Tunnel: darkens towards the far end, where the rings get too fine to see"),
         Param.Toggle("seamless", "Hide seam", false, "Runs the picture forth and mirrored back, so its left and right ends meet without a seam"),
         Param.Slider("centerX", "Center X", -2000, 2000, 0, " px", "Pixels from the middle of the canvas – can also be dragged with the handle in the picture"),
@@ -67,9 +67,9 @@ object Polar : Effect("polar", "Polar coordinates", "Bends the picture into a ci
         val cy = h / 2.0 + v["centerY"]
         val radius = max(1.0, min(w, h) / 2.0 * v["radius"] / 100.0)
         val invert = v.bool("invert")
-        val rotation = v["rotation"] * PI / 180
+        val rotation = (v["rotation"] / 100.0) * PI / 180
         val repeat = v["repeat"].toDouble()
-        val twist = v["twist"] * PI / 180
+        val twist = (v["twist"] / 100.0) * PI / 180
         val seamless = v.bool("seamless")
         val edge = Edge.entries[v["edge"]]
         val fade = if (mode == TUNNEL) v["fade"] / 100.0 * 3 else 0.0

@@ -69,6 +69,9 @@ class Form : JPanel(GridBagLayout()) {
         add(JSeparator(), gbc(0, 2).apply { insets = Insets(0, 0, 4, 0) })
     }
 
+    /** A plain line between groups of settings, without a title. */
+    fun separator() = add(JSeparator(), gbc(0, 2).apply { insets = Insets(10, 0, 4, 0) })
+
     fun row(label: String, control: JComponent, tip: String? = null, anim: AnimHook? = null) {
         val l = JLabel(label)
         tip?.let { l.toolTipText = it; control.toolTipText = it }

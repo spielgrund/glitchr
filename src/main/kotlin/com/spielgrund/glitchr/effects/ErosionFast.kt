@@ -34,7 +34,7 @@ object ErosionFast : Effect("erosionfast", "Erosion Fast", "The picture as a lan
             tip = "Picture height: the water flows from bright to dark spots (or the other way round) · Angle: the landscape is tilted in this direction, the picture height only deflects the water · " +
                 "Arrow direction: the water flows along the drawn arrows · Random: a random hilly landscape steers the water in all directions (“Reroll” for a different one)",
         ),
-        Param.Slider("angle", "Angle", 0, 359, 90, "°", "For “Angle”: 90° = downwards"),
+        Param.Slider("angle", "Angle", 0, 35900, 9000, "°", "For “Angle”: 90° = downwards", decimals = 2),
         Param.Slider("relief", "Relief", 0, 100, 25, " %", "For “Angle”, “Arrow direction” and “Random”: how strongly the picture height deflects the water"),
         Param.Slider("generations", "Generations", 1, 50, 13, "", "How often the rivers dig in; more gives deeper valleys"),
         Param.Slider("strength", "Strength", 0, 100, 100, " %", "How deep the rivers dig in per generation"),
@@ -42,7 +42,7 @@ object ErosionFast : Effect("erosionfast", "Erosion Fast", "The picture as a lan
         Param.Slider("density", "River density", 0, 100, 80, " %", "From how much water a river becomes visible: more also shows the fine streams"),
         Param.Slider("streak", "Streak length", 0, 500, 130, " px", "How far the colors are dragged downstream; large rivers drag furthest"),
         Param.Slider("light", "Relief light", 0, 100, 0, " %", "Lights the eroded landscape from the side"),
-        Param.Slider("lightAngle", "Light direction", 0, 359, 225, "°", "225° = light from the top left"),
+        Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", "225° = light from the top left", decimals = 2),
         Param.Choice("rivers", "Rivers", riverModes, 0, "Draw the rivers themselves"),
         Param.Color("riverColor", "River color", 0x2A6FDB, "For “Color”"),
         Param.Slider("riverStrength", "River opacity", 0, 100, 50, " %"),
@@ -97,7 +97,7 @@ object ErosionFast : Effect("erosionfast", "Erosion Fast", "The picture as a lan
             for (i in 0 until n) height[i] = height[i] * relief + (0.6 * hills.fbm(i % gw / cell, i / gw / cell, 4)).toFloat()
         } else if (v["flow"] >= 2) {
             // tilted towards the angle; the picture's relief only bends the water
-            val a = Math.toRadians(v["angle"].toDouble())
+            val a = Math.toRadians((v["angle"] / 100.0).toDouble())
             val relief = v["relief"] / 100f
             val size = max(gw, gh).toDouble()
             for (i in 0 until n) height[i] = height[i] * relief - (2 * ((i % gw) * cos(a) + (i / gw) * sin(a)) / size).toFloat()
@@ -159,7 +159,7 @@ object ErosionFast : Effect("erosionfast", "Erosion Fast", "The picture as a lan
         // the eight neighbour directions smoothed into a flowing field
         dirX = Blur.gauss(dirX, gw, gh, 2.5)
         dirY = Blur.gauss(dirY, gw, gh, 2.5)
-        val lightAngle = Math.toRadians(v["lightAngle"].toDouble())
+        val lightAngle = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
         val lx = cos(lightAngle) * 0.7071
         val ly = sin(lightAngle) * 0.7071
         val lz = 0.7071

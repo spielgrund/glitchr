@@ -43,7 +43,7 @@ class TransformTest {
         assertEquals(red, moved[25, 10])
         assertEquals(blue, moved[35, 10])
         // turned by 180°: blue on the left
-        val turned = transform(halves, mapOf("rotation" to 1800))
+        val turned = transform(halves, mapOf("rotation" to 18000))
         assertEquals(blue, turned[5, 10])
         assertEquals(red, turned[35, 10])
         // mirrored in X: the same

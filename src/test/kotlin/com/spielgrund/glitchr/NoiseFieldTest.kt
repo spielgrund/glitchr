@@ -53,7 +53,7 @@ class NoiseFieldTest {
         }
         assertTrue(roughness(5) > 4 * roughness(190), "fine on the left ${roughness(5)}, coarse on the right ${roughness(190)}")
         // turned by 180°, the fine side is on the right
-        val turned = pure("scaleStart" to 6, "scaleEnd" to 200, "amount" to 100, "direction" to 180)
+        val turned = pure("scaleStart" to 6, "scaleEnd" to 200, "amount" to 100, "direction" to 18000)
         fun roughnessTurned(x0: Int) = (0 until 160).sumOf { y ->
             (x0 until x0 + 40).sumOf { x -> abs((turned[x + 1, y] and 0xFF) - (turned[x, y] and 0xFF)) }
         }

@@ -29,7 +29,7 @@ object Erosion : Effect("erosion", "Erosion", "The picture as a landscape: raind
             tip = "Picture height: the water flows from bright to dark spots (or the other way round) · Angle: the landscape is tilted in this direction, the picture height only deflects the water · " +
                 "Arrow direction: the water flows along the drawn arrows · Random: a random hilly landscape steers the water in all directions (“Reroll” for a different one)",
         ),
-        Param.Slider("angle", "Angle", 0, 359, 90, "°", "For “Angle”: 90° = downwards"),
+        Param.Slider("angle", "Angle", 0, 35900, 9000, "°", "For “Angle”: 90° = downwards", decimals = 2),
         Param.Slider("relief", "Relief", 0, 100, 20, " %", "For “Angle”, “Arrow direction” and “Random”: how strongly the picture height deflects the water"),
         Param.Slider("generations", "Generations", 1, 100, 24, "", "How often it rains; every generation deepens the channels of the previous one"),
         Param.Slider("strength", "Strength", 0, 100, 100, " %", "How much material and color the drops wear away and carry along"),
@@ -153,7 +153,7 @@ object Erosion : Effect("erosion", "Erosion", "The picture as a landscape: raind
         // along the arrows: without arrows that is just the angle
         val byArrows = flow == 3 && area != null
         val byAngle = flow == 2 || (flow == 3 && area == null)
-        val angle = Math.toRadians(v["angle"].toDouble())
+        val angle = Math.toRadians((v["angle"] / 100.0).toDouble())
         val generations = v["generations"]
         val strength = v["strength"] / 100.0
         val drops = max(1, (n * v["rain"] / 100.0 / 60).toInt())

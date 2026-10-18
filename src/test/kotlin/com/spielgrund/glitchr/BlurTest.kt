@@ -31,7 +31,7 @@ class BlurTest {
     @Test
     fun `directional blur follows the angle`() {
         // along the line (90°) nothing changes, across it (0°) the line spreads
-        val along = run(line, "type" to 2, "radius" to 8, "angle" to 90)
+        val along = run(line, "type" to 2, "radius" to 8, "angle" to 9000)
         assertEquals(255, g(along[60, 40]))
         assertEquals(0, g(along[62, 40]))
         val across = run(line, "type" to 2, "radius" to 8, "angle" to 0)

@@ -16,8 +16,10 @@ import com.spielgrund.glitchr.model.GeneratorMemento
 import com.spielgrund.glitchr.model.ImageMemento
 import com.spielgrund.glitchr.model.Layer
 import com.spielgrund.glitchr.model.LayerMemento
+import com.spielgrund.glitchr.model.MaskBreakup
 import com.spielgrund.glitchr.model.MaskMemento
 import com.spielgrund.glitchr.model.MaskMode
+import com.spielgrund.glitchr.model.ScatterStyle
 import com.spielgrund.glitchr.model.RelPoint
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferByte
@@ -213,6 +215,13 @@ private data class MaskDto(
     val painted: String? = null,
     val hardEdge: Boolean = false,
     val threshold: Int = 50,
+    val noise: Int = 0,
+    val grain: Int = 1,
+    val scatter: Int = 0,
+    val scatterStyle: String = ScatterStyle.PIXELS.name,
+    val runLength: Int = 40,
+    val noiseMoving: Boolean = false,
+    val noiseSeed: Long = 1L,
 )
 
 private fun LayerMemento.toDto(maskPath: String?, imagePath: String?): LayerDto {
@@ -226,6 +235,13 @@ private fun LayerMemento.toDto(maskPath: String?, imagePath: String?): LayerDto 
         painted = maskPath,
         hardEdge = mask.hardEdge,
         threshold = mask.threshold,
+        noise = mask.breakup.noise,
+        grain = mask.breakup.grain,
+        scatter = mask.breakup.scatter,
+        scatterStyle = mask.breakup.style.name,
+        runLength = mask.breakup.runLength,
+        noiseMoving = mask.breakup.moving,
+        noiseSeed = mask.breakup.seed,
     )
     return when (this) {
         is EffectMemento -> LayerDto(
@@ -274,6 +290,15 @@ private fun LayerDto.plainMemento(painted: PaintedMask?, image: (String) -> Pixe
         paintedHeight = painted?.height ?: 0,
         hardEdge = mask.hardEdge,
         threshold = mask.threshold.coerceIn(0, 100),
+        breakup = MaskBreakup(
+            noise = mask.noise.coerceIn(0, 100),
+            grain = mask.grain.coerceIn(1, 256),
+            scatter = mask.scatter.coerceAtLeast(0),
+            style = enumOr(mask.scatterStyle, ScatterStyle.PIXELS),
+            runLength = mask.runLength.coerceAtLeast(1),
+            moving = mask.noiseMoving,
+            seed = mask.noiseSeed,
+        ),
     )
     if (type == "image") {
         return ImageMemento(

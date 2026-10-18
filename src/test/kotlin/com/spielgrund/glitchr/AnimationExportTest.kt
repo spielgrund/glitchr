@@ -49,10 +49,51 @@ class AnimationExportTest {
             val gce = root.getElementsByTagName("GraphicControlExtension").item(0) as IIOMetadataNode
             assertEquals("4", gce.getAttribute("delayTime"), "25 fps = 4/100 s")
             assertTrue(root.getElementsByTagName("ApplicationExtension").length > 0, "loops")
-            // the frames differ: the shift grows
-            assertTrue(!reader.read(0).getRGB(0, 0, 97, 61, null, 0, 97).contentEquals(reader.read(9).getRGB(0, 0, 97, 61, null, 0, 97)))
+            // later frames store only what changed: the shift grows, so they are not empty
+            assertTrue(reader.read(9).width in 1..97)
         }
         reader.dispose()
+    }
+
+    @Test
+    fun `fewer colors and storing only changes make smaller GIFs that look the same`() {
+        // a mostly still picture with a small moving square
+        val still = { f: Int ->
+            com.spielgrund.glitchr.image.Pixels(120, 90, src.copy().let { s0 -> IntArray(120 * 90) { i -> s0.data[(i / 120 % 61) * 97 + (i % 120 % 97)] } }).also { p ->
+                for (y in 10 until 20) for (x in 10 + f * 3 until 20 + f * 3) p.data[y * 120 + x] = -1
+            }
+        }
+        fun size(settings: ExportSettings): Long {
+            val file = File(outDir, "size.gif")
+            AnimationExport.export(10, 25, settings, file, still) { true }
+            return file.length()
+        }
+        val full = size(ExportSettings(AnimFormat.GIF, onlyChanges = false, dither = com.spielgrund.glitchr.export.Dither.NONE))
+        val changes = size(ExportSettings(AnimFormat.GIF, onlyChanges = true, dither = com.spielgrund.glitchr.export.Dither.NONE))
+        val few = size(ExportSettings(AnimFormat.GIF, onlyChanges = true, colors = 16, dither = com.spielgrund.glitchr.export.Dither.NONE))
+        assertTrue(changes * 3 < full, "only changes: $changes against $full")
+        assertTrue(few < changes, "16 colors: $few against $changes")
+
+        // composed, the last frame looks the same either way
+        fun lastFrame(onlyChanges: Boolean): IntArray {
+            val file = File(outDir, "last.gif")
+            // storing changes keeps one palette entry for "unchanged": the same 255 colors either way
+            val colors = if (onlyChanges) 256 else 255
+            AnimationExport.export(10, 25, ExportSettings(AnimFormat.GIF, onlyChanges = onlyChanges, colors = colors, dither = com.spielgrund.glitchr.export.Dither.NONE), file, still) { true }
+            val reader = ImageIO.getImageReadersBySuffix("gif").next()
+            val canvas = java.awt.image.BufferedImage(120, 90, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            ImageIO.createImageInputStream(file).use { stream ->
+                reader.input = stream
+                for (i in 0 until reader.getNumImages(true)) {
+                    val root = reader.getImageMetadata(i).getAsTree("javax_imageio_gif_image_1.0") as IIOMetadataNode
+                    val d = root.getElementsByTagName("ImageDescriptor").item(0) as IIOMetadataNode
+                    canvas.createGraphics().drawImage(reader.read(i), d.getAttribute("imageLeftPosition").toInt(), d.getAttribute("imageTopPosition").toInt(), null)
+                }
+            }
+            reader.dispose()
+            return canvas.getRGB(0, 0, 120, 90, null, 0, 120)
+        }
+        kotlin.test.assertContentEquals(lastFrame(false), lastFrame(true))
     }
 
     @Test
@@ -67,7 +108,7 @@ class AnimationExportTest {
             }
             return sum.toDouble() / (img.width * img.height)
         }
-        val ours = error(Palette.of(listOf(img)).map(img, dither = false))
+        val ours = error(Palette.of(listOf(img)).map(img, com.spielgrund.glitchr.export.Dither.NONE))
         val bytes = java.io.ByteArrayOutputStream().also { ImageIO.write(img, "gif", it) }.toByteArray()
         val java = error(ImageIO.read(bytes.inputStream()))
         assertTrue(ours <= java, "ours $ours, Java $java")

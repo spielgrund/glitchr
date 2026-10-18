@@ -67,14 +67,14 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         Param.Slider("steps", "Steps", 1, 100, 12, tip = "How many copies are laid over each other"),
         Param.Heading("transformHeading", "Per step"),
         Param.Slider("scale", "Scale", 500, 2000, 920, " %", decimals = 1, tip = "Below 100 %: every copy smaller (a tunnel, into the blobs), above it larger (out of them)"),
-        Param.Slider("rotation", "Rotation", -1800, 1800, 0, "°", decimals = 1),
+        Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("offsetX", "Offset X", -5000, 5000, 0, " px", decimals = 1, tip = "Is scaled and rotated too – together with a rotation, spirals appear"),
         Param.Slider("offsetY", "Offset Y", -5000, 5000, 0, " px", decimals = 1),
         Param.Slider("centerX", "Center X", 0, 100, 50, " %", "Scaling and rotation happen around this point (blobs: each around its own middle)"),
         Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
         Param.Choice("edge", "Edge", edges, tip = "What lies outside a shrunken or shifted copy (not for blobs)"),
         Param.Heading("hslHeading", "Color per step (HSL)"),
-        Param.Slider("hue", "Hue", -180, 180, 0, "°"),
+        Param.Slider("hue", "Hue", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("saturation", "Saturation", -50, 50, 0, " %"),
         Param.Slider("lightness", "Brightness", -50, 50, 0, " %"),
         Param.Heading("linesHeading", "Edges and blobs"),
@@ -175,19 +175,28 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         }
     }
 
-    override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
+    override fun apply(src: Pixels, v: Values, seed: Long) = render(src, v) { src }
+
+    /** What is copied from one picture: the layer (picture, edges, blobs or alpha edge) and for blobs their copies. */
+    private class Made(val layer: Pixels, val blobs: BlobCopies?)
+
+    /**
+     * Feedback of [src], where copy k is made from [pictureOf] (k) – the picture itself
+     * here, the picture k steps earlier in time for [TimeFeedback].
+     */
+    internal fun render(src: Pixels, v: Values, pictureOf: (Int) -> Pixels): Pixels {
         val w = src.width
         val h = src.height
         val steps = v["steps"]
         val source = v["source"]
         val cx = w * v["centerX"] / 100.0
         val cy = h * v["centerY"] / 100.0
-        val transform = Steps(steps, v["scale"] / 1000.0, Math.toRadians(v["rotation"] / 10.0), v["offsetX"] / 10.0, v["offsetY"] / 10.0)
+        val transform = Steps(steps, v["scale"] / 1000.0, Math.toRadians(v["rotation"] / 100.0), v["offsetX"] / 10.0, v["offsetY"] / 10.0)
         val edge = when (v["edge"]) { 1 -> Edge.WRAP; 2 -> Edge.MIRROR; 3 -> Edge.CLAMP; else -> null }
         val blend = BlendMode.entries[v["blend"]]
         val opacity = v["opacity"] / 100f
         val fade = 1 - v["fade"] / 100f
-        val hue = v["hue"] / 360.0
+        val hue = (v["hue"] / 100.0) / 360.0
         val saturation = v["saturation"] / 100.0
         val lightness = v["lightness"] / 100.0
         val shiftColors = hue != 0.0 || saturation != 0.0 || lightness != 0.0
@@ -195,19 +204,26 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         val finish = v["finish"]
         val finishOpacity = v["finishOpacity"] / 100f
 
-        // the layer that is copied, and for blobs everything to find a blob's copies
-        val blobs = if (source == SOURCE_BLOBS) BlobCopies(src, v, transform, steps) else null
-        val stroke = if (source == SOURCE_ALPHA || v.bool("alphaFrame")) alphaStroke(src, v) else null
-        val layer = when (source) {
-            SOURCE_EDGES -> edgeLayer(src, v)
-            SOURCE_ALPHA -> stroke!!
-            SOURCE_BLOBS -> blobs!!.layer
-            else -> src
-        }.let { base ->
-            // the frame lies on the picture (edges, blobs) and goes into every copy with it
-            if (stroke == null || source == SOURCE_ALPHA) base
-            else Pixels(w, h, IntArray(w * h) { over(base.data[it], stroke.data[it], 1f, BlendMode.NORMAL) })
+        // the layer that is copied, and for blobs everything to find a blob's copies – once per picture
+        fun make(pic: Pixels): Made {
+            val blobs = if (source == SOURCE_BLOBS) BlobCopies(pic, v, transform, steps) else null
+            val stroke = if (source == SOURCE_ALPHA || v.bool("alphaFrame")) alphaStroke(pic, v) else null
+            val layer = when (source) {
+                SOURCE_EDGES -> edgeLayer(pic, v)
+                SOURCE_ALPHA -> stroke!!
+                SOURCE_BLOBS -> blobs!!.layer
+                else -> pic
+            }.let { base ->
+                // the frame lies on the picture (edges, blobs) and goes into every copy with it
+                if (stroke == null || source == SOURCE_ALPHA) base
+                else Pixels(w, h, IntArray(w * h) { over(base.data[it], stroke.data[it], 1f, BlendMode.NORMAL) })
+            }
+            return Made(layer, blobs)
         }
+        val made = java.util.IdentityHashMap<Pixels, Made>()
+        val copies = Array(steps + 1) { k -> made.getOrPut(if (k == 0) src else pictureOf(k)) { make(if (k == 0) src else pictureOf(k)) } }
+        val layer = copies[0].layer
+        val blobs = copies[0].blobs
         val ground: Pixels? = when (if (source == SOURCE_IMAGE) -1 else v["ground"]) {
             0 -> src
             1 -> Pixels(w, h).apply { data.fill(0xFF000000.toInt()) }
@@ -218,13 +234,14 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         val out = Pixels(w, h)
         parallelRows(h) { y ->
             val q = DoubleArray(2)
-            val candidates = blobs?.let { b -> Array(steps + 1) { k -> b.inRow(k, y) } }
+            val candidates = if (blobs != null) Array(steps + 1) { k -> copies[k].blobs!!.inRow(k, y) } else null
             fun copy(k: Int, x: Int): Int {
                 if (!transform.invertible) return 0
-                val c = if (blobs != null) blobs.at(k, x, y, candidates!![k], q)
+                val c = if (blobs != null) copies[k].blobs!!.at(k, x, y, candidates!![k], q)
                 else {
+                    val from = copies[k].layer
                     transform.back(k, x + 0.5, y + 0.5, cx, cy, q)
-                    if (edge == null) sampleTransparent(layer, q[0], q[1]) else sampleBilinear(layer, q[0], q[1], edge)
+                    if (edge == null) sampleTransparent(from, q[0], q[1]) else sampleBilinear(from, q[0], q[1], edge)
                 }
                 return if (shiftColors && alpha(c) > 0) shiftHsl(c, hue * k, saturation * k, lightness * k) else c
             }

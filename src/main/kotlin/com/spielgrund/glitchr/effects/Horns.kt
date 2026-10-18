@@ -46,7 +46,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         Param.Slider("upper", "Upper threshold", 0, 255, 255),
         Param.Toggle("invert", "Invert range", false),
         Param.Toggle("showMask", "Show start mask", false, "Shows in black and white which region the horns grow from"),
-        Param.Slider("direction", "Direction", 0, 359, 0, "°", "The horns lean in this direction"),
+        Param.Slider("direction", "Direction", 0, 35900, 0, "°", "The horns lean in this direction", decimals = 2),
         Param.Slider("directionStrength", "Direction strength", 0, 100, 0, " %", "0 %: they grow straight out of the edge"),
         Param.Heading("hornHeading", "Horns"),
         Param.Choice(
@@ -74,7 +74,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         Param.Slider("fanSpread", "Fan out", 0, 3000, 900, " %", "The whole fan widens this much towards its edge"),
         Param.Slider("fanBranches", "Branches", 0, 4, 2, tip = "How often the strands fork"),
         Param.Slider("fanChildren", "Branches per fork", 2, 4, 2),
-        Param.Slider("fanFork", "Fork angle", 0, 150, 60, "°"),
+        Param.Slider("fanFork", "Fork angle", 0, 15000, 6000, "°", decimals = 2),
         Param.Slider("gills", "Gills", 0, 300, 60, tip = "This many fine gills run lengthwise through the strand and fan out"),
         Param.Slider("gillDepth", "Gill depth", 0, 100, 60, " %"),
         Param.Slider("ruffle", "Ruffles", 0, 100, 50, " %", "Wavy hem at the ends"),
@@ -83,9 +83,9 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         Param.Slider("fanTintAmount", "Tint strength", 0, 100, 0, " %"),
         Param.Slider("fanTexture", "Drag texture along", 0, 100, 0, " %", "More lets picture content travel across the fan"),
         Param.Heading("splitHeading", "Split shape"),
-        Param.Slider("splitFront", "Front", 0, 359, 270, "°", "Where the front of the region is (270° = up): this is how every stem reads it"),
+        Param.Slider("splitFront", "Front", 0, 35900, 27000, "°", "Where the front of the region is (270° = up): this is how every stem reads it", decimals = 2),
         Param.Slider("splitStems", "Stems", 1, 200, 2, tip = "It grows out of the region in this many directions – all are clones of one stem, so it's fast"),
-        Param.Slider("splitTilt", "Rotate stems", -180, 180, 0, "°", "Every stem is rotated around its base – 0°: straight away from the region"),
+        Param.Slider("splitTilt", "Rotate stems", -18000, 18000, 0, "°", "Every stem is rotated around its base – 0°: straight away from the region", decimals = 2),
         Param.Choice(
             "splitMirror", "Mirror texture", listOf("Off", "Sideways", "Lengthwise", "Both"),
             tip = "Sideways: left and right swapped. Lengthwise: front and back swapped",
@@ -181,7 +181,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         val cx = sx / count
         val cy = sy / count
         // the area's frame: its front is "Front"
-        val front = Math.toRadians(v["splitFront"].toDouble())
+        val front = Math.toRadians((v["splitFront"] / 100.0).toDouble())
         val fx = cos(front)
         val fy = sin(front)
         var a0 = Double.MAX_VALUE; var a1 = -Double.MAX_VALUE; var b0 = Double.MAX_VALUE; var b1 = -Double.MAX_VALUE
@@ -244,7 +244,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         val variation = v["hornVariation"] / 100.0
         val out = Pixels(w, h, src.data.copyOf())
         for (k in 0 until stems) {
-            val angle = if (random) rnd.nextDouble() * 2 * Math.PI else Math.toRadians(v["direction"].toDouble()) + 2 * Math.PI * k / stems
+            val angle = if (random) rnd.nextDouble() * 2 * Math.PI else Math.toRadians((v["direction"] / 100.0).toDouble()) + 2 * Math.PI * k / stems
             val scale = if (random) 1 + variation * (rnd.nextDouble() * 2 - 1) * 0.6 else 1.0
             val mirror = v["hornTurn"] == 0 && random && rnd.nextBoolean()
             val dx = cos(angle)
@@ -261,7 +261,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
                 rx = nx; ry = ny
             }
             // turned about its root
-            val tilt = Math.toRadians(v["splitTilt"].toDouble())
+            val tilt = Math.toRadians((v["splitTilt"] / 100.0).toDouble())
             place(out, sprite, left, top, rx, ry, cos(angle + tilt), sin(angle + tilt), scale, mirror)
         }
         return out
@@ -348,7 +348,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         // the outward direction: down the slope of the softened mask
         val soft = Grow.blur(FloatArray(start.size) { if (start[it]) 1f else 0f }, gw, gh, max(1, (width / 2 / n).roundToInt()))
         val rnd = java.util.Random(seed * 7 + 11)
-        val dirAngle = Math.toRadians(v["direction"].toDouble())
+        val dirAngle = Math.toRadians((v["direction"] / 100.0).toDouble())
         val dirStrength = v["directionStrength"] / 100.0 * 2
         val length = v["hornLength"].toDouble()
         val fan = v["hornShape"] == 1
@@ -416,7 +416,7 @@ object Horns : Effect("horns", "Horns", "Curled horns or branching fans with gil
         val end = draw(src, out, canvas, horn, power, v)
         if (horn.leaf) return
         val children = v["fanChildren"]
-        val fork = Math.toRadians(v["fanFork"].toDouble())
+        val fork = Math.toRadians((v["fanFork"] / 100.0).toDouble())
         val variation = v["hornVariation"] / 100.0
         for (k in 0 until children) {
             val share = (2.0 * k + 1) / children - 1
