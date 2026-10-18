@@ -301,7 +301,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
     private fun buildMask() {
         val mask = layer.mask
         form.section("Mask")
-        form.row("Type", JComboBox(MaskMode.entries.toTypedArray()).apply {
+        form.row("Type", JComboBox(MaskMode.entries.toTypedArray()).also { typeBox = it }.apply {
             selectedItem = mask.mode
             name = MASK_MODE_BOX
             // arrow keys only move through the list; the choice is made with Enter or a click,
@@ -311,43 +311,24 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 val mode = selectedItem as MaskMode
                 if (mode == mask.mode) return@addActionListener
                 if (mode == MaskMode.BRUSH) ensurePainted()
+                // a new brush or gradient mask starts inverted, so the picture keeps its effect until
+                // the mask takes it away; a noise mask starts white, not inverted. Between brush and
+                // gradients the user's choice stays.
+                when {
+                    mode == MaskMode.NOISE -> mask.invert = false
+                    mask.mode == MaskMode.OFF || mask.mode == MaskMode.NOISE -> mask.invert = true
+                }
                 mask.mode = mode
+                host.brush.lastSelection = null
                 if (mode != MaskMode.OFF) host.showMask = true
                 host.maskChanged()
                 host.layerListChanged()
                 host.rebuildEditor(focusMaskMode = true)
             }
         })
-        if (mask.mode == MaskMode.OFF) {
-            form.full(hint("Without a mask the effect works on the whole picture."))
-            return
-        }
-        if (layer is ImageLayer || layer is GeneratorLayer) {
-            form.full(hint("The mask cuts out the image before the effects above work – so they can run beyond the mask edge."))
-        }
-        form.full(JCheckBox("Invert mask", mask.invert).apply {
-            addActionListener { mask.invert = isSelected; host.maskChanged() }
-        }, anim(AnimKeys.MASK_INVERT))
-        val thresholdField = SliderField(0, 100, mask.threshold, 50, "%") {
-            mask.threshold = it
-            host.maskChanged()
-        }.apply { isEnabled = mask.hardEdge }
-        form.full(JCheckBox("Hard edge (black/white only)", mask.hardEdge).apply {
-            toolTipText = "Everything from the threshold up gets the full effect, everything below none"
-            addActionListener {
-                mask.hardEdge = isSelected
-                thresholdField.isEnabled = isSelected
-                host.maskChanged()
-            }
-        })
-        form.row("Threshold", thresholdField, "From this mask value the effect works fully", anim(AnimKeys.MASK_THRESHOLD))
-        buildBreakup()
-        form.full(JCheckBox("Show mask (red = no effect)", host.showMask).apply {
-            toolTipText = "Shows or hides the red overlay; the mask works either way (Ctrl+M)"
-            addActionListener { host.showMask = isSelected }
-        })
-
         when (mask.mode) {
+            MaskMode.OFF -> form.full(hint("Without a mask the effect works on the whole picture. “Find” below starts a painted mask from the picture, the mask noise sliders a noise mask."))
+            MaskMode.NOISE -> form.full(hint("The mask starts white (full effect); “Mask noise” below scatters noise specks onto it, and scatter or streaks move and smear the noise itself."))
             MaskMode.BRUSH -> buildMaskTools()
             MaskMode.LINEAR, MaskMode.RADIAL -> {
                 // the two points as numbers too, so they can be animated
@@ -377,8 +358,100 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                         "Dragging in the picture sets the circle anew: full effect in the middle (white), none from the edge on (black)."
                 ))
             }
-            MaskMode.OFF -> {}
         }
+        if (mask.mode != MaskMode.OFF) {
+            if (layer is ImageLayer || layer is GeneratorLayer) {
+                form.full(hint("The mask cuts out the image before the effects above work – so they can run beyond the mask edge."))
+            }
+            form.full(JCheckBox("Invert mask", mask.invert).apply {
+                addActionListener { mask.invert = isSelected; host.maskChanged() }
+            }, anim(AnimKeys.MASK_INVERT))
+            val thresholdField = SliderField(0, 100, mask.threshold, 50, "%") {
+                mask.threshold = it
+                host.maskChanged()
+            }.apply { isEnabled = mask.hardEdge }
+            form.full(JCheckBox("Hard edge (black/white only)", mask.hardEdge).apply {
+                toolTipText = "Everything from the threshold up gets the full effect, everything below none"
+                addActionListener {
+                    mask.hardEdge = isSelected
+                    thresholdField.isEnabled = isSelected
+                    host.maskChanged()
+                }
+            })
+            form.row("Threshold", thresholdField, "From this mask value the effect works fully", anim(AnimKeys.MASK_THRESHOLD))
+            form.full(JCheckBox("Show mask (red = no effect)", host.showMask).apply {
+                toolTipText = "Shows or hides the overlay; the mask works either way (Ctrl+M)"
+                addActionListener { host.showMask = isSelected }
+            })
+        }
+
+        // quick selections, always at hand; they switch to a painted mask
+        buildAutoSelect()
+        buildRefine()
+
+        form.section("Mask noise")
+        buildBreakup()
+
+        form.separator()
+        val clipboard = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
+        clipboard.add(JButton("Copy mask").apply {
+            toolTipText = "Copies this layer's mask (type, gradient, painted pixels, edge, noise and scatter) to paste it onto another layer"
+            addActionListener {
+                com.spielgrund.glitchr.model.MaskClipboard.content = mask.memento()
+                host.rebuildEditor()
+            }
+        })
+        clipboard.add(javax.swing.Box.createHorizontalStrut(6))
+        clipboard.add(JButton("Paste mask").apply {
+            isEnabled = com.spielgrund.glitchr.model.MaskClipboard.content != null
+            toolTipText = "Replaces this layer's mask with the copied one"
+            addActionListener {
+                val copied = com.spielgrund.glitchr.model.MaskClipboard.content ?: return@addActionListener
+                mask.restore(copied)
+                host.brush.lastSelection = null
+                if (mask.mode != MaskMode.OFF) host.showMask = true
+                host.maskChanged()
+                host.layerListChanged()
+                host.rebuildEditor()
+            }
+        })
+        form.full(clipboard)
+    }
+
+    /** Sliders that refine the last selection (magic wand or “Find”) on this layer's mask, while nothing else changed it. */
+    private fun buildRefine() {
+        val op = host.brush.lastSelection?.takeIf { it.mask === layer.mask } ?: return
+        // its own indented block under the selection buttons, so it reads as part of the selection
+        val refine = Form()
+        refine.isOpaque = false
+        refine.border = javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createMatteBorder(0, 2, 0, 0, javax.swing.UIManager.getColor("Component.accentColor") ?: java.awt.Color(0x4A88C7)),
+            javax.swing.BorderFactory.createEmptyBorder(2, 10, 2, 0),
+        )
+        refine.full(JLabel("Refine selection").apply { font = font.deriveFont(java.awt.Font.BOLD) })
+        fun redo() {
+            op.apply()
+            host.maskChanged()
+        }
+        refine.row("More / less", SliderField(-100, 100, op.amount, 0, "%") { op.amount = it; redo() },
+            "Grows or shrinks the selection")
+        refine.row("Smooth", SliderField(0, 100, op.smooth, 0, "px") { op.smooth = it; redo() },
+            "Rounds off the outline and closes small holes and specks")
+        refine.row("Soft edge", SliderField(0, 200, op.feather, 0, "px") { op.feather = it; redo() })
+        if (op.wand) refine.row("Tolerance", SliderField(0, 255, op.tolerance, host.brush.tolerance) { op.tolerance = it; redo() },
+            "How different the colors may be; clicking the same color again also widens it")
+        refine.full(JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply {
+            isOpaque = false
+            add(JButton("Convert to brush mask").apply {
+                toolTipText = "Keeps the selection as it is now, as an ordinary painted mask; the sliders no longer change it"
+                addActionListener {
+                    host.brush.lastSelection = null
+                    host.rebuildEditor()
+                }
+            })
+        })
+        refine.full(hint("Live: the settings change this selection until you convert it or edit the mask otherwise."))
+        form.full(refine)
     }
 
     /** Noise and scattering that roughen the mask and break up its hard edge. */
@@ -388,6 +461,15 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             val next = change(mask.breakup)
             if (next == mask.breakup) return
             mask.breakup = next
+            // without a mask the sliders start a noise mask; any other mask they roughen
+            if (mask.mode == MaskMode.OFF && !next.isOff) {
+                mask.mode = MaskMode.NOISE
+                host.brush.lastSelection = null
+                host.showMask = true
+                // the type box follows without rebuilding the editor, so the slider drag goes on
+                typeBox?.selectedItem = MaskMode.NOISE
+                host.layerListChanged()
+            }
             host.maskChanged()
         }
         form.row("Noise", SliderField(0, 100, mask.breakup.noise, 0, "%") { n -> set { it.copy(noise = n) } },
@@ -414,6 +496,110 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             addActionListener { set { it.copy(seed = kotlin.random.Random.nextLong()) } }
         })
         form.full(bottom)
+    }
+
+    /** Quick selections found by picture analysis: subject, background, sky, depth. */
+    private fun buildAutoSelect() {
+        val mask = layer.mask
+        val kinds = com.spielgrund.glitchr.effects.AutoSelect.Kind.entries.toTypedArray()
+        val chosen = lastAutoSelect
+        form.section("Find")
+        form.row("Find", JComboBox(kinds).apply {
+            selectedItem = chosen
+            putClientProperty("JComboBox.isTableCellEditor", true)
+            addActionListener {
+                lastAutoSelect = selectedItem as com.spielgrund.glitchr.effects.AutoSelect.Kind
+                host.rebuildEditor()
+            }
+        }, "Picks out parts of the picture by simple analysis – a quick start; its settings below steer it")
+        val values = findValues.getOrPut(chosen) { com.spielgrund.glitchr.effects.AutoSelect.defaults(chosen) }
+        val live = host.brush.lastSelection?.takeIf { it.mask === mask && it.findKind == chosen }
+
+        /** Recomputes a live selection with the new settings, in the background; only the newest result counts. */
+        fun recompute() {
+            val op = host.brush.lastSelection?.takeIf { it.mask === mask && it.findKind == chosen } ?: return
+            val image = host.maskTarget?.image ?: return
+            val settings = values.toMap()
+            val generation = ++findGeneration
+            findExecutor.execute {
+                if (generation != findGeneration) return@execute
+                val result = com.spielgrund.glitchr.effects.AutoSelect.select(image, chosen, settings)
+                javax.swing.SwingUtilities.invokeLater {
+                    if (generation != findGeneration || host.brush.lastSelection !== op) return@invokeLater
+                    op.setRaw(result)
+                    op.apply()
+                    host.maskChanged()
+                }
+            }
+        }
+
+        // the settings of this kind of analysis
+        for (param in com.spielgrund.glitchr.effects.AutoSelect.params(chosen)) {
+            when (param) {
+                is com.spielgrund.glitchr.effects.Param.Slider -> form.row(
+                    param.label,
+                    SliderField(param.min, param.max, values[param.key] ?: param.default, param.default, param.unit.trim(), param.decimals) {
+                        values[param.key] = it
+                        recompute()
+                    },
+                    param.tip,
+                )
+                is com.spielgrund.glitchr.effects.Param.Toggle -> form.full(JCheckBox(param.label, (values[param.key] ?: param.default) != 0).apply {
+                    toolTipText = param.tip
+                    addActionListener {
+                        values[param.key] = if (isSelected) 1 else 0
+                        recompute()
+                    }
+                })
+                else -> {}
+            }
+        }
+
+        val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
+        fun run(mode: Int, button: JButton) {
+            val target = host.maskTarget ?: return
+            val image = target.image ?: return
+            val settings = values.toMap()
+            button.isEnabled = false
+            cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR)
+            // the analysis can take a moment on large pictures: off the UI thread
+            findExecutor.execute {
+                val result = com.spielgrund.glitchr.effects.AutoSelect.select(image, chosen, settings)
+                javax.swing.SwingUtilities.invokeLater {
+                    mask.ensurePainted(image.width, image.height)
+                    if (mask.mode != MaskMode.BRUSH) {
+                        // “Select” starts from nothing; adding or taking away from what another type showed makes no sense
+                        mask.fill(0)
+                        mask.mode = MaskMode.BRUSH
+                    }
+                    val op = SelectionOp(mask, mask.painted?.copyOf(), image.width, image.height, mode, false, 0, 0) { result }
+                    op.findKind = chosen
+                    host.brush.lastSelection = op
+                    op.apply()
+                    host.showMask = true
+                    host.maskChanged()
+                    host.layerListChanged()
+                    cursor = java.awt.Cursor.getDefaultCursor()
+                    button.isEnabled = true
+                    host.rebuildEditor()
+                }
+            }
+        }
+        for ((label, mode, tip) in listOf(
+            Triple("Select", 0, "Replaces the mask with what was found"),
+            Triple("Add", 1, "Adds what was found to the mask"),
+            Triple("Subtract", 2, "Takes what was found away from the mask"),
+        )) {
+            if (mode > 0) buttons.add(javax.swing.Box.createHorizontalStrut(6))
+            buttons.add(JButton(label).apply {
+                toolTipText = "$tip. It stays live: the settings above change it until you convert it to a brush mask"
+                addActionListener { run(mode, this) }
+            })
+        }
+        form.full(buttons)
+        if (live != null) {
+            form.full(hint("Live preview: the settings above and the refine sliders below change this selection right away."))
+        }
     }
 
     /** Tool choice and settings for the painted mask. */
@@ -443,23 +629,27 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                     toolTipText = "Off: selects similar colors in the whole picture"
                     addActionListener { brush.contiguous = isSelected }
                 })
+                form.full(JCheckBox("Follow soft gradients", brush.gradients).apply {
+                    toolTipText = "Contiguous only: the selection grows from pixel to pixel along soft gradients (light across a wall) and stops at hard edges"
+                    addActionListener { brush.gradients = isSelected }
+                })
                 form.row("Soft edge", SliderField(0, 200, brush.feather, 0, "px") { brush.feather = it })
             }
             else -> form.row("Soft edge", SliderField(0, 200, brush.feather, 0, "px") { brush.feather = it })
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
         buttons.add(JButton("Fill all").apply {
-            addActionListener { ensurePainted(); mask.fill(255); host.maskChanged() }
+            addActionListener { ensurePainted(); mask.fill(255); host.brush.lastSelection = null; host.maskChanged() }
         })
         buttons.add(javax.swing.Box.createHorizontalStrut(6))
         buttons.add(JButton("Clear").apply {
-            addActionListener { ensurePainted(); mask.fill(0); host.maskChanged() }
+            addActionListener { ensurePainted(); mask.fill(0); host.brush.lastSelection = null; host.maskChanged() }
         })
         buttons.add(javax.swing.Box.createHorizontalStrut(6))
         buttons.add(JButton("From picture brightness").apply {
             toolTipText = "Bright parts of the picture get the effect, dark ones don't. With “Hard edge” this gives a sharp selection"
             addActionListener {
-                host.maskTarget?.image?.let { mask.fromBrightness(it); host.maskChanged() }
+                host.maskTarget?.image?.let { mask.fromBrightness(it); host.brush.lastSelection = null; host.maskChanged() }
             }
         })
         form.full(buttons)
@@ -467,7 +657,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             MaskTool.BRUSH -> "The left mouse button paints the effect in, the right mouse button (or Alt) erases."
             MaskTool.RECT, MaskTool.ELLIPSE -> "Dragging adds the area, with the right mouse button (or Alt) it is subtracted."
             MaskTool.LASSO -> "Trace freehand; on release the shape is closed. The right mouse button (or Alt) subtracts."
-            MaskTool.WAND -> "A click selects similar colors of the original picture, the right mouse button (or Alt) subtracts them."
+            MaskTool.WAND -> "A click selects similar colors of the original picture, the right mouse button (or Alt) subtracts them. Clicking the same color again widens the tolerance."
         } + " Space + drag pans the view."))
     }
 
@@ -490,5 +680,20 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
 
     private fun hint(text: String) = JLabel("<html><body style='width:230px'>$text</body></html>").apply {
         foreground = javax.swing.UIManager.getColor("Label.disabledForeground")
+    }
+
+    /** The mask type box, so the noise sliders can switch it to “Noise”. */
+    private var typeBox: JComboBox<MaskMode>? = null
+
+    companion object {
+        /** The settings of each kind of “Find”, kept between layers. */
+        private val findValues = HashMap<com.spielgrund.glitchr.effects.AutoSelect.Kind, MutableMap<String, Int>>()
+
+        /** Runs the analyses one after another, off the UI thread; only the newest live result is used. */
+        private val findExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "glitch-find").apply { isDaemon = true } }
+        @Volatile private var findGeneration = 0
+
+        /** The last chosen kind of quick selection, kept between layers. */
+        private var lastAutoSelect = com.spielgrund.glitchr.effects.AutoSelect.Kind.SUBJECT
     }
 }

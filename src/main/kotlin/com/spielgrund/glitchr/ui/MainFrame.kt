@@ -222,6 +222,19 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
 
         // the editor shows the gradient points as numbers: follow drags on the canvas
         canvas.onMaskEdited = { changed(); editorFollowTimer.restart() }
+        canvas.onCropFinish = { apply -> finishCrop(apply) }
+        // Ctrl+0 (fit) and Ctrl+1 (100 %) wherever the focus is, also on the number pad:
+        // the menu shortcuts alone don't reach the menu when the focused field takes the key
+        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher { e ->
+            if (e.id != KeyEvent.KEY_PRESSED || !isFocused || e.modifiersEx and (SHORTCUT or InputEvent.SHIFT_DOWN_MASK or InputEvent.ALT_DOWN_MASK) != SHORTCUT) {
+                return@addKeyEventDispatcher false
+            }
+            when (e.keyCode) {
+                KeyEvent.VK_0, KeyEvent.VK_NUMPAD0 -> { canvas.fit(); true }
+                KeyEvent.VK_1, KeyEvent.VK_NUMPAD1 -> { canvas.setZoom(1.0); true }
+                else -> false
+            }
+        }
         canvas.onFlowEdited = { finished ->
             changed()
             // the editor shows the number of strokes
@@ -303,7 +316,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         add(small("+ Image…", "Insert an image as a new layer (Ctrl+I) – or just drag it into the window") { insertImageDialog() })
         add(small("Save", "Save the project with all layers and masks (Ctrl+S)") { save() })
         add(small("Export…", "Save the result as an image (Ctrl+E)") { exportDialog() })
-        add(small("Fit", "Show the whole picture (Ctrl+0)") { canvas.setZoom(canvas.fitZoom()) })
+        add(small("Fit", "Show the whole picture (Ctrl+0)") { canvas.fit() })
         add(originalButton.apply {
             isFocusable = false
             toolTipText = "Shows the image layers without effects (Ctrl+B)"
@@ -396,6 +409,17 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             add(undoItem)
             add(redoItem)
         })
+        add(JMenu("Image").apply {
+            add(JMenuItem("Canvas size…").apply {
+                toolTipText = "Makes the canvas larger or smaller without scaling the content"
+                addActionListener { canvasSizeDialog() }
+            })
+            add(JMenuItem("Scale image…").apply {
+                toolTipText = "Scales the canvas together with everything on it"
+                addActionListener { scaleDialog() }
+            })
+            add(item("Crop", KeyEvent.VK_K) { startCrop() })
+        })
         add(JMenu("Layer").apply {
             add(JMenuItem("Insert image as layer…").apply { addActionListener { insertImageDialog() } })
             add(JMenu("Add generator").apply {
@@ -438,7 +462,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             })
         })
         add(JMenu("View").apply {
-            add(item("Fit", KeyEvent.VK_0) { canvas.setZoom(canvas.fitZoom()) })
+            add(item("Fit", KeyEvent.VK_0) { canvas.fit() })
             add(item("100 %", KeyEvent.VK_1) { canvas.setZoom(1.0) })
             add(item("Zoom in", KeyEvent.VK_PLUS) { canvas.zoomIn() })
             add(item("Zoom out", KeyEvent.VK_MINUS) { canvas.zoomOut() })
@@ -693,7 +717,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             result = null
             resultImage = null
             showCurrentImage()
-            SwingUtilities.invokeLater { canvas.setZoom(canvas.fitZoom()) }
+            SwingUtilities.invokeLater { canvas.fit() }
         }
         select(layers.firstOrNull { it.id == state.selectedId } ?: layers.lastOrNull())
         dirty = true
@@ -1305,6 +1329,148 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         )
     }
 
+    // ---------------------------------------------------------------- canvas size
+
+    /**
+     * Gives the document a new canvas of [width] × [height], where every old canvas point p
+     * lies at p · [factor] + ([dx], [dy]); all layers, masks and keyframes go along (see [Resize]).
+     */
+    private fun resizeDocument(width: Int, height: Int, factor: Double, dx: Double, dy: Double, scaleSizes: Boolean = true) {
+        if (!hasDocument || width < 1 || height < 1) return
+        stopPlayback(rebuildEditor = false)
+        commitHistory()
+        // the fields hold the current frame's values: settle them on frame 0's, like saving does
+        Animator.syncToFrame(layers, 0)
+        com.spielgrund.glitchr.model.Resize(docWidth, docHeight, width, height, factor, dx, dy, scaleSizes).apply(layers)
+        Animator.syncToFrame(layers, currentFrame)
+        docWidth = width
+        docHeight = height
+        frameCache.invalidate()
+        result = null
+        resultImage = null
+        showCurrentImage()
+        SwingUtilities.invokeLater {
+            canvas.fit()
+            canvas.refreshOverlay()
+        }
+        rebuildEditor()
+        refreshLayers()
+        dirty = true
+        requestRender()
+        commitHistory()
+        updateStatus()
+    }
+
+    /** Asks for a new canvas size and where the content stays (anchor); the content keeps its size. */
+    private fun canvasSizeDialog() {
+        if (!hasDocument) return
+        val width = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docWidth, 1, 30000, 1))
+        val height = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docHeight, 1, 30000, 1))
+        // 3 × 3 anchor: where the old canvas sits in the new one
+        var anchor = 4
+        val group = javax.swing.ButtonGroup()
+        val anchors = JPanel(java.awt.GridLayout(3, 3, 2, 2))
+        val arrows = listOf("↖", "↑", "↗", "←", "•", "→", "↙", "↓", "↘")
+        for (k in 0 until 9) anchors.add(JToggleButton(arrows[k], k == 4).apply {
+            isFocusable = false
+            margin = java.awt.Insets(2, 6, 2, 6)
+            group.add(this)
+            addActionListener { anchor = k }
+        })
+        val form = JPanel(java.awt.GridBagLayout())
+        val c = java.awt.GridBagConstraints().apply {
+            insets = java.awt.Insets(3, 3, 3, 3)
+            anchor = java.awt.GridBagConstraints.WEST
+        }
+        listOf("Width" to width, "Height" to height, "Anchor" to anchors).forEachIndexed { row, (label, field) ->
+            c.gridy = row
+            c.gridx = 0
+            form.add(JLabel(label), c)
+            c.gridx = 1
+            form.add(field, c)
+        }
+        c.gridy = 3
+        c.gridx = 0
+        c.gridwidth = 2
+        form.add(JLabel("<html><span style='color:gray'>Now $docWidth × $docHeight px. Larger: empty (transparent) space around;<br>smaller: cut off at the sides away from the anchor.</span></html>"), c)
+        if (JOptionPane.showConfirmDialog(this, form, "Canvas size", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return
+        val w = width.value as Int
+        val h = height.value as Int
+        if (w == docWidth && h == docHeight) return
+        val dx = (w - docWidth) * (anchor % 3) / 2.0
+        val dy = (h - docHeight) * (anchor / 3) / 2.0
+        resizeDocument(w, h, 1.0, kotlin.math.round(dx), kotlin.math.round(dy))
+        status.text = "Canvas: $w × $h px"
+    }
+
+    /** Asks for a new size of canvas and content together, in pixels or percent, keeping the proportions. */
+    private fun scaleDialog() {
+        if (!hasDocument) return
+        val percent = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(100.0, 1.0, 2000.0, 1.0))
+        val width = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docWidth, 1, 30000, 1))
+        val height = javax.swing.JSpinner(javax.swing.SpinnerNumberModel(docHeight, 1, 30000, 1))
+        val sizes = javax.swing.JCheckBox("Scale sizes in the effects too", true).apply {
+            toolTipText = "Radii, widths and distances in pixels grow and shrink with the picture, so the effects look the same"
+        }
+        // the three fields follow each other; the guard stops them from bouncing
+        var updating = false
+        fun from(f: Double) {
+            if (updating) return
+            updating = true
+            percent.value = f * 100
+            width.value = kotlin.math.max(1, kotlin.math.round(docWidth * f).toInt())
+            height.value = kotlin.math.max(1, kotlin.math.round(docHeight * f).toInt())
+            updating = false
+        }
+        percent.addChangeListener { from((percent.value as Double) / 100) }
+        width.addChangeListener { if (!updating) from((width.value as Int).toDouble() / docWidth) }
+        height.addChangeListener { if (!updating) from((height.value as Int).toDouble() / docHeight) }
+        val form = JPanel(java.awt.GridBagLayout())
+        val c = java.awt.GridBagConstraints().apply {
+            insets = java.awt.Insets(3, 3, 3, 3)
+            anchor = java.awt.GridBagConstraints.WEST
+        }
+        listOf("Size in %" to percent, "Width" to width, "Height" to height, "" to sizes).forEachIndexed { row, (label, field) ->
+            c.gridy = row
+            c.gridx = 0
+            form.add(JLabel(label), c)
+            c.gridx = 1
+            form.add(field, c)
+        }
+        if (JOptionPane.showConfirmDialog(this, form, "Scale image", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return
+        val f = (percent.value as Double) / 100
+        val w = width.value as Int
+        val h = height.value as Int
+        if (w == docWidth && h == docHeight) return
+        resizeDocument(w, h, f, 0.0, 0.0, sizes.isSelected)
+        status.text = "Scaled to $w × $h px"
+    }
+
+    /** Shows the crop frame on the canvas, at first around the whole picture. */
+    private fun startCrop() {
+        if (!hasDocument) return
+        stopPlayback()
+        canvas.cropRect = java.awt.geom.Rectangle2D.Double(0.0, 0.0, docWidth.toDouble(), docHeight.toDouble())
+        canvas.requestFocusInWindow()
+        status.text = "Crop: drag the frame or its edges, or draw a new one · Enter or double-click: crop · Esc: cancel"
+    }
+
+    private fun finishCrop(apply: Boolean) {
+        val r = canvas.cropRect ?: return
+        canvas.cropRect = null
+        val x = kotlin.math.round(r.x).toInt()
+        val y = kotlin.math.round(r.y).toInt()
+        val w = kotlin.math.round(r.x + r.width).toInt() - x
+        val h = kotlin.math.round(r.y + r.height).toInt() - y
+        if (!apply || w < 1 || h < 1 || (w == docWidth && h == docHeight)) {
+            canvas.repaint()
+            updateStatus()
+            return
+        }
+        resizeDocument(w, h, 1.0, -x.toDouble(), -y.toDouble())
+        status.text = "Cropped to $w × $h px"
+    }
+
     // ---------------------------------------------------------------- files
 
     /**
@@ -1353,7 +1519,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         select(first)
         showCurrentImage()
         SwingUtilities.invokeLater {
-            canvas.setZoom(canvas.fitZoom())
+            canvas.fit()
             canvas.refreshOverlay()
         }
         requestRender()
@@ -1581,7 +1747,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         projectFile = file
         dirty = false
         SwingUtilities.invokeLater {
-            canvas.setZoom(canvas.fitZoom())
+            canvas.fit()
             canvas.refreshOverlay()
         }
         status.text = "Opened: ${file.absolutePath}"

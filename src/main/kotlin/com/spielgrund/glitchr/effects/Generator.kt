@@ -146,6 +146,12 @@ object Generators {
             defaultBase = 0x000000,
         ),
         Generator(
+            "blackhole", "Black hole", "A black hole with a glowing disk among stars – Interstellar, Luminet 1978, EHT 2019 and 2024",
+            BlackHole,
+            overrides = mapOf("stars" to 35),
+            defaultBase = 0x000000,
+        ),
+        Generator(
             "chars", "Characters", "Text or characters as a pattern across the whole area", Characters,
             overrides = mapOf("set" to Characters.OWN_TEXT, "colorMode" to 1),
             hidden = setOf("invert", "scaleByBrightness"),

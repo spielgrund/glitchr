@@ -91,11 +91,11 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Displace, Flow, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, Feedback, BlobEcho, Surf)),
-        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, ReduceColors, Filler, Blur, Sharpen, Glow)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, Feedback, BlobEcho, Surf)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, Ridgelines, Particles, UvTexture)),
-        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, Television)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
     )

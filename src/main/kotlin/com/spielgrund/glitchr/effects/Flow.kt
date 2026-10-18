@@ -63,7 +63,7 @@ object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction d
     override val random = false
 
     /** Direction and strength of the flow on a coarse grid; looked up bilinearly. */
-    private class Field(val w: Int, val h: Int, val cell: Double, val cols: Int, val rows: Int) {
+    internal class Field(val w: Int, val h: Int, val cell: Double, val cols: Int, val rows: Int) {
         val dx = FloatArray(cols * rows)
         val dy = FloatArray(cols * rows)
         val strength = FloatArray(cols * rows)
@@ -320,8 +320,14 @@ object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction d
         return (0.5 * x * x * (3 - 2 * x)).toFloat()
     }
 
-    /** The picture at the point that flows [distance] pixels onto ([x], [y]). */
-    private fun sample(src: Pixels, field: Field, x: Double, y: Double, distance: Double, direct: Boolean, soft: Boolean, f: DoubleArray): Int {
+    /**
+     * The picture at the point that flows [distance] pixels onto ([x], [y]); what comes from
+     * beyond the canvas is resolved by [edge] (repeated: the other side comes in).
+     */
+    internal fun sample(
+        src: Pixels, field: Field, x: Double, y: Double, distance: Double, direct: Boolean, soft: Boolean, f: DoubleArray,
+        edge: Edge = Edge.WRAP,
+    ): Int {
         var qx = x
         var qy = y
         if (distance != 0.0) {
@@ -337,19 +343,24 @@ object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction d
                 repeat(steps) {
                     field.at(qx, qy, f)
                     val m = strength(f[2], soft)
-                    qx = wrap(qx - f[0] * m * step, src.width)
-                    qy = wrap(qy - f[1] * m * step, src.height)
+                    qx -= f[0] * m * step
+                    qy -= f[1] * m * step
+                    // repeating: the way continues on the other side; otherwise the field holds its edge values
+                    if (edge == Edge.WRAP) {
+                        qx = wrap(qx, src.width)
+                        qy = wrap(qy, src.height)
+                    }
                 }
             }
         }
-        return sampleBilinear(src, qx, qy, Edge.WRAP)
+        return sampleBilinear(src, qx, qy, edge)
     }
 
     private fun strength(m: Double, soft: Boolean) = if (soft) m.coerceIn(0.0, 1.0) else if (m >= 0.5) 1.0 else 0.0
 
     private fun wrap(v: Double, size: Int) = v - floor(v / size) * size
 
-    private fun field(w: Int, h: Int, v: Values): Field {
+    internal fun field(w: Int, h: Int, v: Values): Field {
         val cell = max(4.0, ceil(sqrt(w.toDouble() * h / 40_000)))
         val cols = max(1, ceil(w / cell).toInt())
         val rows = max(1, ceil(h / cell).toInt())

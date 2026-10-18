@@ -27,7 +27,7 @@ object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mi
         Param.Slider("scale", "Scale", 10, 10000, 1000, " %", decimals = 1),
         Param.Slider("stretchX", "Stretch X", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in X"),
         Param.Slider("stretchY", "Stretch Y", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in Y"),
-        Param.Slider("rotation", "Rotation", -18000, 18000, 1500, "°", decimals = 2),
+        Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("centerX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Scaling and rotation happen around this point"),
         Param.Slider("centerY", "Center Y", -1000, 2000, 500, " %", decimals = 1),
         Param.Toggle("mirrorX", "Mirror X", false, "Swap left and right"),

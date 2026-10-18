@@ -112,6 +112,7 @@ class LayerList(
                 MaskMode.BRUSH -> add("◐ Brush")
                 MaskMode.LINEAR -> add("◐ Gradient")
                 MaskMode.RADIAL -> add("◐ Radial")
+                MaskMode.NOISE -> add("◐ Noise")
             }
         }.joinToString("  ")
         if (info.isNotEmpty()) row.add(JLabel(info).apply {

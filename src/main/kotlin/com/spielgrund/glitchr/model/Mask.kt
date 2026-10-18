@@ -11,7 +11,13 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 enum class MaskMode(val label: String) {
-    OFF("None"), BRUSH("Brush / selection"), LINEAR("Linear gradient"), RADIAL("Radial gradient");
+    OFF("None"), BRUSH("Brush / selection"), LINEAR("Linear gradient"), RADIAL("Radial gradient"),
+
+    /**
+     * Only the mask noise: white (full effect) with noise specks on it – the more noise, the
+     * more specks; scatter and streaks move and smear the noise itself.
+     */
+    NOISE("Noise");
 
     val isGradient get() = this == LINEAR || this == RADIAL
 
@@ -199,6 +205,33 @@ class Mask {
     }
 
     /** Replaces the painted mask with the brightness of [image]: light parts get the effect. */
+    /**
+     * Writes [values] (0..1 per pixel, [width] × [height]) into the painted mask: replacing it,
+     * added to it ([mode] 1, the larger value wins) or taken away from it ([mode] 2).
+     */
+    fun fromValues(values: FloatArray, width: Int, height: Int, mode: Int = 0) {
+        ensurePainted(width, height)
+        val data = painted!!
+        for (i in data.indices) {
+            val v = (values[i].coerceIn(0f, 1f) * 255 + 0.5f).toInt()
+            val old = data[i].toInt() and 0xFF
+            data[i] = when (mode) {
+                1 -> maxOf(old, v)
+                2 -> minOf(old, 255 - v)
+                else -> v
+            }.toByte()
+        }
+        paintChanged()
+    }
+
+    /** Puts back painted pixels taken before (null: an empty mask of [width] × [height]). */
+    fun restorePainted(data: ByteArray?, width: Int, height: Int) {
+        painted = data?.copyOf() ?: ByteArray(width * height)
+        paintedWidth = width
+        paintedHeight = height
+        paintChanged()
+    }
+
     fun fromBrightness(image: com.spielgrund.glitchr.image.Pixels) {
         ensurePainted(image.width, image.height)
         val data = painted!!
@@ -385,6 +418,7 @@ class MaskShape(
         val local = DoubleArray(2)
         when (mode) {
             MaskMode.OFF -> out.fill(1f, 0, width)
+            MaskMode.NOISE -> out.fill(1f, 0, width)
             MaskMode.BRUSH -> {
                 if (painted == null || paintedWidth == 0 || sw <= 0 || sh <= 0) out.fill(0f, 0, width)
                 else {
@@ -471,6 +505,13 @@ class MaskShape(
                     py = start + spread(hash(x, start, seed + 3))
                 }
             }
+            if (mode == MaskMode.NOISE) {
+                // the noise itself is scattered and smeared: specks on white, read where the scatter points
+                val cx = Math.floorDiv(kotlin.math.floor(px).toInt(), grain)
+                val cy = Math.floorDiv(kotlin.math.floor(py).toInt(), grain)
+                out[x] = if (unit(hash(cx, cy, seed + 5)) < b.noise / 100.0) unit(hash(cx, cy, seed + 9)).toFloat() else 1f
+                continue
+            }
             space.toLocal(px + 0.5, py + 0.5, local)
             var v = valueAt(local[0], local[1], space)
             if (noise > 0) v += (unit(hash(Math.floorDiv(x, grain), Math.floorDiv(y, grain), seed + 5)).toFloat() - 0.5f) * noise
@@ -485,6 +526,7 @@ class MaskShape(
         val sh = space.height
         return when (mode) {
             MaskMode.OFF -> 1f
+            MaskMode.NOISE -> 1f
             MaskMode.BRUSH -> {
                 if (painted == null || paintedWidth == 0 || sw <= 0 || sh <= 0) 0f
                 else {
@@ -520,4 +562,9 @@ class MaskShape(
 
     /** 0..1 from a hash. */
     private fun unit(h: Int) = (h and 0xFFFFFF) / 16777215.0
+}
+
+/** A copied mask, to paste it onto another layer. */
+object MaskClipboard {
+    @Volatile var content: MaskMemento? = null
 }
