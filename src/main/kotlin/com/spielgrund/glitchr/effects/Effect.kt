@@ -33,6 +33,12 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
     /** Tone curves (see [Curves]); stored as text, edited in a curve editor. */
     class Curve(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
 
+    /** An own symbol pasted in (see [CustomIcon]): SVG or a black-and-white picture, stored as text. */
+    class Icon(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+
+    /** A reference picture pasted in or opened (see [PaletteTransfer]); stored as text. */
+    class Picture(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+
     /** Strokes drawn on the canvas (see [FlowStrokes]); stored as text, edited by dragging in the picture. */
     class Flow(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
 
@@ -91,10 +97,10 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, Feedback, BlobEcho, Surf)),
-        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
-        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, Ridgelines, Particles, UvTexture)),
+        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture)),
         EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),

@@ -209,7 +209,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     var onHandleEdited: (finished: Boolean) -> Unit = {}
 
     /** The flow strokes of the active layer, if it has some to draw (see [Param.Flow]). */
-    private fun flowParam(l: Layer?) = (l as? EffectLayer)?.effect?.params?.firstOrNull { it is Param.Flow }
+    // effects and generators (e.g. Tribal) can have drawn arrows
+    private fun flowParam(l: Layer?) = (l as? com.spielgrund.glitchr.model.ParamLayer)?.params?.firstOrNull { it is Param.Flow }
 
     /** Key of the flow strokes that dragging draws, or null when dragging does something else. */
     private val flowKey get() = if (editsMask || layer is ImageLayer) null else flowParam(layer)?.key
@@ -537,7 +538,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
 
     private fun paintFlow(g: Graphics2D, key: String) {
         val img = image ?: return
-        val l = layer as? EffectLayer ?: return
+        val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
         val drawn = if (showFlow) FlowStrokes.parse(l.texts[key] ?: "") else emptyList()
         val strokes = drawn.map { stroke ->
             stroke.map { Point2D.Double(originX() + it.x * img.width * zoom, originY() + it.y * img.height * zoom) }
@@ -586,7 +587,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     /** Removes the flow strokes passing within [ERASE_RADIUS] screen pixels of [p]. */
     private fun eraseFlow(p: Point, key: String) {
         val img = image ?: return
-        val l = layer as? EffectLayer ?: return
+        val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
         val strokes = FlowStrokes.parse(l.texts[key] ?: "")
         val r = ERASE_RADIUS / zoom
         val i = toImage(p)
@@ -1146,7 +1147,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             if (d is FlowDraw) {
                 d.points.add(toImage(e.point))
                 val img = image
-                val l = layer as? EffectLayer
+                val l = layer as? com.spielgrund.glitchr.model.ParamLayer
                 val stroke = d.points.filterIndexed { i, p -> i == 0 || p.distance(d.points[i - 1]) > 1e-6 }
                 if (img != null && l != null && stroke.size >= 2) {
                     val added = stroke.map { Point2D.Double(it.x / img.width, it.y / img.height) }
