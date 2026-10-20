@@ -111,6 +111,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
     }
 
     private fun buildParams(layer: ParamLayer, title: String) {
+        valueChanged = null
         form.section(title)
         for (p in layer.params) {
             val value = layer.values.getValue(p.key)
@@ -118,6 +119,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 if (layer.values[p.key] != v) {
                     layer.values[p.key] = v
                     host.layerChanged()
+                    valueChanged?.invoke()
                 }
             }
             when (p) {
@@ -136,6 +138,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 is Param.Color -> form.row(p.label, ColorField(value, p.label, set), p.tip, anim(p.key))
                 is Param.Heading -> form.section(p.label)
                 is Param.Flow -> buildFlow(layer, p)
+                is Param.Icon -> buildIcon(layer, p)
+                is Param.Picture -> buildPicture(layer, p)
                 is Param.Ramp -> form.full(RampField(layer.texts[p.key] ?: p.defaultText) { text ->
                     if (layer.texts[p.key] != text) {
                         layer.texts[p.key] = text
@@ -175,8 +179,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         buttons.add(JButton("Defaults").apply {
             addActionListener {
                 layer.values.putAll(layer.defaults())
-                // texts too (ramps, curves, own text) – but drawn flow strokes stay
-                val flows = layer.params.filterIsInstance<Param.Flow>().map { it.key }.toSet()
+                // texts too (ramps, curves, own text) – but drawn flow strokes and pasted icons stay
+                val flows = layer.params.filter { it is Param.Flow || it is Param.Icon || it is Param.Picture }.map { it.key }.toSet()
                 layer.texts.putAll(layer.textDefaults().filterKeys { it !in flows })
                 host.layerChanged()
                 host.rebuildEditor()
@@ -190,6 +194,186 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 addActionListener { l.seedPerFrame = isSelected; host.layerChanged() }
             })
         }
+    }
+
+    /** Called when a setting of the shown layer changes, for parts of the editor that show results (the palette swatches). */
+    private var valueChanged: (() -> Unit)? = null
+
+    /**
+     * A reference picture: pasted or opened, shown small with the colors found in it – their
+     * roles and shares, following the number of colors as it changes.
+     */
+    private fun buildPicture(layer: ParamLayer, p: Param.Picture) {
+        val text = layer.texts[p.key] ?: ""
+        val image = com.spielgrund.glitchr.effects.PaletteTransfer.decode(text)
+        val thumb = image?.let { img ->
+            val k = minOf(1.0, 150.0 / maxOf(img.width, img.height))
+            javax.swing.ImageIcon(img.getScaledInstance(maxOf(1, (img.width * k).toInt()), maxOf(1, (img.height * k).toInt()), java.awt.Image.SCALE_SMOOTH))
+        }
+        form.row(p.label, JLabel(if (thumb == null) "none – sample palette" else "").apply { icon = thumb }, p.tip)
+        // the colors found, as swatches with their roles; repainted when the number of colors changes
+        val swatches = object : JPanel() {
+            override fun getPreferredSize() = java.awt.Dimension(230, 8 * 20)
+            override fun paintComponent(g: java.awt.Graphics) {
+                super.paintComponent(g)
+                val count = layer.values["colors"] ?: 5
+                val palette = com.spielgrund.glitchr.effects.PaletteTransfer.palette(layer.texts[p.key] ?: "", count)
+                val g2 = g as java.awt.Graphics2D
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+                palette.forEachIndexed { i, s ->
+                    val y = i * 20
+                    g2.color = java.awt.Color(s.rgb)
+                    g2.fillRect(0, y + 2, 34, 16)
+                    g2.color = foreground
+                    val hex = Integer.toHexString(s.rgb and 0xFFFFFF).uppercase().padStart(6, '0')
+                    g2.drawString("${com.spielgrund.glitchr.effects.PaletteTransfer.role(i, palette.size)}  ·  ${(s.share * 100).roundToInt()} %  ·  #$hex", 44, y + 15)
+                }
+            }
+        }.apply { isOpaque = false }
+        valueChanged = { swatches.repaint() }
+        form.full(swatches)
+        fun store(value: String?) {
+            if (value == null) {
+                javax.swing.JOptionPane.showMessageDialog(form, "The clipboard is empty. Copy a picture, a text or anything else first.", p.label, javax.swing.JOptionPane.INFORMATION_MESSAGE)
+                return
+            }
+            layer.texts[p.key] = value
+            host.layerChanged()
+            host.rebuildEditor()
+        }
+        fun fromFile(file: java.io.File) = try {
+            javax.imageio.ImageIO.read(file)?.let { com.spielgrund.glitchr.effects.PaletteTransfer.encode(it) }
+        } catch (e: Exception) {
+            null
+        }
+        val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
+        buttons.add(JButton("Paste").apply {
+            toolTipText = "Takes what is on the clipboard (and leaves it there): a picture or picture file is analysed; color codes in a text become the palette; " +
+                "other text (mood words like ocean, Wald, sunset, neon, pastell) or any other data gives colors made up to fit"
+            addActionListener {
+                // the clipboard is read only here, on the click
+                val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                val value = try {
+                    pastedReference(clipboard, ::fromFile)
+                } catch (e: Exception) {
+                    null
+                }
+                store(value)
+            }
+        })
+        buttons.add(javax.swing.Box.createHorizontalStrut(6))
+        buttons.add(JButton("Open…").apply {
+            addActionListener {
+                val chooser = javax.swing.JFileChooser().apply {
+                    fileFilter = javax.swing.filechooser.FileNameExtensionFilter("Pictures", "png", "jpg", "jpeg", "gif", "bmp", "webp", "tif", "tiff")
+                }
+                if (chooser.showOpenDialog(form) == javax.swing.JFileChooser.APPROVE_OPTION) store(fromFile(chooser.selectedFile))
+            }
+        })
+        buttons.add(javax.swing.Box.createHorizontalStrut(6))
+        buttons.add(JButton("Remove").apply {
+            isEnabled = text.isNotBlank()
+            addActionListener { layer.texts[p.key] = ""; host.layerChanged(); host.rebuildEditor() }
+        })
+        form.full(buttons)
+    }
+
+    /**
+     * Whatever is on the clipboard as a reference for [com.spielgrund.glitchr.effects.PaletteTransfer]:
+     * picture files and pictures as they are; text by its color codes or its words; anything
+     * else – other files, other formats – by its content. Null only if the clipboard is empty.
+     */
+    private fun pastedReference(clipboard: java.awt.datatransfer.Clipboard, fromFile: (java.io.File) -> String?): String? {
+        val palette = com.spielgrund.glitchr.effects.PaletteTransfer
+        val files = java.awt.datatransfer.DataFlavor.javaFileListFlavor
+        if (clipboard.isDataFlavorAvailable(files)) {
+            val list = (clipboard.getData(files) as List<*>).filterIsInstance<java.io.File>()
+            list.firstNotNullOfOrNull { fromFile(it) }?.let { return it }
+            // not pictures: their content (the first megabyte) makes the colors
+            list.firstOrNull { it.isFile }?.let { f -> return palette.fromBytes(f.inputStream().use { it.readNBytes(1 shl 20) } + f.name.toByteArray()) }
+            list.firstOrNull()?.let { return palette.fromText(it.name) }
+        }
+        ImageClipboard.read(clipboard)?.let { return palette.encode(it) }
+        if (clipboard.isDataFlavorAvailable(java.awt.datatransfer.DataFlavor.stringFlavor)) {
+            (clipboard.getData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String)?.takeIf { it.isNotBlank() }?.let { return palette.fromText(it) }
+        }
+        // anything else: the bytes of the first format that can be read
+        for (flavor in clipboard.availableDataFlavors) {
+            val data = try { clipboard.getData(flavor) } catch (e: Exception) { continue }
+            val bytes = when (data) {
+                is java.io.InputStream -> data.use { it.readNBytes(1 shl 20) }
+                is java.io.Reader -> data.use { it.readText().toByteArray() }
+                is ByteArray -> data
+                is java.nio.ByteBuffer -> ByteArray(data.remaining()).also { data.get(it) }
+                is String -> data.toByteArray()
+                else -> data.toString().toByteArray()
+            }
+            if (bytes.isNotEmpty()) return palette.fromBytes(bytes)
+        }
+        return null
+    }
+
+    /** An own icon: pasted from the clipboard or opened from a file, shown small, removable. */
+    private fun buildIcon(layer: ParamLayer, p: Param.Icon) {
+        val text = layer.texts[p.key] ?: ""
+        // the icon as it will be used, white on dark grey; repainted when the icon settings change
+        fun look() = com.spielgrund.glitchr.effects.CustomIcon.Look(
+            layer.values["iconParts"] ?: 0, (layer.values["iconContrast"] ?: 50) / 100.0,
+            (layer.values["iconBrightness"] ?: 0) / 100.0, (layer.values["iconWidth"] ?: 0) / 100.0, (layer.values["iconSmooth"] ?: 0) / 100.0,
+        )
+        val preview = object : JPanel() {
+            override fun getPreferredSize() = java.awt.Dimension(64, 64)
+            override fun paintComponent(g: java.awt.Graphics) {
+                super.paintComponent(g)
+                val g2 = g.create() as java.awt.Graphics2D
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+                g2.color = java.awt.Color(0x3A3A3A)
+                g2.fillRect(0, 0, 64, 64)
+                val icon = com.spielgrund.glitchr.effects.CustomIcon.decode(layer.texts[p.key] ?: "", look())
+                g2.color = java.awt.Color.WHITE
+                if (icon != null) icon.fill(g2, 32.0, 32.0, 56.0)
+                else {
+                    g2.font = g2.font.deriveFont(10f)
+                    g2.drawString(if ((layer.texts[p.key] ?: "").isBlank()) "none" else "empty", 6, 36)
+                }
+                g2.dispose()
+            }
+        }
+        valueChanged = { preview.repaint() }
+        form.row(p.label, JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply { isOpaque = false; add(preview) }, p.tip)
+        fun store(value: String?) {
+            if (value == null) {
+                javax.swing.JOptionPane.showMessageDialog(
+                    form, "No usable icon found. Copy SVG code, an .svg / .png file or a black-and-white picture first.",
+                    "Own icon", javax.swing.JOptionPane.INFORMATION_MESSAGE,
+                )
+                return
+            }
+            layer.texts[p.key] = value
+            host.layerChanged()
+            host.rebuildEditor()
+        }
+        val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
+        buttons.add(JButton("Paste").apply {
+            toolTipText = "Takes the icon from the clipboard: SVG code, a copied .svg or picture file, or a picture"
+            addActionListener { store(IconClipboard.read(java.awt.Toolkit.getDefaultToolkit().systemClipboard)) }
+        })
+        buttons.add(javax.swing.Box.createHorizontalStrut(6))
+        buttons.add(JButton("Open…").apply {
+            addActionListener {
+                val chooser = javax.swing.JFileChooser().apply {
+                    fileFilter = javax.swing.filechooser.FileNameExtensionFilter("SVG and pictures", "svg", "png", "jpg", "jpeg", "gif", "bmp", "webp")
+                }
+                if (chooser.showOpenDialog(form) == javax.swing.JFileChooser.APPROVE_OPTION) store(IconClipboard.fromFile(chooser.selectedFile))
+            }
+        })
+        buttons.add(javax.swing.Box.createHorizontalStrut(6))
+        buttons.add(JButton("Remove").apply {
+            isEnabled = text.isNotBlank()
+            addActionListener { layer.texts[p.key] = ""; host.layerChanged(); host.rebuildEditor() }
+        })
+        form.full(buttons)
+        form.full(hint("Without an icon the built-in symbols are used. Which parts of a picture become the symbol: see Icon parts, contrast and brightness below; in SVG, white fills cut holes."))
     }
 
     /** Drawn flow strokes: they are edited on the canvas, here they can be undone or cleared. */

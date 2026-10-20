@@ -203,7 +203,7 @@ private data class AnimationDto(
     val beats: Boolean = false,
 )
 
-private data class KeyDto(val frame: Int = 0, val value: Double = 0.0, val easing: String = Easing.EASE.name)
+private data class KeyDto(val frame: Int = 0, val value: Double = 0.0, val easing: String = Easing.LINEAR.name)
 
 private data class MaskDto(
     val mode: String = MaskMode.OFF.name,
@@ -266,7 +266,7 @@ private fun LayerDto.toMemento(painted: PaintedMask?, image: (String) -> Pixels)
     // the layer knows which of its settings can be animated and how they blend
     val layer = plain.toLayer()
     val loaded = tracks.filterKeys { it in layer.animatableKeys() }.mapNotNull { (key, keys) ->
-        val frames = keys.map { Keyframe(it.frame.coerceAtLeast(0), it.value, enumOr(it.easing, Easing.EASE)) }
+        val frames = keys.map { Keyframe(it.frame.coerceAtLeast(0), it.value, enumOr(it.easing, Easing.LINEAR)) }
             .groupBy { it.frame }.map { it.value.last() }.sortedBy { it.frame }
         if (frames.isEmpty()) null else key to Track(layer.kindOf(key), frames)
     }.toMap()

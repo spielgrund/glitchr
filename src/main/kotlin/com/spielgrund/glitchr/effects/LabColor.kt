@@ -133,7 +133,7 @@ object LabColor : Effect("lab", "LAB colors", "Change colors in LAB color space:
     }
 
     /** [c] in CIELAB into [lab] (L, a, b). */
-    private fun toLab(c: Int, lab: DoubleArray) {
+    internal fun toLab(c: Int, lab: DoubleArray) {
         val r = toLinear[red(c)]
         val g = toLinear[green(c)]
         val b = toLinear[blue(c)]
@@ -150,7 +150,7 @@ object LabColor : Effect("lab", "LAB colors", "Change colors in LAB color space:
     }
 
     /** Back to sRGB with the alpha of [like]; out-of-range channels clipped or wrapped. */
-    private fun fromLab(l: Double, a: Double, b: Double, like: Int, wrap: Boolean): Int {
+    internal fun fromLab(l: Double, a: Double, b: Double, like: Int, wrap: Boolean): Int {
         val fy = (l + 16) / 116
         val fx = fy + a / 500
         val fz = fy - b / 200

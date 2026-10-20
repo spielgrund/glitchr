@@ -87,7 +87,7 @@ enum class ValueKind {
     STEP,
 }
 
-data class Keyframe(val frame: Int, val value: Double, val easing: Easing = Easing.EASE)
+data class Keyframe(val frame: Int, val value: Double, val easing: Easing = Easing.LINEAR)
 
 /** The keyframes of one animated setting, sorted by frame, at most one per frame. Immutable. */
 data class Track(val kind: ValueKind, val keys: List<Keyframe>) {
@@ -177,7 +177,7 @@ object Animator {
                 val current = layer.property(key) ?: continue
                 val expected = layer.quantize(key, track.valueAt(frame))
                 if (abs(current - expected) < 1e-9) continue
-                val easing = track.keyAt(frame)?.easing ?: Easing.EASE
+                val easing = track.keyAt(frame)?.easing ?: Easing.LINEAR
                 layer.tracks[key] = track.with(Keyframe(frame, current, easing))
                 any = true
             }
@@ -189,7 +189,7 @@ object Animator {
     fun addKey(layer: Layer, key: String, frame: Int) {
         val value = layer.property(key) ?: return
         val track = layer.tracks[key]
-        layer.tracks[key] = track?.with(Keyframe(frame, value, track.keyAt(frame)?.easing ?: Easing.EASE))
+        layer.tracks[key] = track?.with(Keyframe(frame, value, track.keyAt(frame)?.easing ?: Easing.LINEAR))
             ?: Track(layer.kindOf(key), listOf(Keyframe(frame, value)))
     }
 

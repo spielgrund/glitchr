@@ -146,6 +146,27 @@ object Generators {
             defaultBase = 0x000000,
         ),
         Generator(
+            "trendshapes", "Trend shapes", "Swooshes, rings, halftone dots, shine stars, blobs and speed lines like early-2000s flyers", TrendShapes,
+        ),
+        Generator(
+            "trendwhore", "Trendwhore 3D", "Glossy early-2000s 3D abstracts – shard bursts, crystal spikes, ribbon twists, rushing slabs, liquid chrome, chrome blades, wireframes – turnable in space", Trendwhore,
+        ),
+        Generator(
+            "chromeshapes", "Chrome shapes", "Y2K chrome symbols – flowers, stars, swirls, planets, hearts … – in polished chrome, turnable, anti-aliased", ChromeSymbols,
+            defaultBase = 0x000000,
+        ),
+        Generator(
+            "tribal", "Tribal", "Tribal ornaments – bold 90s neo-tribal, thorny cyber sigilism, Polynesian spirals or flames; generated or drawn with arrows", Tribal,
+        ),
+        Generator(
+            "flowers", "Flowers", "Roses, tulips, daisies, sunflowers, cherry blossoms, lotus and poppies – alone, scattered or as a bouquet", Flowers,
+            defaultBase = 0xF3EEE6,
+        ),
+        Generator(
+            "chaostype", "Chaos type", "Chaotic grunge typography in the manner of David Carson, your text or made-up words", CarsonType,
+            defaultBase = 0xE9E4DA,
+        ),
+        Generator(
             "blackhole", "Black hole", "A black hole with a glowing disk among stars – Interstellar, Luminet 1978, EHT 2019 and 2024",
             BlackHole,
             overrides = mapOf("stars" to 35),
