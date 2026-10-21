@@ -32,13 +32,13 @@ object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chro
     override val params = listOf(
         Param.Slider("distortion", "Bulge", -100, 100, 30, " %", "Positive: barrel distortion bulging outwards · negative: pincushion pulled inwards"),
         Param.Toggle("fit", "Fill picture", true, "Scales so that no empty borders appear; off: whatever lies outside becomes transparent"),
-        Param.Slider("centerX", "Center X", 0, 100, 50, " %", "Optical center, for “Cracks” also the impact"),
-        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", "Optical center, for “Cracks” also the impact", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", decimals = 2, transform = true),
         Param.Slider("aberration", "Chromatic aberration", 0, 150, 8, " px", "Color fringes that grow towards the edge (shift at the corners)"),
         Param.Toggle("spectral", "Spectral", false, "Rainbow fringe across the whole spectrum instead of red/cyan"),
         Param.Slider("edgeBlur", "Edge blur", 0, 150, 0, " px", "Blur that grows towards the edge"),
         Param.Slider("vignette", "Vignette", 0, 100, 40, " %"),
-        Param.Slider("vignetteSize", "Vignette size", 0, 100, 55, " %", "Where the darkening starts"),
+        Param.Slider("vignetteSize", "Vignette size", 0, 10000, 5500, " %", "Where the darkening starts", decimals = 2),
         Param.Slider("vignetteSoft", "Vignette softness", 1, 100, 60, " %"),
         Param.Choice(
             "glitch", "Glitch", glitches,
@@ -47,7 +47,7 @@ object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chro
                 "Cracks: an impact in the middle with cracks like a spider's web",
         ),
         Param.Slider("glitchAmount", "Glitch strength", 0, 100, 50, " %"),
-        Param.Slider("glitchSize", "Glitch size", 8, 1000, 140, " px", "Size of the shards, rings or facets; for cracks the spacing of the ring cracks"),
+        Param.Slider("glitchSize", "Glitch size", 800, 100000, 14000, " px", "Size of the shards, rings or facets; for cracks the spacing of the ring cracks", decimals = 2),
         Param.Slider("lineWidth", "Break line width", 1, 200, 16, tip = "Width of the dividing lines in tenths of a pixel: 16 = 1.6 px"),
         Param.Slider("glitchLines", "Break lines light/dark", -100, 100, 70, " %", "Positive: the dividing lines between shards, rings, facets and cracks glow bright · negative: they turn dark"),
         Param.Slider("glitchFringe", "Edge artifacts", 0, 100, 60, " %", "RGB shift and blur increasing towards the break lines"),
@@ -77,19 +77,19 @@ object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chro
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
         val w = src.width
         val h = src.height
-        val cx = v["centerX"] / 100.0 * w
-        val cy = v["centerY"] / 100.0 * h
+        val cx = (v["centerX"] / 100.0) / 100.0 * w
+        val cy = (v["centerY"] / 100.0) / 100.0 * h
         val halfDiag = hypot(w.toDouble(), h.toDouble()) / 2
         val k = v["distortion"] / 100.0 * 0.5
         val glitch = v["glitch"]
         val amount = v["glitchAmount"] / 100.0
-        val size = v["glitchSize"].toDouble()
+        val size = (v["glitchSize"] / 100.0).toDouble()
         val noise = Noise(seed)
         val aberration = v["aberration"] / halfDiag
         val spectral = v.bool("spectral")
         val edgeBlur = v["edgeBlur"] / halfDiag
         val vignette = v["vignette"] / 100.0
-        val vStart = v["vignetteSize"] / 100.0
+        val vStart = (v["vignetteSize"] / 100.0) / 100.0
         val vSoft = v["vignetteSoft"] / 100.0
         val lines = v["glitchLines"] / 100.0
         val gradient = v["elementGradient"] / 100.0

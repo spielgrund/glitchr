@@ -24,7 +24,7 @@ class TurbulenceTest {
 
     @Test
     fun `the whole picture swirls, reproducibly`() {
-        val v = Turbulence.defaultValues(mapOf("swirlSteps" to 30, "swirlSize" to 30, "film" to 0))
+        val v = Turbulence.defaultValues(mapOf("swirlSteps" to 30, "swirlSize" to 3000, "film" to 0))
         val out = Turbulence.apply(stripes, v, 3L)
         assertContentEquals(out.data, Turbulence.apply(stripes, v, 3L).data)
         val moved = (0 until 160 * 120).count { out.data[it] != stripes.data[it] }
@@ -33,7 +33,7 @@ class TurbulenceTest {
 
     @Test
     fun `with a threshold range only that area flows`() {
-        val v = Turbulence.defaultValues(mapOf("region" to 1, "soft" to 20, "swirlSteps" to 30, "swirlSize" to 30, "film" to 0))
+        val v = Turbulence.defaultValues(mapOf("region" to 1, "soft" to 20, "swirlSteps" to 30, "swirlSize" to 3000, "film" to 0))
         val out = Turbulence.apply(stripes, v, 3L)
         assertTrue((0 until 160 * 120).count { out.data[it] != stripes.data[it] } > 100)
         assertEquals(stripes[2, 2], out[2, 2])
@@ -45,7 +45,7 @@ class TurbulenceTest {
     @Test
     fun `anti-aliasing smooths the fine streaks`() {
         fun roughness(aa: Int): Long {
-            val p = Turbulence.apply(stripes, Turbulence.defaultValues(mapOf("antialias" to aa, "swirlSize" to 30)), 3L)
+            val p = Turbulence.apply(stripes, Turbulence.defaultValues(mapOf("antialias" to aa, "swirlSize" to 3000)), 3L)
             var sum = 0L
             for (y in 0 until 120) for (x in 0 until 159) sum += kotlin.math.abs(p[x + 1, y] and 0xFF - (p[x, y] and 0xFF))
             return sum

@@ -17,7 +17,7 @@ class GenerativeTest {
 
     @Test
     fun `mirror tiles repeat exactly`() {
-        val out = run("pattern" to 3, "size" to 60, "count" to 30)
+        val out = run("pattern" to 3, "size" to 6000, "count" to 30)
         for (y in 0 until 140) for (x in 0 until 180) assertEquals(out[x, y], out[x + 60, y + 60], "tile at $x,$y")
         // and each tile is mirrored left/right
         // (the mirrored quarters overlap by one pixel at the seam, so allow a level or two there)

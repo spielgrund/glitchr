@@ -38,6 +38,19 @@ object FlowStrokes {
     }
 }
 
+/** Points relative to the canvas (0..1 across and down), as text: "x,y;x,y". */
+object PointList {
+    fun parse(text: String): List<Point2D.Double> = text.split(';').mapNotNull { point ->
+        val parts = point.trim().split(',')
+        if (parts.size != 2) return@mapNotNull null
+        val x = parts[0].toDoubleOrNull() ?: return@mapNotNull null
+        val y = parts[1].toDoubleOrNull() ?: return@mapNotNull null
+        Point2D.Double(x, y)
+    }
+
+    fun format(points: List<Point2D.Double>): String = points.joinToString(";") { String.format(Locale.ROOT, "%.4f,%.4f", it.x, it.y) }
+}
+
 /**
  * Moves the picture along a drawn flow, like a painted vector map driving a UV offset.
  * Every stroke points the way near it; between and beyond the strokes the direction is
@@ -49,7 +62,7 @@ object FlowStrokes {
 object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction drawn with the mouse") {
     override val params = listOf(
         Param.Flow("strokes", "Flow direction", "Dragging in the picture draws an arrow: the picture flows in the drawing direction, without arrows everything in the base direction"),
-        Param.Slider("shift", "Offset", -400, 400, 0, " %", "How far the picture travels along the direction: 100 % is one complete repeat (once across the picture, with sections once through the section); negative against the direction"),
+        Param.Slider("shift", "Offset", -40000, 40000, 0, " %", "How far the picture travels along the direction: 100 % is one complete repeat (once across the picture, with sections once through the section); negative against the direction", decimals = 2, transform = true),
         Param.Choice("mode", "Shift", listOf("Whole (repeat)", "In sections", "Loop along the arrows", "Loop in sections"), tip = "Whole: everything moves, at the edge the picture repeats · In sections: the offset starts over every few pixels · Loop: the picture runs in a band (as wide as the reach) along the arrows, whatever arrives at the arrow's end jumps to the start; 100 % = once all the way round · Loop in sections: the same, but every section of the arrow is its own small loop"),
         Param.Slider("section", "Section length", 4, 500, 120, " px", "For “In sections”: length of a section along the direction"),
         Param.Slider("spread", "Sections offset", 0, 100, 100, " %", "For “In sections”: how differently far the sections have already travelled"),
@@ -96,7 +109,7 @@ object Flow : Effect("flow", "Flow", "Moves the picture along a flow direction d
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
         val w = src.width
         val h = src.height
-        val repeats = v["shift"] / 100.0
+        val repeats = (v["shift"] / 100.0) / 100.0
         val sections = v["mode"] == 1
         val sectionLength = v["section"].toDouble()
         val spread = v["spread"] / 100.0

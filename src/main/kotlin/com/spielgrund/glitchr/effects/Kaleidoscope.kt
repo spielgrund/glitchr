@@ -25,16 +25,16 @@ object Kaleidoscope : Effect("kaleido", "Kaleidoscope", "Folds the picture sever
         Param.Slider("segments", "Folds", 2, 32, 6, tip = "How many segments the circle is divided into"),
         Param.Slider("rotation", "Rotation", 0, 35900, 0, "°", "Rotates the whole kaleidoscope", decimals = 2),
         Param.Slider("sourceAngle", "Source angle", 0, 35900, 0, "°", "Which part of the picture is folded into the segments", decimals = 2),
-        Param.Slider("offsetX", "Offset X", -100, 100, 0, " %", "Shifts the part that is mirrored"),
-        Param.Slider("offsetY", "Offset Y", -100, 100, 0, " %"),
-        Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
-        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
-        Param.Slider("zoom", "Zoom", 10, 400, 100, " %"),
+        Param.Slider("offsetX", "Offset X", -10000, 10000, 0, " %", "Shifts the part that is mirrored", decimals = 2, transform = true),
+        Param.Slider("offsetY", "Offset Y", -10000, 10000, 0, " %", decimals = 2, transform = true),
+        Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", decimals = 2, transform = true),
+        Param.Slider("zoom", "Zoom", 1000, 40000, 10000, " %", decimals = 2, transform = true),
         Param.Slider("levels", "Levels", 1, 6, 1, tip = "Fold within the fold: how often every segment is folded once more. 1 = simple kaleidoscope"),
         Param.Slider("innerSegments", "Inner folds", 2, 32, 6, tip = "Segments of every inner fold (from level 2)"),
         Param.Slider("innerDistance", "Inner distance", 0, 100, 35, " %", "How far the center of the inner fold lies from the outer one (relative to half the shorter side of the picture)"),
         Param.Slider("innerRotation", "Inner rotation", 0, 35900, 0, "°", "Rotates every inner fold against the previous one", decimals = 2),
-        Param.Slider("innerScale", "Inner scale", 25, 400, 100, " %", "Enlarges (above 100 %) or shrinks every inner level"),
+        Param.Slider("innerScale", "Inner scale", 2500, 40000, 10000, " %", "Enlarges (above 100 %) or shrinks every inner level", decimals = 2, transform = true),
         Param.Toggle("mirror", "Mirror segments", true, "Off: all segments rotated the same instead of alternately mirrored – with visible seams"),
         Param.Choice("edge", "Edge", Edge.labels, default = Edge.MIRROR.ordinal),
     )
@@ -46,11 +46,11 @@ object Kaleidoscope : Effect("kaleido", "Kaleidoscope", "Folds the picture sever
         val h = src.height
         val rotation = (v["rotation"] / 100.0) * PI / 180
         val sourceAngle = (v["sourceAngle"] / 100.0) * PI / 180
-        val cx = w * v["centerX"] / 100.0
-        val cy = h * v["centerY"] / 100.0
-        val sx0 = cx + w * v["offsetX"] / 100.0
-        val sy0 = cy + h * v["offsetY"] / 100.0
-        val scale = 100.0 / v["zoom"]
+        val cx = w * (v["centerX"] / 100.0) / 100.0
+        val cy = h * (v["centerY"] / 100.0) / 100.0
+        val sx0 = cx + w * (v["offsetX"] / 100.0) / 100.0
+        val sy0 = cy + h * (v["offsetY"] / 100.0) / 100.0
+        val scale = 100.0 / (v["zoom"] / 100.0)
         val mirror = v.bool("mirror")
         val edge = Edge.entries[v["edge"]]
         val levels = v["levels"]
@@ -58,7 +58,7 @@ object Kaleidoscope : Effect("kaleido", "Kaleidoscope", "Folds the picture sever
         val inner = 2 * PI / v["innerSegments"]
         val innerDistance = v["innerDistance"] / 100.0 * minOf(w, h) / 2
         val innerRotation = (v["innerRotation"] / 100.0) * PI / 180
-        val innerScale = 100.0 / v["innerScale"]
+        val innerScale = 100.0 / (v["innerScale"] / 100.0)
         val cosSource = cos(sourceAngle)
         val sinSource = sin(sourceAngle)
 

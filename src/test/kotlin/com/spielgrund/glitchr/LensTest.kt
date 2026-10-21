@@ -49,7 +49,7 @@ class LensTest {
     @Test
     fun `the vignette darkens the corners`() {
         val white = Pixels(100, 100).also { it.data.fill(-1) }
-        val out = run(white, "vignette" to 100, "vignetteSize" to 30, "vignetteSoft" to 50)
+        val out = run(white, "vignette" to 100, "vignetteSize" to 3000, "vignetteSoft" to 50)
         assertEquals(255, out[50, 50] and 0xFF)
         assertTrue((out[1, 1] and 0xFF) < 60)
     }
@@ -58,7 +58,7 @@ class LensTest {
     fun `every glitch breaks the lens`() {
         val plain = run(src, "distortion" to 20)
         for (g in 1..5) {
-            val out = run(src, "distortion" to 20, "glitch" to g, "glitchAmount" to 80, "glitchSize" to 40)
+            val out = run(src, "distortion" to 20, "glitch" to g, "glitchAmount" to 80, "glitchSize" to 4000)
             assertTrue(!out.data.contentEquals(plain.data), "glitch $g changes nothing")
         }
     }
@@ -67,9 +67,9 @@ class LensTest {
     fun `break lines are bright`() {
         val black = Pixels(200, 200).also { it.data.fill(0xFF000000.toInt()) }
         for (g in listOf(1, 2, 3, 5)) {
-            val out = run(black, "glitch" to g, "glitchSize" to 50, "glitchLines" to 100)
+            val out = run(black, "glitch" to g, "glitchSize" to 5000, "glitchLines" to 100)
             assertTrue(out.data.count { (it shr 8 and 0xFF) > 200 } > 50, "glitch $g: bright lines")
-            val dark = run(black, "glitch" to g, "glitchSize" to 50, "glitchLines" to 0)
+            val dark = run(black, "glitch" to g, "glitchSize" to 5000, "glitchLines" to 0)
             assertTrue(dark.data.all { (it shr 8 and 0xFF) < 5 }, "glitch $g: without lines it stays black")
         }
     }
@@ -80,9 +80,9 @@ class LensTest {
         fun bright(vararg c: Pair<String, Int>) = run(black, "glitch" to 5, "glitchLines" to 100, *c).data.count { (it shr 8 and 0xFF) > 200 }
         assertTrue(bright("lineWidth" to 60) > 2 * bright("lineWidth" to 10), "dicker")
         // vertical: the cracks start along the top edge; radial: out of the middle
-        val down = run(black, "glitch" to 5, "glitchLines" to 100, "crackDirection" to 0, "crackBranch" to 0, "glitchSize" to 60)
+        val down = run(black, "glitch" to 5, "glitchLines" to 100, "crackDirection" to 0, "crackBranch" to 0, "glitchSize" to 6000)
         assertTrue((0 until 300).count { x -> (down[x, 1] shr 8 and 0xFF) > 150 } >= 3, "cracks start at the top")
-        val out = run(black, "glitch" to 5, "glitchLines" to 100, "crackDirection" to 100, "crackBranch" to 0, "glitchSize" to 60)
+        val out = run(black, "glitch" to 5, "glitchLines" to 100, "crackDirection" to 100, "crackBranch" to 0, "glitchSize" to 6000)
         assertTrue((145..155).any { x -> (95..105).any { y -> (out[x, y] shr 8 and 0xFF) > 150 } }, "cracks at the impact")
     }
 
@@ -90,12 +90,12 @@ class LensTest {
     fun `dark lines, gradients and tilted pieces`() {
         val white = Pixels(200, 200).also { it.data.fill(-1) }
         for (g in listOf(1, 2, 3, 5)) {
-            val dark = run(white, "glitch" to g, "glitchSize" to 50, "glitchLines" to -100, "glitchFringe" to 0, "glitchAmount" to 0)
+            val dark = run(white, "glitch" to g, "glitchSize" to 5000, "glitchLines" to -100, "glitchFringe" to 0, "glitchAmount" to 0)
             assertTrue(dark.data.count { (it shr 8 and 0xFF) < 50 } > 50, "glitch $g: dark lines")
-            val shaded = run(white, "glitch" to g, "glitchSize" to 50, "glitchLines" to 0, "elementGradient" to -100, "glitchAmount" to 0)
+            val shaded = run(white, "glitch" to g, "glitchSize" to 5000, "glitchLines" to 0, "elementGradient" to -100, "glitchAmount" to 0)
             assertTrue(shaded.data.count { (it shr 8 and 0xFF) < 128 } > 500, "glitch $g: gradient towards the edges")
-            val lit = run(testImage(200, 200), "glitch" to g, "glitchSize" to 50, "tilt" to 100, "light" to 100, "refraction" to 0, "glitchLines" to 0)
-            val flat = run(testImage(200, 200), "glitch" to g, "glitchSize" to 50, "tilt" to 0, "glitchLines" to 0)
+            val lit = run(testImage(200, 200), "glitch" to g, "glitchSize" to 5000, "tilt" to 100, "light" to 100, "refraction" to 0, "glitchLines" to 0)
+            val flat = run(testImage(200, 200), "glitch" to g, "glitchSize" to 5000, "tilt" to 0, "glitchLines" to 0)
             assertTrue(!lit.data.contentEquals(flat.data), "glitch $g: tilt works")
         }
     }

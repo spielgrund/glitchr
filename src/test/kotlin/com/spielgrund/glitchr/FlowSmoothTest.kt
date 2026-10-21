@@ -32,7 +32,7 @@ class FlowSmoothTest {
     @Test
     fun `layers, crossfade and segments change the result`() {
         val plain = run("time" to 5000).data
-        for (c in listOf("layers" to 4, "fade" to 30, "variation" to 0, "segment" to 40, "segmentSoftness" to 0)) {
+        for (c in listOf("layers" to 4, "fade" to 30, "variation" to 0, "segment" to 4000, "segmentSoftness" to 0)) {
             assertTrue(!run("time" to 5000, c).data.contentEquals(plain), c.first)
         }
     }

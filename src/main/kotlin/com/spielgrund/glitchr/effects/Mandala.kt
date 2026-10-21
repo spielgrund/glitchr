@@ -37,14 +37,14 @@ object Mandala : Effect("mandala", "Mandala", "Rings of symmetrically repeated m
         Param.Slider("symmetry", "Symmetry", 3, 48, 12, tip = "How often every motif repeats around the middle (outer rings also twice as often)"),
         Param.Slider("rings", "Rings", 1, 24, 8),
         Param.Choice("motif", "Motif", listOf("Mixed (random)") + motifs, tip = "Mixed: every ring gets a random motif – “Reroll” gives a new mandala"),
-        Param.Slider("size", "Size", 5, 150, 92, " %", "Radius relative to half the shorter side"),
+        Param.Slider("size", "Size", 500, 15000, 9200, " %", "Radius relative to half the shorter side", decimals = 2, transform = true),
         Param.Slider("growth", "Ring width outwards", 30, 300, 100, " %", "Below 100 %: outer rings narrower, above wider"),
         Param.Slider("variation", "Ring width variation", 0, 100, 30, " %"),
         Param.Slider("detail", "Ornament", 0, 100, 50, " %", "Inner outlines, veins and dots between the motifs"),
         Param.Toggle("separators", "Dividing circles", true, "A circle between the rings"),
         Param.Slider("rotation", "Rotation", 0, 35900, 0, "°", decimals = 2),
-        Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
-        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", decimals = 2, transform = true),
         Param.Heading("styleHeading", "Display"),
         Param.Choice("style", "Style", listOf("Lines", "Filled", "Filled with outline")),
         Param.Slider("lineWidth", "Line width", 1, 200, 20, " px", decimals = 1),
@@ -73,10 +73,10 @@ object Mandala : Effect("mandala", "Mandala", "Rings of symmetrically repeated m
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
         g.stroke = BasicStroke(v["lineWidth"] / 10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
-        g.translate(w * v["centerX"] / 100.0, h * v["centerY"] / 100.0)
+        g.translate(w * (v["centerX"] / 100.0) / 100.0, h * (v["centerY"] / 100.0) / 100.0)
         g.rotate((v["rotation"] / 100.0) * PI / 180)
 
-        val rings = rings(v, min(w, h) / 2.0 * v["size"] / 100.0, random)
+        val rings = rings(v, min(w, h) / 2.0 * (v["size"] / 100.0) / 100.0, random)
         val style = v["style"]
         val lineColor = Color(v["lineColor"])
         val detail = v["detail"] / 100.0

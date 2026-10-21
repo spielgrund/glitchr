@@ -26,10 +26,12 @@ class Generator(
     hidden: Set<String> = emptySet(),
     private val defaultBase: Int = 0xFFFFFF,
     withBase: Boolean = true,
+    /** Without: the generator places its content itself (e.g. the 3D model); the picture stays where it is. */
+    withPosition: Boolean = true,
 ) {
     val params: List<Param> =
         listOfNotNull(Param.Color(BASE, "Base color", defaultBase, "Area the pattern is created on").takeIf { withBase }) +
-            (effect?.params?.filter { it.key !in hidden } ?: emptyList()) + positionParams
+            (effect?.params?.filter { it.key !in hidden } ?: emptyList()) + (if (withPosition) positionParams else emptyList())
 
     /** Whether "Reroll" makes sense. */
     val random get() = effect?.random ?: false
@@ -46,9 +48,16 @@ class Generator(
         (effect?.textDefaults() ?: LinkedHashMap()).apply { putAll(textOverrides) }
 
     /** The picture in canvas size. The same values and seed always give the same result. */
-    fun generate(width: Int, height: Int, v: Values, seed: Long): Pixels {
+    fun generate(width: Int, height: Int, v: Values, seed: Long): Pixels = place(make(width, height, v, seed), v)
+
+    /** The picture as the effect makes it, before its position. */
+    fun make(width: Int, height: Int, v: Values, seed: Long): Pixels {
         val base = Pixels(width, height).apply { data.fill(v[BASE] or 0xFF000000.toInt()) }
-        val made = effect?.apply(base, v, seed) ?: base
+        return effect?.apply(base, v, seed) ?: base
+    }
+
+    /** [made] moved, scaled and turned by the position in [v]. */
+    fun place(made: Pixels, v: Values): Pixels {
         val scale = v[POS_SCALE] / 1000.0
         return transformPixels(
             made, offsetX = v[POS_X] / 10.0, offsetY = v[POS_Y] / 10.0, scaleX = scale, scaleY = scale,
@@ -69,15 +78,24 @@ class Generator(
         const val POS_SCALE = "posScale"
         const val POS_ROTATION = "posRotation"
         const val POS_EDGE = "posEdge"
+        const val POS_BLUR = "posBlur"
+        const val POS_SHUTTER = "posShutter"
+        const val POS_SAMPLES = "posSamples"
+
+        /** The settings of the position that motion blur follows. */
+        val MOVING = setOf(POS_X, POS_Y, POS_SCALE, POS_ROTATION)
 
         /** Position of the made picture, for every generator. */
         private val positionParams = listOf(
             Param.Heading("posHeading", "Position"),
-            Param.Slider(POS_X, "Shift X", -50000, 50000, 0, " px", decimals = 1),
-            Param.Slider(POS_Y, "Shift Y", -50000, 50000, 0, " px", decimals = 1),
-            Param.Slider(POS_SCALE, "Scale", 10, 10000, 1000, " %", decimals = 1, tip = "Around the middle of the canvas"),
+            Param.Slider(POS_X, "Shift X", -50000, 50000, 0, " px", decimals = 1, transform = true),
+            Param.Slider(POS_Y, "Shift Y", -50000, 50000, 0, " px", decimals = 1, transform = true),
+            Param.Slider(POS_SCALE, "Scale", 10, 10000, 1000, " %", decimals = 1, tip = "Around the middle of the canvas", transform = true),
             Param.Slider(POS_ROTATION, "Rotation", -18000, 18000, 0, "°", decimals = 2, tip = "Around the middle of the canvas"),
             Param.Choice(POS_EDGE, "Edge", Transform.edgeOptions, 0, "What comes in from outside the generated picture"),
+            Param.Toggle(POS_BLUR, "Motion blur", false, "Smears the picture along its animated movement, scaling and turning, like a camera with an open shutter"),
+            Param.Slider(POS_SHUTTER, "Shutter angle", 0, 720, 180, "", "How long the shutter is open: 360 = one whole frame, 180 = half (film look), 720 = two frames"),
+            Param.Slider(POS_SAMPLES, "Samples", 2, 64, 12, tip = "Copies blended per frame: more = smoother smear, slower"),
         )
     }
 }
@@ -112,7 +130,7 @@ object Generators {
         Generator(
             "noise", "Noise", "Directional noise, black and white or in two colors: Perlin, fractal, ridged, Worley, value, white, Voronoi", NoiseField,
             overrides = mapOf(
-                "type" to 1, "scaleStart" to 40, "scaleEnd" to 160, "contrastStart" to 220, "contrastEnd" to 220,
+                "type" to 1, "scaleStart" to 4000, "scaleEnd" to 16000, "contrastStart" to 220, "contrastEnd" to 220,
                 // black and white to start with; "Two colors", so other colors are one click away
                 "colorMode" to 1, "color1" to 0x000000, "color2" to 0xFFFFFF, "mix" to 0, "control" to 3, "imageShape" to 0,
             ),
@@ -154,6 +172,22 @@ object Generators {
         Generator(
             "chromeshapes", "Chrome shapes", "Y2K chrome symbols – flowers, stars, swirls, planets, hearts … – in polished chrome, turnable, anti-aliased", ChromeSymbols,
             defaultBase = 0x000000,
+        ),
+        Generator(
+            "noisesphere", "Noise sphere", "A sphere of points and fine filaments shooting out by 3D noise – from a calm grainy ball to an exploding, hairy burst; animate energy and time", NoiseSphere,
+            defaultBase = 0x05070C,
+        ),
+        Generator(
+            "model3d", "3D model", "A 3D model – pasted from Blender as OBJ (up to 1024 faces) or a built-in shape – turned in space, as plastic, chrome, toon, textured or wireframe", Model3D,
+            defaultBase = 0x15131C, withPosition = false,
+        ),
+        Generator(
+            "lightning", "Lightning", "Lightning bolts from one or more points, in a direction or along drawn arrows – forking and glowing", Lightning,
+            defaultBase = 0x05060F,
+        ),
+        Generator(
+            "errors", "Error cascade", "Error messages – Windows 98, XP or Mac OS 9 – bouncing away like the cards when you've won Solitaire, leaving trails; animate the progress", ErrorCascade,
+            defaultBase = 0x008080,
         ),
         Generator(
             "tribal", "Tribal", "Tribal ornaments – bold 90s neo-tribal, thorny cyber sigilism, Polynesian spirals or flames; generated or drawn with arrows", Tribal,

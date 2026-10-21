@@ -66,12 +66,12 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         ),
         Param.Slider("steps", "Steps", 1, 100, 12, tip = "How many copies are laid over each other"),
         Param.Heading("transformHeading", "Per step"),
-        Param.Slider("scale", "Scale", 500, 2000, 920, " %", decimals = 1, tip = "Below 100 %: every copy smaller (a tunnel, into the blobs), above it larger (out of them)"),
+        Param.Slider("scale", "Scale", 500, 2000, 920, " %", decimals = 1, tip = "Below 100 %: every copy smaller (a tunnel, into the blobs), above it larger (out of them)", transform = true),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
-        Param.Slider("offsetX", "Offset X", -5000, 5000, 0, " px", decimals = 1, tip = "Is scaled and rotated too – together with a rotation, spirals appear"),
-        Param.Slider("offsetY", "Offset Y", -5000, 5000, 0, " px", decimals = 1),
-        Param.Slider("centerX", "Center X", 0, 100, 50, " %", "Scaling and rotation happen around this point (blobs: each around its own middle)"),
-        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Slider("offsetX", "Offset X", -5000, 5000, 0, " px", decimals = 1, tip = "Is scaled and rotated too – together with a rotation, spirals appear", transform = true),
+        Param.Slider("offsetY", "Offset Y", -5000, 5000, 0, " px", decimals = 1, transform = true),
+        Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", "Scaling and rotation happen around this point (blobs: each around its own middle)", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", decimals = 2, transform = true),
         Param.Choice("edge", "Edge", edges, tip = "What lies outside a shrunken or shifted copy (not for blobs)"),
         Param.Heading("hslHeading", "Color per step (HSL)"),
         Param.Slider("hue", "Hue", -18000, 18000, 0, "°", decimals = 2),
@@ -189,8 +189,8 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         val h = src.height
         val steps = v["steps"]
         val source = v["source"]
-        val cx = w * v["centerX"] / 100.0
-        val cy = h * v["centerY"] / 100.0
+        val cx = w * (v["centerX"] / 100.0) / 100.0
+        val cy = h * (v["centerY"] / 100.0) / 100.0
         val transform = Steps(steps, v["scale"] / 1000.0, Math.toRadians(v["rotation"] / 100.0), v["offsetX"] / 10.0, v["offsetY"] / 10.0)
         val edge = when (v["edge"]) { 1 -> Edge.WRAP; 2 -> Edge.MIRROR; 3 -> Edge.CLAMP; else -> null }
         val blend = BlendMode.entries[v["blend"]]

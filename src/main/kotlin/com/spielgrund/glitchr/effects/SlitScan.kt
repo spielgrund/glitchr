@@ -23,13 +23,13 @@ object SlitScan : Effect("slitscan", "Slitscan", "Cuts the picture into rows and
     override val params = listOf(
         Param.Slider("angle", "Angle", 0, 35900, 0, "°", "Direction of the rows; 0° = horizontal picture rows", decimals = 2),
         Param.Slider("size", "Row size", 1, 500, 4, " px", "Width of a row across its direction"),
-        Param.Slider("offset", "Offset", -3000, 3000, 300, " px", "Shift of the last row; negative in the opposite direction"),
-        Param.Slider("offsetY", "Offset Y", -3000, 3000, 0, " px", "Shift across the rows: the picture runs through the rows (at 0° on the Y axis); negative in the opposite direction"),
+        Param.Slider("offset", "Offset", -300000, 300000, 30000, " px", "Shift of the last row; negative in the opposite direction", decimals = 2, transform = true),
+        Param.Slider("offsetY", "Offset Y", -300000, 300000, 0, " px", "Shift across the rows: the picture runs through the rows (at 0° on the Y axis); negative in the opposite direction", decimals = 2, transform = true),
         Param.Choice("curve", "Gradient", curves, tip = "How the offset grows from the first to the last row"),
         Param.Slider("exponent", "Curve", 110, 800, 300, " %", "For “Exponential”: the higher, the longer the first rows stay calm"),
         Param.Choice("edge", "Edge", Edge.labels),
-        Param.Slider("shiftX", "Shift picture X", -3000, 3000, 0, " px", "Shifts the picture before the slit scan; it repeats at the edge"),
-        Param.Slider("shiftY", "Shift picture Y", -3000, 3000, 0, " px", "Shifts the picture before the slit scan; it repeats at the edge"),
+        Param.Slider("shiftX", "Shift picture X", -300000, 300000, 0, " px", "Shifts the picture before the slit scan; it repeats at the edge", decimals = 2, transform = true),
+        Param.Slider("shiftY", "Shift picture Y", -300000, 300000, 0, " px", "Shifts the picture before the slit scan; it repeats at the edge", decimals = 2, transform = true),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -39,13 +39,13 @@ object SlitScan : Effect("slitscan", "Slitscan", "Cuts the picture into rows and
         val cos = cos(angle)
         val sin = sin(angle)
         val size = v["size"].toDouble()
-        val offset = v["offset"].toDouble()
-        val offsetY = v["offsetY"].toDouble()
+        val offset = (v["offset"] / 100.0).toDouble()
+        val offsetY = (v["offsetY"] / 100.0).toDouble()
         val curve = v["curve"]
         val exponent = v["exponent"] / 100.0
         val edge = Edge.entries[v["edge"]]
-        val shiftX = v["shiftX"]
-        val shiftY = v["shiftY"]
+        val shiftX = kotlin.math.round(v["shiftX"] / 100.0).toInt()
+        val shiftY = kotlin.math.round(v["shiftY"] / 100.0).toInt()
         val noise = Noise(seed)
 
         // the lines run along (cos, sin); they are stacked across the picture

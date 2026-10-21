@@ -45,7 +45,7 @@ class Resize(
         val newSpaces = spaces(layers, newWidth, newHeight)
         for ((i, layer) in layers.withIndex()) {
             moveMask(layer, oldSpaces[i], newSpaces[i])
-            if (layer is EffectLayer) moveFlows(layer)
+            if (layer is ParamLayer) moveFlows(layer)
         }
     }
 
@@ -96,14 +96,17 @@ class Resize(
         }
     }
 
-    /** Flow strokes are stored relative to the canvas. */
-    private fun moveFlows(l: EffectLayer) {
-        for (param in l.effect.params.filterIsInstance<Param.Flow>()) {
+    /** Flow strokes and points are stored relative to the canvas: they keep their place on the picture. */
+    private fun moveFlows(l: ParamLayer) {
+        fun moved(p: java.awt.geom.Point2D.Double) = java.awt.geom.Point2D.Double(mapX(p.x * oldWidth) / newWidth, mapY(p.y * oldHeight) / newHeight)
+        for (param in l.params) {
             val text = l.texts[param.key] ?: continue
             if (text.isBlank()) continue
-            l.texts[param.key] = FlowStrokes.format(FlowStrokes.parse(text).map { stroke ->
-                stroke.map { java.awt.geom.Point2D.Double(mapX(it.x * oldWidth) / newWidth, mapY(it.y * oldHeight) / newHeight) }
-            })
+            when (param) {
+                is Param.Flow -> l.texts[param.key] = FlowStrokes.format(FlowStrokes.parse(text).map { stroke -> stroke.map(::moved) })
+                is Param.Points -> l.texts[param.key] = com.spielgrund.glitchr.effects.PointList.format(com.spielgrund.glitchr.effects.PointList.parse(text).map(::moved))
+                else -> {}
+            }
         }
     }
 

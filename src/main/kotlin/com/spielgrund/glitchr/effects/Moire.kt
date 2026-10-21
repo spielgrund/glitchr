@@ -43,8 +43,8 @@ object Moire : Effect("moire", "Moiré", "Two line patterns over each other that
         ),
         Param.Slider("${p}Width", "Line width", 3, 97, 50, " %", "Share of the line in the spacing; dots: area of the dots"),
         Param.Slider("${p}Angle", "Angle", 0, 36000, angle, "°", decimals = 2, tip = "Even fractions of a degree change the moiré a lot"),
-        Param.Slider("${p}CenterX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Center for rings, rays, spiral; shifts the other patterns"),
-        Param.Slider("${p}CenterY", "Center Y", -1000, 2000, 500, " %", decimals = 1),
+        Param.Slider("${p}CenterX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Center for rings, rays, spiral; shifts the other patterns", transform = true),
+        Param.Slider("${p}CenterY", "Center Y", -1000, 2000, 500, " %", decimals = 1, transform = true),
         Param.Slider(
             "${p}StretchX", "Stretch X", 10, 1000, 100, " %",
             "Pulls the pattern apart in its own X direction (rotates with the angle); rings become ellipses",

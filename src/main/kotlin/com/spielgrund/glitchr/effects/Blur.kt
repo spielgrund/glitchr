@@ -32,8 +32,8 @@ object Blur : Effect("blur", "Blur", "Blur: Gauss, box, directional, radial and 
         Param.Choice("type", "Type", types),
         Param.Slider("radius", "Radius", 0, 500, 12, " px", "Strength of the blur; for radial and spin its length at the picture edge"),
         Param.Slider("angle", "Angle", 0, 35900, 0, "°", "For “Direction”", decimals = 2),
-        Param.Slider("centerX", "Center X", 0, 100, 50, " %", "For radial and spin"),
-        Param.Slider("centerY", "Center Y", 0, 100, 50, " %", "For radial and spin"),
+        Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", "For radial and spin", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", "For radial and spin", decimals = 2, transform = true),
         Param.Choice("channel", "Channel", channels, tip = "Which channels are blurred; the others stay sharp"),
         Param.Choice(
             "error", "Data errors", errors,
@@ -213,8 +213,8 @@ object Blur : Effect("blur", "Blur", "Blur: Gauss, box, directional, radial and 
         val angle = Math.toRadians((v["angle"] / 100.0).toDouble())
         val dx = cos(angle)
         val dy = sin(angle)
-        val cx = v["centerX"] / 100.0 * w
-        val cy = v["centerY"] / 100.0 * h
+        val cx = (v["centerX"] / 100.0) / 100.0 * w
+        val cy = (v["centerY"] / 100.0) / 100.0 * h
         // radial and spin: the blur is [radius] pixels long at the farthest corner
         val far = hypot(max(cx, w - cx), max(cy, h - cy)).coerceAtLeast(1.0)
         val strength = radius / far

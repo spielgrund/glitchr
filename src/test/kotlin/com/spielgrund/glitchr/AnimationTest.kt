@@ -237,4 +237,67 @@ class AnimationTest {
         Animator.rescale(listOf(layer), 25, 50)
         assertEquals(listOf(0, 100), layer.tracks["rx"]!!.keys.map { it.frame })
     }
+
+    @Test
+    fun `with whole steps the keyframes keep fractions and the animation moves in whole units`() {
+        val ws = com.spielgrund.glitchr.model.WholeSteps
+        try {
+            // a shift from 0 to 1.5 px (stored in hundredths) and a turn from 0° to 15° over 10 frames
+            val fx = EffectLayer(com.spielgrund.glitchr.effects.Offset)
+            fx.tracks["shiftX"] = Track(ValueKind.NUMBER, listOf(Keyframe(0, 0.0, Easing.LINEAR), Keyframe(10, 150.0)))
+            val picture = ImageLayer(src)
+            picture.tracks[AnimKeys.ROTATION] = Track(ValueKind.NUMBER, listOf(Keyframe(0, 0.0, Easing.LINEAR), Keyframe(10, 15.0)))
+            fun shiftAt(frame: Int) = (fx.animated().at(frame) as EffectState).values["shiftX"]
+            fun turnAt(frame: Int) = (picture.animated().at(frame) as ImageState).rotation
+            ws.rotations = false; ws.transforms = false
+            assertEquals(45, shiftAt(3), "0.45 px")
+            assertEquals(4.5, turnAt(3), 1e-9)
+            ws.transforms = true
+            assertEquals(0, shiftAt(3), "whole pixels")
+            assertEquals(100, shiftAt(7), "1.05 px → 1 px")
+            assertEquals(4.5, turnAt(3), 1e-9, "rotations still smooth")
+            ws.rotations = true
+            assertEquals(5.0, turnAt(3), 1e-9, "whole degrees")
+            // the editor shows the same, and that is no edit: no keyframe is written
+            Animator.syncToFrame(listOf(fx, picture), 3)
+            assertEquals(0, fx.values["shiftX"])
+            assertEquals(5.0, picture.rotation, 1e-9)
+            assertTrue(!Animator.captureEdits(listOf(fx, picture), 3))
+            // the keyframes keep their fractions
+            assertEquals(150.0, fx.tracks["shiftX"]!!.keys.last().value)
+        } finally {
+            ws.rotations = false; ws.transforms = false
+        }
+    }
+
+    @Test
+    fun `motion blur smears the transform and the generator position along their movement`() {
+        // a small white square on black, moved 40 px to the right over 10 frames
+        val dot = com.spielgrund.glitchr.image.Pixels(120, 40).also { p ->
+            p.data.fill(0xFF000000.toInt())
+            for (y in 16 until 24) for (x in 16 until 24) p.data[y * 120 + x] = 0xFFFFFFFF.toInt()
+        }
+        val picture = ImageLayer(dot)
+        fun smear(blur: Boolean): Int {
+            val fx = EffectLayer(com.spielgrund.glitchr.effects.Transform)
+            fx.values["motionBlur"] = if (blur) 1 else 0
+            fx.values["shutter"] = 360
+            fx.tracks["offsetX"] = Track(ValueKind.NUMBER, listOf(Keyframe(0, 0.0, Easing.LINEAR), Keyframe(10, 400.0)))
+            val out = com.spielgrund.glitchr.model.Renderer().render(120, 40, listOf(picture.animated().at(5), fx.animated().at(5)))
+            // grey pixels: partly covered by the moving square
+            return out.data.count { (it and 0xFF) in 20..235 }
+        }
+        assertEquals(0, smear(false), "sharp without motion blur")
+        assertTrue(smear(true) > 40, "smeared with motion blur: ${smear(true)}")
+        // a generator's position: the same
+        fun generated(blur: Boolean): Int {
+            val g = com.spielgrund.glitchr.model.GeneratorLayer(com.spielgrund.glitchr.effects.Generators.byId("shape")!!)
+            g.values["size"] = 600
+            g.values["posBlur"] = if (blur) 1 else 0
+            g.tracks["posX"] = Track(ValueKind.NUMBER, listOf(Keyframe(0, -300.0, Easing.LINEAR), Keyframe(10, 300.0)))
+            val out = com.spielgrund.glitchr.model.Renderer().render(120, 40, listOf(g.animated().at(5)))
+            return out.data.toSet().size
+        }
+        assertTrue(generated(true) > generated(false) + 5, "more in-between shades with motion blur")
+    }
 }

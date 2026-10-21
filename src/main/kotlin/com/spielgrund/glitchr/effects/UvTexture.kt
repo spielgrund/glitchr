@@ -64,10 +64,10 @@ object UvTexture : Effect("uvtexture", "UV texture", "Lays a pattern over UV coo
         Param.Color("colorB", "Color 2", 0xF0F0F0),
         Param.Ramp("ramp", "Gradient", RampPalette.SUNSET.ramp.format(), "Colors: gradient – the pattern picks its colors from this gradient"),
         Param.Heading("placeHeading", "Placement"),
-        Param.Slider("offsetU", "Shift X", -1000, 1000, 0, " %", decimals = 1),
-        Param.Slider("offsetV", "Shift Y", -1000, 1000, 0, " %", decimals = 1),
+        Param.Slider("offsetU", "Shift X", -1000, 1000, 0, " %", decimals = 1, transform = true),
+        Param.Slider("offsetV", "Shift Y", -1000, 1000, 0, " %", decimals = 1, transform = true),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
-        Param.Slider("scale", "Scale", 1, 1000, 100, " %"),
+        Param.Slider("scale", "Scale", 100, 100000, 10000, " %", decimals = 2, transform = true),
         Param.Heading("outHeading", "Output"),
         Param.Choice("blend", "Mix", listOf("Replace", "Multiply", "Soft light")),
         Param.Choice("antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 2, "Every pixel is sampled several times, the UVs interpolated in between"),
@@ -112,7 +112,7 @@ object UvTexture : Effect("uvtexture", "UV texture", "Lays a pattern over UV coo
         val rot = Math.toRadians((v["rotation"] / 100.0).toDouble())
         val cr = cos(-rot)
         val sr = sin(-rot)
-        val scale = max(0.01, v["scale"] / 100.0)
+        val scale = max(0.01, (v["scale"] / 100.0) / 100.0)
         val blend = v["blend"]
         val amount = v["amount"] / 100.0
         val sub = when (v["antialias"]) { 1 -> 2; 2 -> 4; else -> 1 }

@@ -46,7 +46,7 @@ class GridTest {
 
     @Test
     fun `row offset shifts every second row`() {
-        val out = run("columns" to 2, "rows" to 2, "rowOffset" to 50)
+        val out = run("columns" to 2, "rows" to 2, "rowOffset" to 5000)
         // second row shifted by half a cell (30 px): at x 35 the cell starting at 30 begins, red
         assertEquals(red, out[35, 45])
         assertEquals(blue, out[25, 45])

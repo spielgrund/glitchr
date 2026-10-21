@@ -53,7 +53,7 @@ class NewEffectsTest {
     @Test
     fun `pattern uses only the prominent colors`() {
         for ((effect, pattern) in (0..8).map { ColorPattern to it } + (0..9).map { Geometric to it }) {
-            val out = run(effect, "pattern" to pattern, "colors" to 4, "size" to 20, "mapping" to 0, "smoothing" to 0)
+            val out = run(effect, "pattern" to pattern, "colors" to 4, "size" to 2000, "mapping" to 0, "smoothing" to 0)
             val palette = dominantColors(src, 4, 5L).toSet()
             assertTrue(out.data.all { it in palette }, "${effect.name} $pattern uses only palette colors")
             ImageIO.write(out.toImage(), "png", File(dir, "${effect.id}-$pattern.png"))
@@ -64,7 +64,7 @@ class NewEffectsTest {
     fun `black and white patterns use only black, white and the gingham grey`() {
         val allowed = setOf(0xFF000000.toInt(), -1, 0xFF8C8C8C.toInt())
         for ((effect, pattern) in (0..8).map { ColorPattern to it } + (0..9).map { Geometric to it }) {
-            val out = run(effect, "pattern" to pattern, "mapping" to 3, "size" to 20, "smoothing" to 0)
+            val out = run(effect, "pattern" to pattern, "mapping" to 3, "size" to 2000, "smoothing" to 0)
             assertTrue(out.data.all { it in allowed }, "${effect.name} $pattern in black and white")
             assertTrue(out.data.toSet().size >= 2, "${effect.name} $pattern has more than one color")
         }
@@ -95,7 +95,7 @@ class NewEffectsTest {
     @Test
     fun `stripe gradient ramps from color 1 at the dark stripe to color 2 at the end of the light one`() {
         // plain stripes of 20 px: a dark and a light stripe make a 40 px ramp from black to white
-        val out = run(ColorPattern, "pattern" to 0, "mapping" to 6, "size" to 20, "smoothing" to 0, "color1" to 0x000000, "color2" to 0xFFFFFF)
+        val out = run(ColorPattern, "pattern" to 0, "mapping" to 6, "size" to 2000, "smoothing" to 0, "color1" to 0x000000, "color2" to 0xFFFFFF)
         val row = (0 until out.width).map { out[it, 10] and 0xFF }
         val start = (1 until out.width - 40).first { row[it] < row[it - 1] - 100 } // where a ramp begins again
         assertTrue(row[start] < 8, "top edge of the dark stripe is color 1: ${row[start]}")
@@ -174,7 +174,7 @@ class NewEffectsTest {
             }
         }
         fun coverage(size: Int) = run(
-            Particles, "background" to 2, "abstraction" to 0, "particleSize" to size, "sizeJitter" to 0, "opacity" to 100, image = img,
+            Particles, "background" to 2, "abstraction" to 0, "particleSize" to size * 100, "sizeJitter" to 0, "opacity" to 100, image = img,
         ).data.count { alpha(it) > 0 } / 57600.0
         val small = coverage(50)
         val large = coverage(300)

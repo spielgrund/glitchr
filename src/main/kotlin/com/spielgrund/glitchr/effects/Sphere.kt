@@ -42,8 +42,8 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
                 "Mirror ball: the picture reflected like chrome",
         ),
         Param.Slider("radius", "Radius", 5, 400, 80, " %", "Size of the ball (100 % = half the shorter side)"),
-        Param.Slider("centerX", "Center X", -2000, 2000, 0, " px", "Pixels from the middle of the canvas – can also be dragged with the handle in the picture"),
-        Param.Slider("centerY", "Center Y", -2000, 2000, 0, " px"),
+        Param.Slider("centerX", "Center X", -200000, 200000, 0, " px", "Pixels from the middle of the canvas – can also be dragged with the handle in the picture", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", -200000, 200000, 0, " px", decimals = 2, transform = true),
         Param.Choice("background", "Around the ball", backgrounds, tip = "What stays outside the ball (globe, glass and mirror ball)"),
         Param.Heading("shapeHeading", "Shape"),
         Param.Slider("amount", "Bulge", -100, 100, 100, " %", "Bulge / pinch: positive swells outwards, negative pinches inwards"),
@@ -52,12 +52,12 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
         Param.Slider("repeat", "Repeat", 1, 8, 1, tip = "Globe and mirror ball: how often the picture runs around the ball"),
         Param.Toggle("seamless", "Hide seam", true, "Globe and mirror ball: runs the picture forth and mirrored back, so its ends meet without a seam"),
         Param.Slider("ior", "Refraction", 100, 250, 150, decimals = 2, tip = "Glass ball: refractive index – 1.00 bends nothing, 1.50 is glass, higher bends more"),
-        Param.Slider("zoom", "Backdrop zoom", 10, 400, 100, " %", "Glass ball: enlarges the picture seen through the ball"),
+        Param.Slider("zoom", "Backdrop zoom", 1000, 40000, 10000, " %", "Glass ball: enlarges the picture seen through the ball", decimals = 2, transform = true),
         Param.Heading("lightHeading", "Light"),
         Param.Slider("shading", "Shading", 0, 100, 50, " %", "Brightens the side facing the light and darkens the other one"),
         Param.Slider("lightAngle", "Light direction", 0, 35900, 22500, "°", "Where the light comes from; 225° = from the top left", decimals = 2),
         Param.Slider("highlight", "Highlight", 0, 100, 40, " %", "Shiny spot where the light is reflected"),
-        Param.Slider("gloss", "Highlight size", 1, 100, 30, " %", "Small: a sharp spot · large: a broad sheen"),
+        Param.Slider("gloss", "Highlight size", 100, 10000, 3000, " %", "Small: a sharp spot · large: a broad sheen", decimals = 2),
         Param.Choice(
             "antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 1,
             "Samples per pixel inside the ball – smooths fine stripes on the globe and in the reflections; the rim always gets 4 × 4 unless off",
@@ -72,8 +72,8 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
         val w = src.width
         val h = src.height
         val mode = v["mode"]
-        val cx = w / 2.0 + v["centerX"]
-        val cy = h / 2.0 + v["centerY"]
+        val cx = w / 2.0 + (v["centerX"] / 100.0)
+        val cy = h / 2.0 + (v["centerY"] / 100.0)
         val radius = max(1.0, min(w, h) / 2.0 * v["radius"] / 100.0)
         val background = v["background"]
         val amount = v["amount"] / 100.0
@@ -82,11 +82,11 @@ object Sphere : Effect("sphere", "Sphere", "Bulges the picture, wraps it around 
         val repeat = v["repeat"].toDouble()
         val seamless = v.bool("seamless")
         val ior = v["ior"] / 100.0
-        val zoom = v["zoom"] / 100.0
+        val zoom = (v["zoom"] / 100.0) / 100.0
         // bulging only shades as much as it bulges
         val shading = v["shading"] / 100.0 * if (mode == BULGE) abs(amount) else 1.0
         val highlight = v["highlight"] / 100.0 * if (mode == BULGE) abs(amount) else 1.0
-        val shininess = 4 + 200 * (1 - v["gloss"] / 100.0).pow(2)
+        val shininess = 4 + 200 * (1 - (v["gloss"] / 100.0) / 100.0).pow(2)
         val lightAngle = (v["lightAngle"] / 100.0) * PI / 180
         // light from the chosen side and somewhat from the front
         val lx = cos(lightAngle) * 0.6

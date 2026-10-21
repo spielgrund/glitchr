@@ -29,8 +29,8 @@ object Twist : Effect("twist", "Twist", "Twists the picture around a center into
         ),
         Param.Choice("rings", "Rings", ringStyles, 0, "Rings that turn alternately left and right: smoothly as waves, or in hard steps"),
         Param.Slider("ringCount", "Ring count", 1, 100, 4, tip = "Rings within the radius"),
-        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1),
-        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1),
+        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
+        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
         Param.Choice("edge", "Edge", Transform.edgeOptions, 3, "What comes in from outside the picture"),
         Param.Choice("antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 1, "Smoother where the whirl winds tightly"),
     )

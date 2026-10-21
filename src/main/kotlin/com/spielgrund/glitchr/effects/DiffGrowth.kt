@@ -81,7 +81,7 @@ object DiffGrowth : Effect("diffgrowth", "Differential Growth", "Curves grow, fo
         Param.Slider("lightHeight", "Light height", 500, 9000, 4500, "°", decimals = 2),
         Param.Slider("shading", "Shading", 0, 100, 60, " %"),
         Param.Slider("gloss", "Gloss", 0, 100, 45, " %"),
-        Param.Slider("glossSize", "Gloss size", 1, 100, 35, " %"),
+        Param.Slider("glossSize", "Gloss size", 100, 10000, 3500, " %", decimals = 2),
         Param.Slider("amount", "Strength", 0, 100, 100, " %"),
     )
 
@@ -370,7 +370,7 @@ object DiffGrowth : Effect("diffgrowth", "Differential Growth", "Curves grow, fo
         val amount = v["amount"] / 100.0
         val shading = v["shading"] / 100.0
         val gloss = v["gloss"] / 100.0
-        val shininess = 4 + (1 - v["glossSize"] / 100.0).pow(2) * 200
+        val shininess = 4 + (1 - (v["glossSize"] / 100.0) / 100.0).pow(2) * 200
         val la = Math.toRadians((v["lightAngle"] / 100.0).toDouble())
         val le = Math.toRadians((v["lightHeight"] / 100.0).toDouble())
         val lx = cos(la) * cos(le)

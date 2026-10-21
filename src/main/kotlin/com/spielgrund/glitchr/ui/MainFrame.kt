@@ -5,6 +5,7 @@ import com.spielgrund.glitchr.effects.Effects
 import com.spielgrund.glitchr.effects.Generator
 import com.spielgrund.glitchr.effects.Generators
 import com.spielgrund.glitchr.image.Pixels
+import com.spielgrund.glitchr.model.WholeSteps
 import com.spielgrund.glitchr.model.Animator
 import com.spielgrund.glitchr.model.DocState
 import com.spielgrund.glitchr.model.EffectLayer
@@ -61,6 +62,8 @@ import javax.swing.filechooser.FileNameExtensionFilter
 import kotlin.system.exitProcess
 
 private val prefs = Preferences.userNodeForPackage(MainFrame::class.java)
+private const val PREF_WHOLE_ROTATIONS = "wholeRotations"
+private const val PREF_WHOLE_TRANSFORMS = "wholeTransforms"
 private const val PREF_DIR = "lastDir"
 private const val PREF_NEW_WIDTH = "newWidth"
 private const val PREF_NEW_HEIGHT = "newHeight"
@@ -191,6 +194,12 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             canvas.showFlow = value
         }
 
+    override var selectedPoint: Int
+        get() = canvas.selectedPoint
+        set(value) {
+            canvas.selectedPoint = value
+        }
+
     override val imageSize get() = if (hasDocument) docWidth to docHeight else null
 
     /**
@@ -212,6 +221,9 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         }
 
     init {
+        // whole steps in animations, as last set
+        WholeSteps.rotations = prefs.getBoolean(PREF_WHOLE_ROTATIONS, false)
+        WholeSteps.transforms = prefs.getBoolean(PREF_WHOLE_TRANSFORMS, false)
         defaultCloseOperation = DO_NOTHING_ON_CLOSE
         addWindowListener(object : WindowAdapter() {
             override fun windowClosing(e: WindowEvent) {
@@ -461,6 +473,26 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 addActionListener { removeAnimation() }
             })
         })
+        add(JMenu("Settings").apply {
+            fun whole(text: String, tip: String, pref: String, set: (Boolean) -> Unit) = javax.swing.JCheckBoxMenuItem(text, prefs.getBoolean(pref, false)).apply {
+                toolTipText = tip
+                addActionListener {
+                    prefs.putBoolean(pref, isSelected)
+                    set(isSelected)
+                    wholeStepsChanged()
+                }
+            }
+            add(whole(
+                "Whole-number rotations in animations",
+                "Animated angles move in whole degrees; keyframes keep their fractions",
+                PREF_WHOLE_ROTATIONS,
+            ) { WholeSteps.rotations = it })
+            add(whole(
+                "Whole-number transformations in animations",
+                "Animated positions, shifts and scales move in whole pixels and percent; keyframes keep their fractions",
+                PREF_WHOLE_TRANSFORMS,
+            ) { WholeSteps.transforms = it })
+        })
         add(JMenu("View").apply {
             add(item("Fit", KeyEvent.VK_0) { canvas.fit() })
             add(item("100 %", KeyEvent.VK_1) { canvas.setZoom(1.0) })
@@ -476,6 +508,14 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 requestRender()
             })
         })
+    }
+
+    /** The whole-step settings changed: every animated setting shows its value anew, and frames are rendered again. */
+    private fun wholeStepsChanged() {
+        Animator.syncToFrame(layers, currentFrame)
+        frameCache.invalidate()
+        rebuildEditor()
+        requestRender()
     }
 
     private fun item(text: String, key: Int, extraMask: Int = 0, action: () -> Unit) = JMenuItem(text).apply {
@@ -601,6 +641,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     }
 
     private fun select(layer: Layer?) {
+        // another layer: its own points, none selected yet
+        if (layer !== selected) canvas.selectedPoint = -1
         selected = layer
         canvas.layer = layer
         refreshLayers()

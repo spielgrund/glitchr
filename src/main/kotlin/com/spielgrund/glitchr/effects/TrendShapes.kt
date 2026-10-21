@@ -28,7 +28,7 @@ object TrendShapes : Effect("trendshapes", "Trend shapes", "Early-2000s flyer sh
     )
 
     override val params = listOf(
-        Param.Slider("size", "Size", 10, 300, 100, " %"),
+        Param.Slider("size", "Size", 1000, 30000, 10000, " %", decimals = 2, transform = true),
         Param.Choice("palette", "Palette", palettes.map { it.first }, 0),
         Param.Color("color1", "Color 1", 0xFF2E88),
         Param.Color("color2", "Color 2", 0x2EC4FF),
@@ -50,7 +50,7 @@ object TrendShapes : Effect("trendshapes", "Trend shapes", "Early-2000s flyer sh
         val h = src.height.toDouble()
         val random = Random(seed)
         val colors = palettes[v["palette"]].second.let { p -> if (v["palette"] == palettes.size - 1) intArrayOf(v["color1"], v["color2"], v["color3"], v["color1"]) else p }
-        val scale = min(w, h) * v["size"] / 100.0
+        val scale = min(w, h) * (v["size"] / 100.0) / 100.0
         val line = v["line"].toFloat()
         val kinds = listOf("swoosh", "rings", "halftone", "stars", "blobs", "lines", "bits").map { v[it].toDouble() }
         val total = kinds.sum()
@@ -209,7 +209,7 @@ object ChromeSymbols : Effect("chromeshapes", "Chrome shapes", "Y2K chrome symbo
         Param.Slider("iconWidth", "Line width", -100, 100, 0, " %", "Makes the icon's lines and shapes bolder or thinner – also for SVG"),
         Param.Slider("iconSmooth", "Smooth outline", 0, 100, 0, " %", "Rounds the outline of a pasted picture: wavy or stepped edges of small logos become smooth curves, corners round"),
         Param.Slider("count", "Symbols", 1, 80, 12, tip = "Grid and scattered"),
-        Param.Slider("size", "Size", 10, 300, 100, " %"),
+        Param.Slider("size", "Size", 1000, 30000, 10000, " %", decimals = 2, transform = true),
         Param.Slider("turnX", "Turn X", -18000, 18000, 0, "°", "Tips the symbols forwards or back in space; the surroundings stay, so the reflections slide over the metal", decimals = 2),
         Param.Slider("turnY", "Turn Y", -18000, 18000, 0, "°", "Turns the symbols sideways in space – past 90° you see the back", decimals = 2),
         Param.Slider("rotation", "Rotation (Z)", -18000, 18000, 0, "°", "Turns the symbols in the picture plane", decimals = 2),
@@ -231,7 +231,7 @@ object ChromeSymbols : Effect("chromeshapes", "Chrome shapes", "Y2K chrome symbo
     internal fun iconLook(v: Values) = CustomIcon.Look(v["iconParts"], v["iconContrast"] / 100.0, v["iconBrightness"] / 100.0, v["iconWidth"] / 100.0, v["iconSmooth"] / 100.0)
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels = ChromeShapes.draw(
-        if (v.bool("transparent")) Pixels(src.width, src.height) else src, seed, v["layout"], v["count"], v["size"] / 100.0, v["symbol"],
+        if (v.bool("transparent")) Pixels(src.width, src.height) else src, seed, v["layout"], v["count"], (v["size"] / 100.0) / 100.0, v["symbol"],
         Math.toRadians(v["turnX"] / 100.0), Math.toRadians(v["turnY"] / 100.0), Math.toRadians(v["rotation"] / 100.0),
         v["tint"], v["bulge"] / 100.0, v["antialias"] + 1, v["thickness"] / 100.0, v["crinkle"] / 100.0, v["crinkleSize"] / 100.0, v["crinkleReach"] / 100.0,
         Math.toRadians(v["crinkleAngle"] / 100.0), v["crinklePull"] / 100.0, CustomIcon.decode(v.text("icon"), iconLook(v)),

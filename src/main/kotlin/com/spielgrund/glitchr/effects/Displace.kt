@@ -18,7 +18,7 @@ object Displace : Effect("noise", "Displace", "Shifts the picture's pixels along
 
     override val params = listOf(
         Param.Choice("type", "Noise", types),
-        Param.Slider("scale", "Size", 2, 1000, 80, " px", "Size of the noise structures"),
+        Param.Slider("scale", "Size", 200, 100000, 8000, " px", "Size of the noise structures", decimals = 2),
         Param.Slider("octaves", "Detail levels", 1, 8, 4, tip = "Fractal and Ridged only: how many finer layers are added"),
         Param.Slider("strength", "Strength", 0, 300, 100, " %", "How far it shifts, relative to the size. For seamless transitions use the layer's mask, e.g. a gradient"),
         Param.Choice("edge", "Edge", Edge.labels, default = Edge.MIRROR.ordinal),
@@ -28,7 +28,7 @@ object Displace : Effect("noise", "Displace", "Shifts the picture's pixels along
         val noise = Noise(seed)
         val type = v["type"]
         val octaves = v["octaves"]
-        val scale = v["scale"].toDouble()
+        val scale = (v["scale"] / 100.0).toDouble()
         val strength = v["strength"] / 100.0
         val edge = Edge.entries[v["edge"]]
         val amount = scale * strength

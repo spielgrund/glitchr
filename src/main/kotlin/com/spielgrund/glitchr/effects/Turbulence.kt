@@ -43,7 +43,7 @@ object Turbulence : Effect("turbulence", "Turbulence", "Colors flow as on water 
         Param.Toggle("showMask", "Show range", false, "Shows in black and white how strongly it flows where"),
         Param.Heading("flowHeading", "Flow field"),
         Param.Slider("swirl", "Swirl strength", 0, 200, 30, " px", "How far the color flows per pass", decimals = 1),
-        Param.Slider("swirlSize", "Swirl size", 4, 1000, 120, " px", "Size of the largest swirls", canvasMax = true),
+        Param.Slider("swirlSize", "Swirl size", 400, 100000, 12000, " px", "Size of the largest swirls", canvasMax = true, decimals = 2),
         Param.Slider("swirlDetail", "Fineness", 1, 6, 4, tip = "How many ever smaller swirls are added"),
         Param.Slider("swirlSteps", "Passes", 1, 300, 80, tip = "The more, the finer the streaks are drawn out and folded"),
         Param.Slider("swirlEvolve", "Change", 0, 100, 30, " %", "How fast the flow changes – 0 %: standing swirls, more: tangled folds"),
@@ -70,7 +70,7 @@ object Turbulence : Effect("turbulence", "Turbulence", "Colors flow as on water 
         }
         if (region != null && region.all { it <= 0f }) return src
         val speed = v["swirl"] / 10.0
-        val size = max(2.0, v["swirlSize"].toDouble())
+        val size = max(2.0, (v["swirlSize"] / 100.0).toDouble())
         val octaves = v["swirlDetail"]
         val steps = v["swirlSteps"]
         val evolve = v["swirlEvolve"] / 100.0 * 0.03

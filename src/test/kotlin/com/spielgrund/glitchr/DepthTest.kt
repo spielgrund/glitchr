@@ -42,7 +42,7 @@ class DepthTest {
     @Test
     fun `the camera moves near things more than far ones`() {
         // focus far: the far sky stays, the near stripes move
-        val moved = Wiggle.apply(scene, Wiggle.defaultValues(mapOf("mode" to 0, "camX" to 6, "camY" to 0, "focus" to 0)), 3L)
+        val moved = Wiggle.apply(scene, Wiggle.defaultValues(mapOf("mode" to 0, "camX" to 600, "camY" to 0, "focus" to 0)), 3L)
         val skyChanged = (10 until 110).count { moved[it, 10] != scene[it, 10] }
         val groundChanged = (10 until 110).count { moved[it, 80] != scene[it, 80] }
         assertTrue(groundChanged > skyChanged + 20, "ground $groundChanged, sky $skyChanged")

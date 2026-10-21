@@ -110,3 +110,33 @@ fun sampleBilinear(src: Pixels, x: Double, y: Double, edge: Edge): Int {
         ty,
     )
 }
+
+/**
+ * The mean of [pictures] (all the same size), pixel by pixel – with premultiplied alpha, so
+ * transparent parts don't darken the edges. For motion blur.
+ */
+fun meanOf(pictures: List<Pixels>): Pixels {
+    val first = pictures.first()
+    if (pictures.size == 1) return first
+    val w = first.width
+    val out = Pixels(w, first.height)
+    val n = pictures.size
+    parallelRows(first.height) { y ->
+        for (x in 0 until w) {
+            val i = y * w + x
+            var a = 0L; var r = 0L; var g = 0L; var b = 0L
+            for (p in pictures) {
+                val c = p.data[i]
+                val ca = c ushr 24
+                a += ca
+                r += (c shr 16 and 0xFF) * ca
+                g += (c shr 8 and 0xFF) * ca
+                b += (c and 0xFF) * ca
+            }
+            out.data[i] = if (a == 0L) 0 else argb(
+                ((a + n / 2) / n).toInt(), ((r + a / 2) / a).toInt(), ((g + a / 2) / a).toInt(), ((b + a / 2) / a).toInt(),
+            )
+        }
+    }
+    return out
+}

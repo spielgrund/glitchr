@@ -8,7 +8,9 @@ import com.spielgrund.glitchr.effects.WaterReflection
 import com.spielgrund.glitchr.effects.Values
 import com.spielgrund.glitchr.image.Pixels
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class NewGeneratorsTest {
@@ -36,7 +38,7 @@ class NewGeneratorsTest {
 
     @Test
     fun `flowers and trend shapes draw every kind`() {
-        val flowers = (0..7).map { Flowers.apply(white(), Flowers.defaultValues(mapOf("kind" to it, "size" to 60)), 2L).data }
+        val flowers = (0..7).map { Flowers.apply(white(), Flowers.defaultValues(mapOf("kind" to it, "size" to 6000)), 2L).data }
         for (a in flowers.indices) for (b in a + 1 until flowers.size - 1) assertTrue(!flowers[a].contentEquals(flowers[b]), "flower $a and $b")
         val shapes = TrendShapes.apply(white(), TrendShapes.defaultValues(), 4L)
         assertTrue(shapes.data.toSet().size > 20)
@@ -129,7 +131,7 @@ class NewGeneratorsTest {
 
     @Test
     fun `a tribal fits onto the canvas, moves, scales and can stand on transparency`() {
-        val big = mapOf("shape" to 0, "levels" to 3, "count" to 5, "size" to 160)
+        val big = mapOf("shape" to 0, "levels" to 3, "count" to 5, "size" to 16000)
         fun ink(p: Pixels, x: Int, y: Int) = (p[x, y] ushr 24) > 0 && (p[x, y] and 0xFF) < 128
         // fitted: nothing touches the canvas border
         val fitted = Tribal.apply(white(), Tribal.defaultValues(big), 3L)
@@ -138,7 +140,7 @@ class NewGeneratorsTest {
         val clear = Tribal.apply(white(), Tribal.defaultValues(big + mapOf("transparent" to 1)), 3L)
         assertEquals(0, clear[1, 1] ushr 24)
         // moved to the right: no ink on the left
-        val moved = Tribal.apply(white(), Tribal.defaultValues(big + mapOf("posX" to 300, "scale" to 50)), 3L)
+        val moved = Tribal.apply(white(), Tribal.defaultValues(big + mapOf("ornamentX" to 300, "scale" to 5000)), 3L)
         assertTrue((0 until 160).none { y -> (0 until 70).any { ink(moved, it, y) } })
         // turning a level changes the ornament
         assertTrue(!fitted.data.contentEquals(Tribal.apply(white(), Tribal.defaultValues(big + mapOf("rot2" to 6000)), 3L).data))
@@ -259,7 +261,7 @@ class NewGeneratorsTest {
         val src = Pixels(40, 40).also { p -> for (i in p.data.indices) p.data[i] = if (i % 40 < 20) 0xFF20A040.toInt() else 0xFFC02020.toInt() }
         val grey = fx.apply(src, fx.defaultValues(mapOf("saturation" to 0)), 1L).data
         assertTrue(grey.all { c -> listOf(c shr 16 and 0xFF, c shr 8 and 0xFF, c and 0xFF).let { it.max() - it.min() } <= 3 }, "0 % saturation is grey")
-        assertTrue(!fx.apply(src, fx.defaultValues(mapOf("hue" to 120)), 1L).data.contentEquals(fx.apply(src, fx.defaultValues(), 1L).data), "the hue turns")
+        assertTrue(!fx.apply(src, fx.defaultValues(mapOf("hue" to 12000)), 1L).data.contentEquals(fx.apply(src, fx.defaultValues(), 1L).data), "the hue turns")
     }
 
     @Test
@@ -326,5 +328,183 @@ class NewGeneratorsTest {
         for (y in 0 until 30) for (x in 0 until 60) if (stochastic[x, y] == stochastic[x + 60, y]) same++
         assertTrue(same < 30 * 60 / 2, "the repeats differ")
         assertTrue(!fx.apply(src, fx.defaultValues(mapOf("repeats" to 2)), 2L).data.contentEquals(stochastic.data), "another seed, another arrangement")
+    }
+
+    @Test
+    fun `break open parts the picture and reveals what lies below`() {
+        val fx = com.spielgrund.glitchr.effects.BreakOpen
+        val src = Pixels(160, 120).also { p -> for (i in p.data.indices) p.data[i] = (0xFF shl 24) or ((i % 160) shl 16) or ((i / 160) shl 8) or 90 }
+        // nothing moved, no gaps: the picture stays
+        val still = fx.apply(src, fx.defaultValues(mapOf("spread" to 0, "swing" to 0, "tilt" to 0, "gap" to 0, "branches" to 0, "edgeLight" to 0, "roll" to 0)), 1L)
+        assertTrue(still.data.indices.count { still.data[it] != src.data[it] } < src.data.size / 100, "unchanged")
+        // opened: the cross of four even cracks shows the transparency behind along both axes
+        val open = fx.apply(src, fx.defaultValues(mapOf("count" to 4, "angle" to 0, "spread" to 2000, "swing" to 0, "tilt" to 0, "branches" to 0, "roll" to 0)), 1L)
+        assertEquals(0, open[80, 5] ushr 24, "gap above the middle")
+        assertEquals(0, open[5, 60] ushr 24, "gap left of the middle")
+        assertEquals(255, open[20, 20] ushr 24, "a piece in the corner")
+        // a color behind instead
+        val red = fx.apply(src, fx.defaultValues(mapOf("count" to 4, "angle" to 0, "spread" to 2000, "behind" to 1, "behindColor" to 0xFF0000)), 1L)
+        assertEquals(0xFFFF0000.toInt(), red[80, 60])
+        // open 0 %: untouched, whatever else is set
+        assertContentEquals(src.data, fx.apply(src, fx.defaultValues(mapOf("open" to 0, "layout" to 2, "branches" to 100)), 1L).data)
+        // rolled up: the pieces' underside shows in the back color, lit and shaded
+        val rolled = fx.apply(src, fx.defaultValues(mapOf("spread" to 0, "swing" to 0, "tilt" to 0, "roll" to 80, "rollRadius" to 10, "back" to 1, "backColor" to 0x00FF00)), 1L)
+        assertTrue(rolled.data.count { c -> (c shr 8 and 0xFF) > 2 * (c shr 16 and 0xFF) + 40 && (c shr 8 and 0xFF) > 2 * (c and 0xFF) + 40 } > 50, "green rolls")
+    }
+
+    @Test
+    fun `lightning starts at its points, follows drawn arrows and glows`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("lightning")!!
+        fun lit(p: Pixels, x: Int, y: Int, r: Int): Int {
+            var best = 0
+            for (yy in y - r..y + r) for (xx in x - r..x + r) if (xx in 0 until p.width && yy in 0 until p.height) best = maxOf(best, p[xx, yy] and 0xFF)
+            return best
+        }
+        fun run(values: Map<String, Int>, texts: Map<String, String>) =
+            g.generate(200, 150, com.spielgrund.glitchr.effects.Values(g.defaults().apply { putAll(values) }, g.textDefaults().apply { putAll(texts) }), 1L)
+        // from the listed points: bright at each of them
+        val points = run(mapOf("fan" to 36000, "length" to 2000), mapOf("points" to "0.2,0.3;0.8,0.3;0.5,0.8"))
+        for ((x, y) in listOf(40 to 45, 160 to 45, 100 to 120)) assertTrue(lit(points, x, y, 2) > 200, "a bolt starts at $x, $y")
+        // no points, an arrow across the top: the bolt runs there, not at the bottom
+        val drawn = run(mapOf("mode" to 1, "branches" to 0, "glow" to 0), mapOf("strokes" to "0.1,0.2 0.5,0.2 0.9,0.2"))
+        assertTrue(lit(drawn, 100, 30, 14) > 200, "the bolt follows the arrow")
+        assertTrue(lit(drawn, 100, 130, 10) < 40, "nothing at the bottom")
+        // the modes apart: arrows don't count with points, points don't count with arrows
+        val onlyPoints = run(mapOf("branches" to 0, "glow" to 0), mapOf("points" to "", "strokes" to "0.1,0.2 0.5,0.2 0.9,0.2"))
+        assertTrue(onlyPoints.data.all { it == onlyPoints.data[0] }, "no arrows in the points mode")
+        // without points and arrows: nothing
+        val none = run(emptyMap(), mapOf("points" to "", "strokes" to ""))
+        assertTrue(none.data.all { it == none.data[0] }, "an empty sky")
+        // the glow lights up the surroundings in its color
+        val glow = run(mapOf("color" to 0xFF0000, "glow" to 200), emptyMap())
+        assertTrue(glow.data.count { (it shr 16 and 0xFF) > (it and 0xFF) + 40 } > 200, "red glow")
+        // on transparency: only the light, the sky stays see-through
+        val clear = run(mapOf("transparent" to 1, "fan" to 36000, "length" to 2000), mapOf("points" to "0.5,0.5"))
+        assertEquals(0, clear[2, 2] ushr 24, "transparent sky")
+        assertTrue(clear[100, 75] ushr 24 > 240 && (clear[100, 75] and 0xFF) > 200, "a bright, opaque core")
+    }
+
+    @Test
+    fun `obj models are read, limited and rendered`() {
+        val mesh = com.spielgrund.glitchr.effects.Mesh
+        // a quad and a triangle, with texture places and negative indices
+        val obj = "v 0 0 0\nv 2 0 0\nv 2 2 0\nv 0 2 0\nv 1 1 3\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\n" +
+            "f 1/1 2/2 3/3 4/4\nf -5/1 -4/2 -1/3\n"
+        val m = mesh.parseObj(obj)!!
+        assertEquals(2, m.faces)
+        assertEquals(3, m.triangles, "the quad split in two")
+        assertTrue(m.uv != null)
+        // the quad's diagonal is no edge of the wireframe: of its two triangles, each misses one edge
+        assertEquals(2, (0 until 2).count { m.edges[it].toInt() != 7 })
+        // centred, radius 1
+        assertTrue(m.pos.all { it in -1.001f..1.001f })
+        // too many faces
+        val big = StringBuilder("v 0 0 0\nv 1 0 0\nv 0 1 0\n").apply { repeat(1025) { append("f 1 2 3\n") } }.toString()
+        assertFailsWith<com.spielgrund.glitchr.effects.Mesh.Companion.TooBig> { mesh.parseObj(big) }
+        // rendered: something in the middle, the ground around it
+        val g = com.spielgrund.glitchr.effects.Generators.byId("model3d")!!
+        fun run(values: Map<String, Int>, model: String = "") =
+            g.generate(160, 120, com.spielgrund.glitchr.effects.Values(g.defaults().apply { putAll(values) }, g.textDefaults().apply { put("model", model) }), 1L)
+        val ground = 0xFF15131C.toInt()
+        val cube = run(mapOf("builtin" to 1))
+        assertTrue(cube[80, 60] != ground && cube[3, 3] == ground)
+        assertTrue(!run(mapOf("builtin" to 1, "rotY" to 4500)).data.contentEquals(cube.data), "turning changes it")
+        assertTrue(!run(emptyMap(), obj).data.contentEquals(run(emptyMap()).data), "the pasted model is used")
+        // wireframe only: only the wire color on the ground
+        val wire = run(mapOf("builtin" to 1, "wire" to 2, "antialias" to 0))
+        assertTrue(wire.data.all { it == ground || it == 0xFFFFFFFF.toInt() } && wire.data.count { it == 0xFFFFFFFF.toInt() } > 50)
+        // transparent: the ground goes
+        assertEquals(0, run(mapOf("transparent" to 1))[3, 3] ushr 24)
+        assertTrue(mesh.BLENDER_SCRIPT.contains("window_manager.clipboard"))
+    }
+
+    @Test
+    fun `no generator's settings share a name with the generator's own`() {
+        val own = setOf("base", "posX", "posY", "posScale", "posRotation", "posEdge", "posBlur", "posShutter", "posSamples")
+        for (g in com.spielgrund.glitchr.effects.Generators.all) {
+            val clash = g.effect?.params?.map { it.key }?.filter { it in own } ?: emptyList()
+            assertTrue(clash.isEmpty(), "${g.name}: $clash")
+        }
+        // the 3D model places itself: no general position
+        assertTrue(com.spielgrund.glitchr.effects.Generators.byId("model3d")!!.params.none { it.key == "posX" })
+        assertTrue(com.spielgrund.glitchr.effects.Mesh.builtIn(6).faces <= com.spielgrund.glitchr.effects.Mesh.MAX_FACES, "the skull fits")
+    }
+
+    @Test
+    fun `the dollar sign and the rubber duck are built in`() {
+        val mesh = com.spielgrund.glitchr.effects.Mesh
+        val dollar = mesh.builtIn(8)
+        val duck = mesh.builtIn(9)
+        assertTrue(dollar.faces in 20..mesh.MAX_FACES && duck.faces <= mesh.MAX_FACES)
+        assertTrue(dollar.colors == null && duck.colors != null)
+        // the duck in its own colors: yellow, orange and black
+        assertTrue(duck.colors!!.toSet().containsAll(listOf(0xFFD21F, 0xFF7A1A, 0x111111)))
+        val g = com.spielgrund.glitchr.effects.Generators.byId("model3d")!!
+        fun run(own: Int) = g.generate(160, 120, g.defaultValues(mapOf("builtin" to 9, "material" to 0, "ownColors" to own)), 1L)
+        val yellow = run(1).data.count { (it shr 16 and 0xFF) > 150 && (it shr 8 and 0xFF) > 120 && (it and 0xFF) < 80 }
+        assertTrue(yellow > 300, "a yellow duck")
+        assertTrue(!run(0).data.contentEquals(run(1).data), "model colors can be switched off")
+    }
+
+    @Test
+    fun `the noise sphere grows hairy with energy and churns with time`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("noisesphere")!!
+        fun run(vararg c: Pair<String, Int>) = g.generate(200, 160, g.defaultValues(mapOf("glow" to 0, "streaks" to 0, *c)), 2L)
+        fun litOutside(p: Pixels): Int {
+            // light beyond the sphere's radius (32 % of 160 = about 51 px around the middle)
+            var n = 0
+            for (y in 0 until p.height) for (x in 0 until p.width) {
+                if (kotlin.math.hypot(x - 100.0, y - 80.0) > 60 && (p[x, y] and 0xFF) > 60) n++
+            }
+            return n
+        }
+        assertTrue(litOutside(run("energy" to 100)) > litOutside(run("energy" to 0)) + 50, "rays shoot out with energy")
+        assertTrue(!run("time" to 5000).data.contentEquals(run("time" to 0).data), "time moves the noise")
+        assertEquals(0, run("transparent" to 1)[2, 2] ushr 24)
+    }
+
+    @Test
+    fun `error dialogs launch, bounce and leave trails`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("errors")!!
+        fun run(vararg c: Pair<String, Int>) = g.generate(320, 200, g.defaultValues(mapOf(*c)), 4L)
+        fun changed(p: Pixels): Int = p.data.count { (it and 0xFFFFFF) != 0x008080 }
+        val waiting = run("progress" to 0)
+        assertTrue(changed(waiting) > 1000, "the dialogs wait on their piles")
+        assertTrue(changed(run("progress" to 8000)) > changed(run("progress" to 8000, "trail" to 0)) + 1000, "the trail stays behind")
+        assertTrue(!run("progress" to 8000).data.contentEquals(waiting.data), "progress moves them")
+        for (st in 0..3) assertTrue(changed(run("style" to st, "progress" to 3000)) > 1000, "style $st draws")
+        assertEquals(0, run("transparent" to 1, "progress" to 0)[0, 199] ushr 24)
+    }
+
+    @Test
+    fun `fire burns around a cut-out shape or inside it, and flickers with time`() {
+        // an opaque square in the middle of a transparent picture
+        val src = Pixels(120, 120)
+        for (y in 60 until 100) for (x in 40 until 80) src.data[y * 120 + x] = 0xFF808080.toInt()
+        val fire = com.spielgrund.glitchr.effects.Fire
+        fun run(vararg c: Pair<String, Int>) = fire.apply(src, fire.defaultValues(mapOf(*c)), 3L)
+        val around = run()
+        val above = (0 until 60).sumOf { y -> (40 until 80).count { x -> around[x, y] ushr 24 > 100 } }
+        assertTrue(above > 200, "flames rise above the shape")
+        assertEquals(0, around[5, 115] ushr 24, "nothing below it")
+        assertEquals(0xFF808080.toInt(), around[60, 95], "the shape stays in front")
+        val inside = run("mode" to 1)
+        assertTrue((inside[60, 97] and 0xFF0000 shr 16) > (inside[60, 97] and 0xFF) + 60, "inside it burns from the bottom")
+        assertTrue(!run("time" to 300).data.contentEquals(around.data), "time moves the flames")
+    }
+
+    @Test
+    fun `fireflies rise from the bright areas`() {
+        // dark, with a bright band at the bottom
+        val src = Pixels(160, 160)
+        for (i in src.data.indices) src.data[i] = if (i / 160 >= 140) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+        val ff = com.spielgrund.glitchr.effects.Fireflies
+        fun run(vararg c: Pair<String, Int>) = ff.apply(src, ff.defaultValues(mapOf("glow" to 0, *c)), 5L)
+        fun litAbove(p: Pixels) = (0 until 130).sumOf { y -> (0 until 160).count { x -> (p[x, y] and 0xFF) > 40 } }
+        val a = run("time" to 5000)
+        assertTrue(litAbove(a) > 30, "some fly up")
+        assertTrue(!run("time" to 5300).data.contentEquals(a.data), "they move with the time")
+        val dark = Pixels(40, 40, IntArray(1600) { 0xFF000000.toInt() })
+        assertTrue(ff.apply(dark, ff.defaultValues(mapOf("time" to 5000)), 5L).data.contentEquals(dark.data), "no bright areas, no fireflies")
     }
 }

@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 class BlackHoleTest {
     private val src = testImage(200, 160)
 
-    private fun run(vararg c: Pair<String, Int>) = BlackHole.apply(src, BlackHole.defaultValues(mapOf("size" to 30, *c)), 1L)
+    private fun run(vararg c: Pair<String, Int>) = BlackHole.apply(src, BlackHole.defaultValues(mapOf("size" to 3000, *c)), 1L)
 
     @Test
     fun `the shadow is black and the picture is bent around it`() {
@@ -37,7 +37,7 @@ class BlackHoleTest {
     @Test
     fun `the generator draws it among stars`() {
         val g = Generators.byId("blackhole")!!
-        val out = g.generate(200, 150, g.defaultValues(mapOf("size" to 25)), 2L)
+        val out = g.generate(200, 150, g.defaultValues(mapOf("size" to 2500)), 2L)
         // the middle stays dark (only a breath of the glow reaches into it)
         assertTrue((out[100, 75] shr 16 and 0xFF) < 40, "dark in the middle")
         assertTrue(out.data.toSet().size > 50)

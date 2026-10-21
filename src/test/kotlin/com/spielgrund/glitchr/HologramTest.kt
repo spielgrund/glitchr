@@ -91,7 +91,7 @@ class HologramTest {
         assertTrue(!a.data.contentEquals(src.data), "sparks visible")
         assertTrue(!a.data.contentEquals(b.data), "different sparks when turned")
         fun lit(p: com.spielgrund.glitchr.image.Pixels) = p.data.indices.count { p.data[it] != src.data[it] }
-        assertTrue(lit(sparkles("sparkleSize" to 20)) > lit(sparkles("sparkleSize" to 3)), "larger sparks")
+        assertTrue(lit(sparkles("sparkleSize" to 2000)) > lit(sparkles("sparkleSize" to 300)), "larger sparks")
     }
 
     @Test
@@ -137,7 +137,7 @@ class HologramTest {
     fun `every pattern is printed into the areas`() {
         val plain = run(*none, "glow" to 0)
         for (p in 1..6) {
-            val out = run(*none, "glow" to 0, "pattern" to p, "patternDensity" to 100, "patternSize" to 30)
+            val out = run(*none, "glow" to 0, "pattern" to p, "patternDensity" to 100, "patternSize" to 3000)
             val changed = out.data.indices.count { out.data[it] != plain.data[it] }
             assertTrue(changed in 300 until out.data.size / 2, "pattern $p: $changed")
         }

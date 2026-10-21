@@ -57,10 +57,10 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
         Param.Choice("blend", "Mix", blends, 1, tip = "Screen: the foil glows over the picture · Overlay: stronger, dark spots stay dark · Color: the picture takes on the foil color, keeps its brightness"),
         Param.Slider("gloss", "Gloss", 0, 100, 50, " %", "Highlights on the areas currently facing the light"),
         Param.Slider("sparkle", "Sparkle", 0, 100, 0, " %", "How many little stars sit on the areas (100 %: packed tightly); they travel with their area and flash when turned"),
-        Param.Slider("sparkleSize", "Sparkle size", 1, 60, 6, " px", "Size of the sparkle stars"),
+        Param.Slider("sparkleSize", "Sparkle size", 100, 6000, 600, " px", "Size of the sparkle stars", decimals = 2),
         Param.Slider("edges", "Edges", 0, 100, 0, " %", "Bright embossed edges between the areas"),
         Param.Choice("pattern", "Pattern", patterns, tip = "Patterns embossed into the areas; they travel with their area and shimmer in a foil color of their own"),
-        Param.Slider("patternSize", "Pattern size", 4, 300, 28, " px", "Spacing of the patterns"),
+        Param.Slider("patternSize", "Pattern size", 400, 30000, 2800, " px", "Spacing of the patterns", decimals = 2),
         Param.Slider("patternDensity", "Pattern density", 0, 100, 50, " %", "How many places get a pattern"),
         Param.Slider("patternStrength", "Pattern strength", 0, 100, 70, " %"),
         Param.Slider("glow", "Glow", 0, 100, 40, " %", "The bright parts – highlights, edges, patterns, sparks – radiate into their surroundings"),
@@ -110,7 +110,7 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
         val edges = v["edges"] / 100.0
         val custom = intArrayOf(v["color1"], v["color2"], v["color3"])
         val pattern = v["pattern"]
-        val patternSize = v["patternSize"].toDouble()
+        val patternSize = (v["patternSize"] / 100.0).toDouble()
         val density = v["patternDensity"] / 100.0
         val patternStrength = v["patternStrength"] / 100.0
         val glow = v["glow"] / 100.0
@@ -131,7 +131,7 @@ object Hologram : Effect("hologram", "Hologram", "Holographic foil: the picture 
         val mirror = v["parallaxEdge"] == 0
         val glowColor = v["glowColor"] / 100.0
         val sparkleAmount = v["sparkle"] / 100.0
-        val sparkleSize = v["sparkleSize"].toDouble()
+        val sparkleSize = (v["sparkleSize"] / 100.0).toDouble()
 
         // the lights (gloss, edges, patterns, sparkles) are kept apart as well, for the glow
         val lightR = if (glow > 0) FloatArray(n) else null

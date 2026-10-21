@@ -35,9 +35,9 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
 
     override val params = listOf(
         Param.Choice("style", "Style", styles, 0),
-        Param.Slider("size", "Size", 3, 2000, 90, " px", "Radius of the black shadow", canvasMax = true),
-        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1),
-        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "From the middle of the canvas", decimals = 1),
+        Param.Slider("size", "Size", 300, 200000, 9000, " px", "Radius of the black shadow", canvasMax = true, decimals = 2, transform = true),
+        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
+        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "From the middle of the canvas", decimals = 1, transform = true),
         Param.Slider("lensing", "Lensing", 0, 300, 100, " %", "How strongly the picture behind is bent around the hole"),
         Param.Choice("background", "Behind", listOf("The picture, bent", "Black"), 0),
         Param.Slider("stars", "Stars", 0, 100, 0, " %", "Adds stars behind the hole (they are bent too)"),
@@ -45,7 +45,7 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
         Param.Heading("diskHeading", "Disk"),
         Param.Slider("tilt", "View angle", 0, 9000, 8200, "°", "0° = looking straight down on the disk, 90° = exactly from the side (Gargantua and Luminet)", decimals = 2),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", "Turns the disk; for the EHT styles: where the bright side is", decimals = 2),
-        Param.Slider("diskSize", "Disk size", 120, 1200, 450, " %", "Outer edge of the disk against the shadow"),
+        Param.Slider("diskSize", "Disk size", 12000, 120000, 45000, " %", "Outer edge of the disk against the shadow", decimals = 2, transform = true),
         Param.Slider("brightness", "Brightness", 0, 300, 100, " %"),
         Param.Slider("doppler", "Doppler", 0, 100, 45, " %", "The side turning towards us is brighter"),
         Param.Toggle("reverse", "Turning the other way", false, "Swaps the bright side"),
@@ -64,7 +64,7 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
         val h = src.height
         val n = w * h
         val style = v["style"]
-        val shadow = v["size"].toDouble()
+        val shadow = (v["size"] / 100.0).toDouble()
         val cx = w / 2.0 + v["centerX"] / 10.0
         val cy = h / 2.0 + v["centerY"] / 10.0
         // the Einstein radius: a little beyond the shadow, as the photon ring is
@@ -75,7 +75,7 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
         val cosR = cos(rot)
         val sinR = sin(rot)
         val inner = shadow * 1.18
-        val outer = shadow * v["diskSize"] / 100.0
+        val outer = shadow * (v["diskSize"] / 100.0) / 100.0
         val bright = v["brightness"] / 100.0
         val doppler = v["doppler"] / 100.0
         val spin = if (v.bool("reverse")) -1.0 else 1.0

@@ -122,12 +122,16 @@ class Renderer {
         val entry = images.getOrPut(image.id) { ImageEntry() }
         val placeKey = when (image) {
             is ImageState -> listOf(image.image, image.x, image.y, image.scale, image.smooth, image.rotation, width, height)
-            is GeneratorState -> listOf(image.generator.id, image.values, image.seed, image.texts, width, height)
+            is GeneratorState -> listOf(image.generator.id, image.values, image.seed, image.texts, image.motion, width, height)
         }
         if (entry.placeKey != placeKey || entry.placed == null) {
             entry.placed = when (image) {
                 is ImageState -> place(image, width, height)
-                is GeneratorState -> image.generator.generate(width, height, Values(image.values, image.texts), image.seed)
+                is GeneratorState -> if (image.motion.isEmpty()) image.generator.generate(width, height, Values(image.values, image.texts), image.seed) else {
+                    // motion blur: made once, placed at every moment the shutter is open, blended
+                    val made = image.generator.make(width, height, Values(image.values, image.texts), image.seed)
+                    com.spielgrund.glitchr.image.meanOf(image.motion.map { image.generator.place(made, Values(it, image.texts)) })
+                }
             }
             entry.placeKey = placeKey
             entry.cut = null
@@ -219,6 +223,8 @@ class Renderer {
     private fun runEffect(layer: EffectState, input: Pixels): Pixels {
         val values = Values(layer.values, layer.texts)
         val effect = layer.effect
+        // motion blur: the effect at every moment the shutter is open, blended
+        if (layer.motion.isNotEmpty()) return com.spielgrund.glitchr.image.meanOf(layer.motion.map { effect.apply(input, Values(it, layer.texts), layer.seed) })
         if (effect !is TimeEffect) return effect.apply(input, values, layer.seed)
         val t = time
         val current = frame
@@ -387,8 +393,8 @@ class TimeSession(val layers: List<AnimatedLayer>, val frameCount: Int, private 
     fun below(layerId: Int) = layers.takeWhile { it.state.id != layerId }.map { l ->
         val common = listOf(l.state.id, l.state.visible, l.state.opacity, l.state.blend, l.state.maskVersion, l.tracks, l.seedPerFrame)
         when (val st = l.state) {
-            is EffectState -> listOf(common, st.effect.id, st.values, st.seed, st.texts, st.adjustment)
-            is GeneratorState -> listOf(common, st.generator.id, st.values, st.seed, st.texts)
+            is EffectState -> listOf(common, st.effect.id, st.values, st.seed, st.texts, st.adjustment, st.motion)
+            is GeneratorState -> listOf(common, st.generator.id, st.values, st.seed, st.texts, st.motion)
             is ImageState -> listOf(common, st.image, st.x, st.y, st.scale, st.smooth, st.rotation)
         }
     }

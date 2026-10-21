@@ -1,5 +1,6 @@
 package com.spielgrund.glitchr.model
 
+import com.spielgrund.glitchr.effects.Param
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -151,6 +152,41 @@ object AnimKeys {
     val MASK = listOf(MASK_AX, MASK_AY, MASK_BX, MASK_BY, MASK_THRESHOLD, MASK_INVERT, MASK_NOISE, MASK_SCATTER)
 }
 
+/**
+ * Whether animations move rotations and transformations (positions, shifts, scales) in whole
+ * steps – whole degrees, pixels and percent – while their keyframes keep their fractions. Set in
+ * the settings; read wherever an animated value is worked out, so playing, rendering and the
+ * editor agree.
+ */
+object WholeSteps {
+    @Volatile var rotations = false
+    @Volatile var transforms = false
+
+    /** [value] of [param] (stored with its decimals) in whole steps, if the settings want that. */
+    fun snap(param: Param?, value: Double): Double {
+        val s = param as? Param.Slider ?: return value
+        if (!((s.rotation && rotations) || (s.transform && transforms))) return value
+        val step = Math.pow(10.0, s.decimals.toDouble())
+        return Math.round(value / step) * step
+    }
+
+    /** [value] of a picture layer's own setting [key] (see [AnimKeys]) in whole steps, if wanted. */
+    fun snapImage(key: String, value: Double): Double = when (key) {
+        AnimKeys.ROTATION -> if (rotations) Math.round(value).toDouble() else value
+        AnimKeys.X, AnimKeys.Y -> if (transforms) Math.round(value).toDouble() else value
+        // the scale as a factor: whole percent
+        AnimKeys.SCALE -> if (transforms) Math.round(value * 100) / 100.0 else value
+        else -> value
+    }
+
+    /** [value] of [layer]'s animated setting [key] in whole steps, if wanted. */
+    fun snap(layer: Layer, key: String, value: Double): Double = when {
+        layer is ParamLayer && key in layer.values -> snap(layer.params.firstOrNull { it.key == key }, value)
+        layer is ImageLayer -> snapImage(key, value)
+        else -> value
+    }
+}
+
 /** Seed of a "new random value every frame" layer at [frame]; frame 0 keeps the layer's own seed. */
 fun seedAt(seed: Long, frame: Int) = seed + frame * -0x61c8864680b583ebL
 
@@ -163,7 +199,7 @@ fun seedAt(seed: Long, frame: Int) = seed + frame * -0x61c8864680b583ebL
 object Animator {
     /** Sets every animated setting of [layers] to its value at [frame]. */
     fun syncToFrame(layers: List<Layer>, frame: Int) {
-        for (layer in layers) for ((key, track) in layer.tracks) layer.setProperty(key, track.valueAt(frame))
+        for (layer in layers) for ((key, track) in layer.tracks) layer.setProperty(key, WholeSteps.snap(layer, key, track.valueAt(frame)))
     }
 
     /**
@@ -175,7 +211,7 @@ object Animator {
         for (layer in layers) {
             for ((key, track) in layer.tracks.toList()) {
                 val current = layer.property(key) ?: continue
-                val expected = layer.quantize(key, track.valueAt(frame))
+                val expected = layer.quantize(key, WholeSteps.snap(layer, key, track.valueAt(frame)))
                 if (abs(current - expected) < 1e-9) continue
                 val easing = track.keyAt(frame)?.easing ?: Easing.LINEAR
                 layer.tracks[key] = track.with(Keyframe(frame, current, easing))
@@ -234,17 +270,51 @@ data class AnimatedLayer(val state: LayerState, val tracks: Map<String, Track>, 
         val (mask, maskVersion) =
             if (AnimKeys.MASK.none { it in tracks } && !state.mask.breakup.moving) state.mask to state.maskVersion
             else state.mask.at(tracks, frame, state.maskVersion)
-        fun values(base: Map<String, Int>): Map<String, Int> {
+        /**
+         * Motion blur: the values at [samples] moments spread over the open shutter ([shutter] / 360
+         * of a frame, around [frame]) – only if [on] and one of the [moving] settings is animated.
+         */
+        fun motion(base: Map<String, Int>, params: List<Param>, moving: Set<String>, on: Boolean, shutter: Int, samples: Int): List<Map<String, Int>> {
+            if (!on || moving.none { it in tracks }) return emptyList()
+            val span = shutter.coerceIn(0, 720) / 360.0
+            if (span <= 0) return emptyList()
+            val n = samples.coerceIn(2, 64)
+            return (0 until n).map { i ->
+                val t = frame + ((i + 0.5) / n - 0.5) * span
+                base.toMutableMap().apply {
+                    for ((key, track) in tracks) if (!key.startsWith("@") && key in base) {
+                        put(key, WholeSteps.snap(params.firstOrNull { it.key == key }, track.valueAt(t)).roundToInt())
+                    }
+                }
+            }
+        }
+
+        fun values(base: Map<String, Int>, params: List<Param>): Map<String, Int> {
             if (tracks.keys.none { !it.startsWith("@") }) return base
             return base.toMutableMap().apply {
-                for ((key, track) in tracks) if (!key.startsWith("@") && key in base) put(key, track.valueAt(frame).roundToInt())
+                for ((key, track) in tracks) if (!key.startsWith("@") && key in base) {
+                    put(key, WholeSteps.snap(params.firstOrNull { it.key == key }, track.valueAt(frame)).roundToInt())
+                }
             }
         }
         return when (val s = state) {
-            is EffectState -> s.copy(opacity = opacity, mask = mask, maskVersion = maskVersion, values = values(s.values), seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed)
-            is GeneratorState -> s.copy(opacity = opacity, mask = mask, maskVersion = maskVersion, values = values(s.values), seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed)
+            is EffectState -> {
+                val v = values(s.values, s.effect.params)
+                val motion = if (s.effect !== com.spielgrund.glitchr.effects.Transform) emptyList() else motion(
+                    s.values, s.effect.params, com.spielgrund.glitchr.effects.Transform.MOVING,
+                    (v["motionBlur"] ?: 0) != 0, v["shutter"] ?: 180, v["blurSamples"] ?: 12,
+                )
+                s.copy(opacity = opacity, mask = mask, maskVersion = maskVersion, values = v, seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed, motion = motion)
+            }
+            is GeneratorState -> {
+                val v = values(s.values, s.generator.params)
+                val g = com.spielgrund.glitchr.effects.Generator
+                val motion = motion(s.values, s.generator.params, g.MOVING, (v[g.POS_BLUR] ?: 0) != 0, v[g.POS_SHUTTER] ?: 180, v[g.POS_SAMPLES] ?: 12)
+                s.copy(opacity = opacity, mask = mask, maskVersion = maskVersion, values = v, seed = if (seedPerFrame) seedAt(s.seed, frame) else s.seed, motion = motion)
+            }
             is ImageState -> {
-                val scale = num(AnimKeys.SCALE, s.scale).coerceAtLeast(0.001)
+                fun image(key: String) = tracks[key]?.let { WholeSteps.snapImage(key, it.valueAt(frame)) }
+                val scale = (image(AnimKeys.SCALE) ?: s.scale).coerceAtLeast(0.001)
                 // like the editor, scaling keeps the middle of the picture where it is – unless the position is animated itself
                 val dx = (s.scale - scale) * s.image.width / 2
                 val dy = (s.scale - scale) * s.image.height / 2
@@ -252,10 +322,10 @@ data class AnimatedLayer(val state: LayerState, val tracks: Map<String, Track>, 
                     opacity = opacity,
                     mask = mask,
                     maskVersion = maskVersion,
-                    x = tracks[AnimKeys.X]?.valueAt(frame) ?: (s.x + dx),
-                    y = tracks[AnimKeys.Y]?.valueAt(frame) ?: (s.y + dy),
+                    x = image(AnimKeys.X) ?: (s.x + dx),
+                    y = image(AnimKeys.Y) ?: (s.y + dy),
                     scale = scale,
-                    rotation = num(AnimKeys.ROTATION, s.rotation),
+                    rotation = image(AnimKeys.ROTATION) ?: s.rotation,
                 )
             }
         }

@@ -21,7 +21,7 @@ class GlassTest {
     @Test
     fun `every glass and every combination bends the picture, reproducibly`() {
         for (p1 in 1..8) for (p2 in listOf(0, 2, 6)) {
-            val v = Glass.defaultValues(mapOf("pattern1" to p1, "pattern2" to p2, "size1" to 30, "size2" to 10))
+            val v = Glass.defaultValues(mapOf("pattern1" to p1, "pattern2" to p2, "size1" to 3000, "size2" to 1000))
             val out = Glass.apply(stripes, v, 3L)
             assertContentEquals(out.data, Glass.apply(stripes, v, 3L).data, "pattern $p1 + $p2")
             val changed = (0 until 120 * 90).count { out.data[it] != stripes.data[it] }
@@ -39,7 +39,7 @@ class GlassTest {
 
     @Test
     fun `glass block joints are drawn and anti-aliased`() {
-        val base = mapOf("pattern1" to 1, "pattern2" to 0, "size1" to 30, "lines" to -100, "lineWidth" to 30, "shading" to 0, "gloss" to 0, "tintAmount" to 0)
+        val base = mapOf("pattern1" to 1, "pattern2" to 0, "size1" to 3000, "lines" to -100, "lineWidth" to 30, "shading" to 0, "gloss" to 0, "tintAmount" to 0)
         val out = Glass.apply(stripes, Glass.defaultValues(base), 3L)
         // on the joint between two blocks (x = 30) it is nearly black
         val c = out[30, 15]
@@ -50,7 +50,7 @@ class GlassTest {
 
     @Test
     fun `the offset shifts every strip by its own amount`() {
-        val base = mapOf("pattern1" to 2, "size1" to 20, "strength1" to 0, "shading" to 0, "gloss" to 0, "tintAmount" to 0, "lines" to 0, "dispersion" to 0)
+        val base = mapOf("pattern1" to 2, "size1" to 2000, "strength1" to 0, "shading" to 0, "gloss" to 0, "tintAmount" to 0, "lines" to 0, "dispersion" to 0)
         val still = Glass.apply(stripes, Glass.defaultValues(base), 3L)
         val shifted = Glass.apply(stripes, Glass.defaultValues(base + ("offset" to 30)), 3L)
         val changed = (0 until 120 * 90).count { shifted.data[it] != still.data[it] }

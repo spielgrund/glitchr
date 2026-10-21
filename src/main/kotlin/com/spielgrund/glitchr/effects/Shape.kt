@@ -32,11 +32,11 @@ object Shape : Effect("shape", "Shape", "Line, triangle, polygon, star, circle o
 
     override val params = listOf(
         Param.Choice("shape", "Shape", shapes, 3),
-        Param.Slider("size", "Size", 1, 3000, 250, " px", "Radius; for a line: half its length", canvasMax = true),
+        Param.Slider("size", "Size", 100, 300000, 25000, " px", "Radius; for a line: half its length", canvasMax = true, decimals = 2, transform = true),
         Param.Slider("stretch", "Stretch", 10, 1000, 100, " %", "Width against height; 100 % = regular"),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
-        Param.Slider("centerX", "Center X", -20000, 20000, 0, " %", "From the middle of the canvas, in canvas widths", decimals = 2),
-        Param.Slider("centerY", "Center Y", -20000, 20000, 0, " %", "From the middle of the canvas, in canvas heights", decimals = 2),
+        Param.Slider("centerX", "Center X", -20000, 20000, 0, " %", "From the middle of the canvas, in canvas widths", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", -20000, 20000, 0, " %", "From the middle of the canvas, in canvas heights", decimals = 2, transform = true),
         Param.Slider("sides", "Corners", 3, 64, 6, tip = "Corners of the polygon, points of the star"),
         Param.Slider("inner", "Star depth", 1, 99, 45, " %", "Inner radius of the star against the outer one"),
         Param.Slider("thickness", "Thickness", 1, 3000, 40, " px", "Line width; ring width", canvasMax = true),
@@ -67,7 +67,7 @@ object Shape : Effect("shape", "Shape", "Line, triangle, polygon, star, circle o
         val w = src.width
         val h = src.height
         val shape = v["shape"]
-        val r = max(0.5, v["size"].toDouble())
+        val r = max(0.5, (v["size"] / 100.0).toDouble())
         val stretch = v["stretch"] / 100.0
         val sx = if (stretch >= 1) stretch else 1.0
         val sy = if (stretch >= 1) 1.0 else 1 / stretch

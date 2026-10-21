@@ -34,13 +34,13 @@ object Tunnel : Effect("tunnel", "Tunnel", "An endless tunnel lined with the pic
         Param.Slider("repeatDepth", "Repeats in depth", 1, 32, 1, tip = "How many times the picture repeats per depth step"),
         Param.Slider("fly", "Fly", -1000000, 1000000, 0, " %", "Moves through the tunnel; 100 % = one picture further, which looks the same again – animate it for an endless zoom", decimals = 2),
         Param.Slider("rotation", "Rotation", -180000, 180000, 0, "°", "Turns the whole tunnel", decimals = 2),
-        Param.Slider("offset", "Texture offset", -10000, 10000, 0, " %", "Slides the picture around the walls; 100 % = once around", decimals = 2),
+        Param.Slider("offset", "Texture offset", -10000, 10000, 0, " %", "Slides the picture around the walls; 100 % = once around", decimals = 2, transform = true),
         Param.Slider("twist", "Twist", -180000, 180000, 0, "°", "Turns the picture further with every depth step: a spiral tunnel", decimals = 2),
         Param.Toggle("mirror", "Hide seams", false, "Runs the picture forth and mirrored back, so its edges meet without a seam"),
         Param.Slider("fade", "Depth fog", 0, 100, 40, " %", "Fades into the fog color towards the far end, where the repeats get too fine to see"),
         Param.Color("fogColor", "Fog color", 0x000000),
-        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "Vanishing point, from the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1),
-        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "Vanishing point, from the middle of the canvas", decimals = 1),
+        Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "Vanishing point, from the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
+        Param.Slider("centerY", "Center Y", -50000, 50000, 0, " px", "Vanishing point, from the middle of the canvas", decimals = 1, transform = true),
         Param.Choice("antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 1, "Samples per pixel – the far end squeezes the picture into a few pixels"),
     )
 

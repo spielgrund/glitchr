@@ -71,7 +71,7 @@ object Bubbles : Effect("bubbles", "Bubbles", "Foam: bubbles grow on the thresho
         Param.Slider("lightHeight", "Light height", 500, 9000, 4000, "°", "Flat: gloss at the rim, 90°: light from the front", decimals = 2),
         Param.Slider("shading", "Shading", 0, 100, 45, " %", "The side facing away from the light gets darker"),
         Param.Slider("gloss", "Gloss", 0, 100, 60, " %", "Highlight where the light is reflected"),
-        Param.Slider("glossSize", "Gloss size", 1, 100, 25, " %"),
+        Param.Slider("glossSize", "Gloss size", 100, 10000, 2500, " %", decimals = 2),
         Param.Slider("rim", "Rim light", 0, 100, 25, " %", "Bright fringe along the walls, as with glass or soap bubbles"),
         Param.Heading("irisHeading", "Iridescence"),
         Param.Slider("iris", "Iridescence", 0, 100, 40, " %", "Colors like a thin film (soap bubble, oil) – stronger towards the rim"),
@@ -389,7 +389,7 @@ object Bubbles : Effect("bubbles", "Bubbles", "Foam: bubbles grow on the thresho
         private val on = v.bool("lightOn")
         private val shading = if (on) v["shading"] / 100.0 else 0.0
         private val gloss = if (on) v["gloss"] / 100.0 else 0.0
-        private val shininess = 4 + (1 - v["glossSize"] / 100.0).pow(2) * 300
+        private val shininess = 4 + (1 - (v["glossSize"] / 100.0) / 100.0).pow(2) * 300
         private val rim = if (on) v["rim"] / 100.0 else 0.0
         private val iris = v["iris"] / 100.0
         private val ramp = ColorRamp.parse(v.text("irisRamp").ifBlank { SOAP_FILM })

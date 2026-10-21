@@ -33,9 +33,9 @@ object Gradient : Effect("gradient", "Gradient", "Color gradient: linear, mirror
         Param.Color("mid", "Middle color", 0xFF4FA3),
         Param.Slider("midPos", "Position of the middle color", 1, 99, 50, " %"),
         Param.Slider("angle", "Angle", 0, 35900, 9000, "°", "Direction of the gradient; for angle: where it starts", decimals = 2),
-        Param.Slider("centerX", "Center X", -50, 150, 50, " %"),
-        Param.Slider("centerY", "Center Y", -50, 150, 50, " %"),
-        Param.Slider("size", "Size", 5, 400, 100, " %", "100 %: the gradient spans the whole canvas"),
+        Param.Slider("centerX", "Center X", -5000, 15000, 5000, " %", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", -5000, 15000, 5000, " %", decimals = 2, transform = true),
+        Param.Slider("size", "Size", 500, 40000, 10000, " %", "100 %: the gradient spans the whole canvas", decimals = 2, transform = true),
         Param.Slider("repeats", "Repeats", 1, 64, 1),
         Param.Toggle("mirror", "Mirror repeats", true, "Every second repeat runs back instead of starting over hard"),
         Param.Slider("curve", "Distribution", 10, 1000, 100, " %", "Below 100 % more of color 2, above more of color 1"),
@@ -52,9 +52,9 @@ object Gradient : Effect("gradient", "Gradient", "Color gradient: linear, mirror
         val a = (v["angle"] / 100.0) * PI / 180
         val ux = cos(a)
         val uy = sin(a)
-        val cx = w * v["centerX"] / 100.0
-        val cy = h * v["centerY"] / 100.0
-        val size = v["size"] / 100.0
+        val cx = w * (v["centerX"] / 100.0) / 100.0
+        val cy = h * (v["centerY"] / 100.0) / 100.0
+        val size = (v["size"] / 100.0) / 100.0
         // extents at 100 %: linear spans the canvas along the direction, the round shapes reach its corners
         val along = max(1.0, abs(w * ux) + abs(h * uy)) * size
         val radius = max(1.0, hypot(w.toDouble(), h.toDouble()) / 2) * size

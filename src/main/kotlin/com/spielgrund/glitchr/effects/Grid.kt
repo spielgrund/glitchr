@@ -29,10 +29,10 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
         Param.Slider("gap", "Gap", 0, 500, 0, " px", "Space between the cells"),
         Param.Choice("gapFill", "Gaps", gapFills, 0, "What is in the gaps and empty bands"),
         Param.Color("gapColor", "Gap color", 0x000000),
-        Param.Slider("rowOffset", "Row offset", -100, 100, 0, " %", "Every second row shifted by part of a cell, like bricks"),
-        Param.Slider("columnOffset", "Column offset", -100, 100, 0, " %", "Every second column shifted by part of a cell"),
-        Param.Slider("shiftX", "Shift X", -50000, 50000, 0, " px", "Moves the whole grid; it repeats at the edge", decimals = 1),
-        Param.Slider("shiftY", "Shift Y", -50000, 50000, 0, " px", "Moves the whole grid; it repeats at the edge", decimals = 1),
+        Param.Slider("rowOffset", "Row offset", -10000, 10000, 0, " %", "Every second row shifted by part of a cell, like bricks", decimals = 2, transform = true),
+        Param.Slider("columnOffset", "Column offset", -10000, 10000, 0, " %", "Every second column shifted by part of a cell", decimals = 2, transform = true),
+        Param.Slider("shiftX", "Shift X", -50000, 50000, 0, " px", "Moves the whole grid; it repeats at the edge", decimals = 1, transform = true),
+        Param.Slider("shiftY", "Shift Y", -50000, 50000, 0, " px", "Moves the whole grid; it repeats at the edge", decimals = 1, transform = true),
         Param.Choice("mirror", "Mirror", mirrors, 0, "Mirrors every second copy, so neighbours meet seamlessly"),
         Param.Toggle("randomMirror", "Random mirror", false, "Mirrors copies at random, horizontally and vertically"),
 
@@ -44,7 +44,7 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
             "All the same angle; alternating left and right like a checkerboard; growing from copy to copy; " +
                 "a random angle up to the copy rotation; or the copy rotation plus random quarter turns",
         ),
-        Param.Slider("tileScale", "Copy scale", 10, 400, 100, " %", "Size of the copy in its cell; above 100 % it is cut at the cell, e.g. to fill the corners of turned copies"),
+        Param.Slider("tileScale", "Copy scale", 1000, 40000, 10000, " %", "Size of the copy in its cell; above 100 % it is cut at the cell, e.g. to fill the corners of turned copies", decimals = 2, transform = true),
     )
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
@@ -69,12 +69,12 @@ object Grid : Effect("tilegrid", "Grid", "Repeats the picture in a grid of colum
             else -> stretchX to stretchY
         }
         // shrunk beforehand by whole steps, so small copies are averaged instead of sparkling
-        val tileScale = v["tileScale"] / 100.0
+        val tileScale = (v["tileScale"] / 100.0) / 100.0
         val k = max(1, floor(min(scaleX, scaleY) / tileScale).toInt())
         val small = if (k > 1) shrink(src, k) else src
 
-        val rowOffset = v["rowOffset"] / 100.0 * cellW
-        val columnOffset = v["columnOffset"] / 100.0 * cellH
+        val rowOffset = (v["rowOffset"] / 100.0) / 100.0 * cellW
+        val columnOffset = (v["columnOffset"] / 100.0) / 100.0 * cellH
         val shiftX = v["shiftX"] / 10.0
         val shiftY = v["shiftY"] / 10.0
         val mirror = v["mirror"]

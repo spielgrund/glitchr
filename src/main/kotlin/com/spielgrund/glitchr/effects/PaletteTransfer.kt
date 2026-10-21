@@ -38,7 +38,7 @@ object PaletteTransfer : Effect("palette", "Palette from image", "Colors the pic
         Param.Slider("amount", "Amount", 0, 100, 100, " %"),
         Param.Slider("softness", "Softness", 0, 100, 50, " %", "How smoothly the colors blend into each other – low: crisp borders between the color areas"),
         Param.Slider("keepLight", "Keep lightness", 0, 100, 0, " %", "How much of the picture's own lightness stays"),
-        Param.Slider("hue", "Hue", -180, 180, 0, "°", "Turns all the new colors around the color wheel"),
+        Param.Slider("hue", "Hue", -18000, 18000, 0, "°", "Turns all the new colors around the color wheel", decimals = 2),
         Param.Slider("saturation", "Saturation", 0, 200, 100, " %", "Paler or more vivid colors; 0 % grey"),
     )
 
@@ -167,7 +167,7 @@ object PaletteTransfer : Effect("palette", "Palette from image", "Colors the pic
         val sigma = 1.5 + v["softness"] / 100.0 * 18.5
         val mapping = v["mapping"]
         // hue and saturation: a turn and a scale of the color plane (a, b)
-        val turn = Math.toRadians(v["hue"].toDouble())
+        val turn = Math.toRadians((v["hue"] / 100.0).toDouble())
         val ct = kotlin.math.cos(turn)
         val st = kotlin.math.sin(turn)
         val saturation = v["saturation"] / 100.0
