@@ -47,13 +47,13 @@ class NoiseFieldTest {
     @Test
     fun `size changes along the direction`() {
         // grey noise only, fine at the left (0°: start = left), coarse at the right
-        val out = pure("scaleStart" to 6, "scaleEnd" to 200, "amount" to 100, "direction" to 0)
+        val out = pure("scaleStart" to 600, "scaleEnd" to 20000, "amount" to 100, "direction" to 0)
         fun roughness(x0: Int) = (0 until 160).sumOf { y ->
             (x0 until x0 + 40).sumOf { x -> abs((out[x + 1, y] and 0xFF) - (out[x, y] and 0xFF)) }
         }
         assertTrue(roughness(5) > 4 * roughness(190), "fine on the left ${roughness(5)}, coarse on the right ${roughness(190)}")
         // turned by 180°, the fine side is on the right
-        val turned = pure("scaleStart" to 6, "scaleEnd" to 200, "amount" to 100, "direction" to 18000)
+        val turned = pure("scaleStart" to 600, "scaleEnd" to 20000, "amount" to 100, "direction" to 18000)
         fun roughnessTurned(x0: Int) = (0 until 160).sumOf { y ->
             (x0 until x0 + 40).sumOf { x -> abs((turned[x + 1, y] and 0xFF) - (turned[x, y] and 0xFF)) }
         }
@@ -77,7 +77,7 @@ class NoiseFieldTest {
 
     @Test
     fun `voronoi makes flat cells`() {
-        val out = pure("type" to 6, "scaleStart" to 40, "scaleEnd" to 40)
+        val out = pure("type" to 6, "scaleStart" to 4000, "scaleEnd" to 4000)
         // flat cells: most neighbouring pixels are equal
         val equal = (0 until 160).sumOf { y -> (0 until 239).count { x -> out[x, y] == out[x + 1, y] } }
         assertTrue(equal > 160 * 239 * 0.9, "flat cells: $equal equal neighbors")

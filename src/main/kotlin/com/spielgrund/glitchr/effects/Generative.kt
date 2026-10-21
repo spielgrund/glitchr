@@ -53,7 +53,7 @@ object Generative : Effect("generative", "Generative", "Generative line patterns
         Param.Toggle("fill", "Fill evenly", true, "Flow lines only: fills the whole picture with lines at a fixed spacing"),
         Param.Slider("spacing", "Line spacing", 2, 100, 8, " px", "Only “Fill evenly”"),
         Param.Toggle("darkDense", "Denser in dark areas", false, "Only “Fill evenly”: the spacing follows the brightness – the subject emerges from the line density"),
-        Param.Slider("size", "Size", 2, 600, 90, " px", "Bands: diameter of the shape. Rings: ring spacing × 10. Tiles: tile size"),
+        Param.Slider("size", "Size", 200, 60000, 9000, " px", "Bands: diameter of the shape. Rings: ring spacing × 10. Tiles: tile size", decimals = 2),
         Param.Slider("turbulence", "Turbulence", 1, 100, 30, " %", "How much the paths wind"),
         Param.Slider("wobble", "Deformation", 0, 100, 35, " %", "How much bands and rings are dented"),
         Param.Slider("lineWidth", "Line weight", 1, 50, 5, tip = "In tenths of a pixel: 5 = 0.5 px hairline"),
@@ -302,7 +302,7 @@ object Generative : Effect("generative", "Generative", "Generative line patterns
     private fun ribbons(g: Graphics2D, c: Context) {
         val agents = c.v["count"]
         val steps = c.v["steps"]
-        val size = c.v["size"] / 2.0
+        val size = (c.v["size"] / 100.0) / 2.0
         val vertices = 48
         repeat(agents) { a ->
             var x = c.random.nextDouble() * c.w
@@ -371,7 +371,7 @@ object Generative : Effect("generative", "Generative", "Generative line patterns
     /** Dense wavy rings around a few centers; where they overlap, moiré appears. */
     private fun rings(g: Graphics2D, c: Context) {
         val centers = min(c.v["count"], 24)
-        val spacing = max(1.5, c.v["size"] / 10.0)
+        val spacing = max(1.5, (c.v["size"] / 100.0) / 10.0)
         val reach = hypot(c.w.toDouble(), c.h.toDouble())
         val vertices = 180
         repeat(centers) { a ->
@@ -400,7 +400,7 @@ object Generative : Effect("generative", "Generative", "Generative line patterns
 
     /** Flow lines drawn once into a tile, mirrored four ways, and the tile repeated (a mirrored brush). */
     private fun mirrorTiles(g: Graphics2D, c: Context) {
-        val size = max(8, c.v["size"])
+        val size = max(8, kotlin.math.round(c.v["size"] / 100.0).toInt())
         val half = size / 2.0
         val tile = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
         val tg = tile.createGraphics()

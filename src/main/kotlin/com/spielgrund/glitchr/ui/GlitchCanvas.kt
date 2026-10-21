@@ -200,17 +200,45 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     }
 
     /** The handle the active effect layer puts on the canvas, if any (see [CanvasHandle]). */
-    private fun handleOf(l: Layer?) = (l as? EffectLayer)?.effect?.canvasHandle
+    private fun handleOf(l: Layer?) = when (l) {
+        is EffectLayer -> l.effect.canvasHandle
+        // generators can have one too (e.g. Lightning's point)
+        is com.spielgrund.glitchr.model.GeneratorLayer -> l.generator.effect?.canvasHandle
+        else -> null
+    }
+
+    /** Stored steps per pixel of a handle's setting: sliders with decimals keep fractions of a pixel. */
+    private fun handleStep(l: com.spielgrund.glitchr.model.ParamLayer, key: String) =
+        Math.pow(10.0, (l.params.firstOrNull { it.key == key } as? Param.Slider)?.decimals?.toDouble() ?: 0.0)
 
     /** The handle that dragging moves, or null when dragging does something else. */
     private val activeHandle get() = if (editsMask || layer is ImageLayer) null else handleOf(layer)
+
+    /** The point selected in the layer's point list; -1 none. */
+    var selectedPoint = -1
+        set(value) {
+            field = value
+            repaint()
+        }
+
+    /** Key of the active layer's points (see [Param.Points]), or null. */
+    private fun pointsKey(l: Layer?): String? {
+        if (editsMask || l is ImageLayer) return null
+        val p = l as? com.spielgrund.glitchr.model.ParamLayer ?: return null
+        // only in the mode the points belong to
+        return p.params.filterIsInstance<Param.Points>().firstOrNull { pt -> pt.activeWhen?.let { (k, v) -> p.values[k] == v } ?: true }?.key
+    }
 
     /** Called while the effect's handle is dragged; [finished] on mouse release. */
     var onHandleEdited: (finished: Boolean) -> Unit = {}
 
     /** The flow strokes of the active layer, if it has some to draw (see [Param.Flow]). */
     // effects and generators (e.g. Tribal) can have drawn arrows
-    private fun flowParam(l: Layer?) = (l as? com.spielgrund.glitchr.model.ParamLayer)?.params?.firstOrNull { it is Param.Flow }
+    private fun flowParam(l: Layer?): Param.Flow? {
+        val p = l as? com.spielgrund.glitchr.model.ParamLayer ?: return null
+        // only in the mode the strokes belong to
+        return p.params.filterIsInstance<Param.Flow>().firstOrNull { f -> f.activeWhen?.let { (k, v) -> p.values[k] == v } ?: true }
+    }
 
     /** Key of the flow strokes that dragging draws, or null when dragging does something else. */
     private val flowKey get() = if (editsMask || layer is ImageLayer) null else flowParam(layer)?.key
@@ -395,6 +423,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         if (editsMask && mode == MaskMode.BRUSH && brush.tool == MaskTool.BRUSH && !spaceDown) mouse?.let { paintBrushCursor(g2, it) }
         flowKey?.let { paintFlow(g2, it) }
         activeHandle?.let { paintHandle(g2, it) }
+        pointsKey(layer)?.let { paintPoints(g2, it) }
         selectionOutline()?.let { paintSelectionOutline(g2, it) }
         cropRect?.let { paintCrop(g2, it) }
         g2.dispose()
@@ -519,13 +548,38 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
 
     /** The drawn flow strokes as arrows, and the stroke being drawn. */
     /** The effect's handle: a ring where the point lies, joined to the canvas middle. */
+    /** The layer's points: small rings, the selected one larger with a cross. */
+    private fun paintPoints(g: Graphics2D, key: String) {
+        val img = image ?: return
+        val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
+        val points = com.spielgrund.glitchr.effects.PointList.parse(l.texts[key] ?: "")
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        points.forEachIndexed { i, p ->
+            val sx = originX() + p.x * img.width * zoom
+            val sy = originY() + p.y * img.height * zoom
+            val selected = i == selectedPoint
+            val r = if (selected) 9.0 else 5.0
+            for ((color, width) in listOf(Color(0, 0, 0, 170) to 3.5f, (if (selected) Color(0xFF9A1F) else Color.WHITE) to 1.8f)) {
+                g.color = color
+                g.stroke = BasicStroke(width)
+                g.draw(Ellipse2D.Double(sx - r, sy - r, 2 * r, 2 * r))
+                if (selected) {
+                    g.draw(java.awt.geom.Line2D.Double(sx - r - 5, sy, sx - r + 3, sy))
+                    g.draw(java.awt.geom.Line2D.Double(sx + r - 3, sy, sx + r + 5, sy))
+                    g.draw(java.awt.geom.Line2D.Double(sx, sy - r - 5, sx, sy - r + 3))
+                    g.draw(java.awt.geom.Line2D.Double(sx, sy + r - 3, sx, sy + r + 5))
+                }
+            }
+        }
+    }
+
     private fun paintHandle(g: Graphics2D, h: com.spielgrund.glitchr.effects.CanvasHandle) {
         val img = image ?: return
-        val l = layer as? EffectLayer ?: return
+        val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
         val cx = originX() + img.width / 2.0 * zoom
         val cy = originY() + img.height / 2.0 * zoom
-        val px = cx + (l.values[h.xKey] ?: 0) * zoom
-        val py = cy + (l.values[h.yKey] ?: 0) * zoom
+        val px = cx + (l.values[h.xKey] ?: 0) / handleStep(l, h.xKey) * zoom
+        val py = cy + (l.values[h.yKey] ?: 0) / handleStep(l, h.yKey) * zoom
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         for ((color, width) in listOf(Color(0, 0, 0, 160) to 3f, Color.WHITE to 1.5f)) {
             g.color = color
@@ -774,6 +828,9 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     private class MoveLayer(val layer: ImageLayer, val start: Point2D.Double, val x: Double, val y: Double) : Drag
 
     /** Moving the effect's handle from [start] (canvas pixels), where it stood at ([x], [y]). */
+    /** Moving the point [index] of the layer's points [key]. */
+    private class MovePoint(val key: String, val index: Int) : Drag
+
     private class MoveHandlePoint(val handle: com.spielgrund.glitchr.effects.CanvasHandle, val start: Point2D.Double, val x: Int, val y: Int) : Drag
 
     /** Scaling at [corner] (see [canvasCorners]); the opposite corner [anchor] stays in place. */
@@ -963,8 +1020,26 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 }
                 return
             }
+            // a point of the layer's list near the mouse: picked and dragged
+            pointsKey(layer)?.let { key ->
+                val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return@let
+                val img = image ?: return@let
+                if (!SwingUtilities.isLeftMouseButton(e) || e.isAltDown) return@let
+                val points = com.spielgrund.glitchr.effects.PointList.parse(l.texts[key] ?: "")
+                var nearest = -1
+                var best = 12.0
+                points.forEachIndexed { i, p ->
+                    val d = Point2D.distance(originX() + p.x * img.width * zoom, originY() + p.y * img.height * zoom, e.x.toDouble(), e.y.toDouble())
+                    if (d <= best) { best = d; nearest = i }
+                }
+                if (nearest >= 0) {
+                    selectedPoint = nearest
+                    drag = MovePoint(key, nearest)
+                    return
+                }
+            }
             activeHandle?.let { h ->
-                val l = layer as? EffectLayer ?: return
+                val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
                 if (SwingUtilities.isLeftMouseButton(e)) drag = MoveHandlePoint(h, toImage(e.point), l.values[h.xKey] ?: 0, l.values[h.yKey] ?: 0)
                 return
             }
@@ -1118,8 +1193,19 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                     if (p.distance(d.points.last()) * zoom >= 4) d.points.add(p)
                 }
                 is FlowErase -> eraseFlow(e.point, d.key)
+                is MovePoint -> {
+                    val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
+                    val img = image ?: return
+                    val p = toImage(e.point)
+                    val points = com.spielgrund.glitchr.effects.PointList.parse(l.texts[d.key] ?: "").toMutableList()
+                    if (d.index in points.indices) {
+                        points[d.index] = Point2D.Double((p.x / img.width).coerceIn(-0.5, 1.5), (p.y / img.height).coerceIn(-0.5, 1.5))
+                        l.texts[d.key] = com.spielgrund.glitchr.effects.PointList.format(points)
+                        onHandleEdited(false)
+                    }
+                }
                 is MoveHandlePoint -> {
-                    val l = layer as? EffectLayer ?: return
+                    val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
                     val p = toImage(e.point)
                     // the drag moves the point, within its sliders' range
                     fun limit(key: String, value: Double): Int {
@@ -1128,8 +1214,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                         val hi = if (s != null && img != null) s.maxFor(img.width, img.height) else Int.MAX_VALUE
                         return value.roundToInt().coerceIn(s?.min ?: Int.MIN_VALUE, hi)
                     }
-                    l.values[d.handle.xKey] = limit(d.handle.xKey, d.x + p.x - d.start.x)
-                    l.values[d.handle.yKey] = limit(d.handle.yKey, d.y + p.y - d.start.y)
+                    l.values[d.handle.xKey] = limit(d.handle.xKey, d.x + (p.x - d.start.x) * handleStep(l, d.handle.xKey))
+                    l.values[d.handle.yKey] = limit(d.handle.yKey, d.y + (p.y - d.start.y) * handleStep(l, d.handle.yKey))
                     onHandleEdited(false)
                 }
                 is ShapeDrag -> d.end = toImage(e.point)
@@ -1156,7 +1242,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 onFlowEdited(true)
             }
             if (d is FlowErase) onFlowEdited(true)
-            if (d is MoveHandlePoint) onHandleEdited(true)
+            if (d is MoveHandlePoint || d is MovePoint) onHandleEdited(true)
             when (d) {
                 is ShapeDrag -> applyShape(d.shape(), d.subtract)
                 is LassoDrag -> {

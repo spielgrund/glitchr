@@ -39,10 +39,10 @@ object Spirograph : Effect("spirograph", "Spirograph", "A wheel rolls inside a t
         Param.Slider("passTurn", "Offset per pass", 0, 36000, 1000, "°", decimals = 2, tip = "How much further rotated the next pass starts"),
         Param.Slider("passHole", "Hole per pass", -50, 50, 0, " %", "The pen moves to a different hole from pass to pass"),
         Param.Heading("styleHeading", "Display"),
-        Param.Slider("size", "Size", 5, 150, 92, " %", "Radius relative to half the shorter side"),
+        Param.Slider("size", "Size", 500, 15000, 9200, " %", "Radius relative to half the shorter side", decimals = 2, transform = true),
         Param.Slider("rotation", "Rotation", 0, 35900, 0, "°", decimals = 2),
-        Param.Slider("centerX", "Center X", 0, 100, 50, " %"),
-        Param.Slider("centerY", "Center Y", 0, 100, 50, " %"),
+        Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", decimals = 2, transform = true),
         Param.Slider("lineWidth", "Line width", 1, 200, 12, " px", decimals = 1),
         Param.Slider("lineOpacity", "Line opacity", 5, 100, 90, " %", "Lower: the passes show through each other"),
         Param.Choice(
@@ -71,7 +71,7 @@ object Spirograph : Effect("spirograph", "Spirograph", "A wheel rolls inside a t
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
         g.stroke = BasicStroke(v["lineWidth"] / 10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
         g.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, v["lineOpacity"] / 100f)
-        g.translate(w * v["centerX"] / 100.0, h * v["centerY"] / 100.0)
+        g.translate(w * (v["centerX"] / 100.0) / 100.0, h * (v["centerY"] / 100.0) / 100.0)
         g.rotate((v["rotation"] / 100.0) * PI / 180)
 
         val inside = v["mode"] == 0
@@ -81,7 +81,7 @@ object Spirograph : Effect("spirograph", "Spirograph", "A wheel rolls inside a t
         val holes = DoubleArray(passes) { max(0.0, (v["hole"] + it * v["passHole"]) / 100.0) }
         // scale: the widest pass fills the chosen radius
         val reach = holes.maxOf { hole -> (if (inside) abs(ring - wheel) else ring + wheel) + hole * wheel }
-        val scale = min(w, h) / 2.0 * v["size"] / 100.0 / max(1e-9, reach)
+        val scale = min(w, h) / 2.0 * (v["size"] / 100.0) / 100.0 / max(1e-9, reach)
 
         // the curve closes after the wheel has gone round the ring this many times
         val loops = v["wheel"] / gcd(v["ring"], v["wheel"])

@@ -40,8 +40,8 @@ object Wiggle : Effect("wiggle", "Camera wiggle", "2.5D: the camera moves, near 
             tip = "Offset: one shifted view · Wiggle: several views along a line over each other · " +
                 "Orbit: views around a circle · Anaglyph: two views for red/cyan glasses",
         ),
-        Param.Slider("camX", "Camera X", -500, 500, 24, " px", "How far and where the camera moves – can also be dragged with the handle in the picture"),
-        Param.Slider("camY", "Camera Y", -500, 500, 0, " px"),
+        Param.Slider("camX", "Camera X", -50000, 50000, 2400, " px", "How far and where the camera moves – can also be dragged with the handle in the picture", decimals = 2, transform = true),
+        Param.Slider("camY", "Camera Y", -50000, 50000, 0, " px", decimals = 2, transform = true),
         Param.Slider("focus", "Focal plane", 0, 100, 50, " %", "This depth stays still (0 % far, 100 % near); in front and behind it moves in opposite directions"),
         Param.Slider("views", "Views", 2, 32, 6, tip = "Wiggle and orbit: this many views are laid over each other"),
         Param.Slider("trail", "Trail", 0, 100, 0, " %", "Wiggle: the views towards the middle count more – the rest turns into ghosts"),
@@ -57,8 +57,8 @@ object Wiggle : Effect("wiggle", "Camera wiggle", "2.5D: the camera moves, near 
         val depth = Depth.estimate(src, v)
         if (v.bool("depthShow")) return Depth.show(src, depth)
         // the camera's move: its length is how far the nearest and farthest things shift, its direction the way
-        val shift = kotlin.math.hypot(v["camX"].toDouble(), v["camY"].toDouble())
-        val angle = kotlin.math.atan2(v["camY"].toDouble(), v["camX"].toDouble())
+        val shift = kotlin.math.hypot((v["camX"] / 100.0).toDouble(), (v["camY"] / 100.0).toDouble())
+        val angle = kotlin.math.atan2((v["camY"] / 100.0).toDouble(), (v["camX"] / 100.0).toDouble())
         val focus = v["focus"] / 100.0
         val mode = v["mode"]
         val count = v["views"]

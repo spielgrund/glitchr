@@ -44,7 +44,7 @@ object TimeDisplace : TimeEffect("timedisplace", "Time displacement", "Every par
         Param.Slider("range", "Range", 1, 120, 20, " frames", "The largest time shift"),
         Param.Choice("direction", "Into", directions, 0, "Earlier frames, later ones, or both ways"),
         Param.Slider("angle", "Angle", 0, 35900, 9000, "°", "Linear gradient: from where the delay grows; 90° = from the top down", decimals = 2),
-        Param.Slider("noiseSize", "Noise size", 5, 2000, 200, " px"),
+        Param.Slider("noiseSize", "Noise size", 500, 200000, 20000, " px", decimals = 2),
         Param.Slider("levels", "Steps", 0, 64, 0, tip = "Hard bands of the same frame instead of a smooth shift; 0 = smooth"),
         Param.Toggle("invert", "Invert", false),
         Param.Toggle("smooth", "Blend between frames", true, "Pixels between two frames blend them, instead of jumping"),
@@ -65,7 +65,7 @@ object TimeDisplace : TimeEffect("timedisplace", "Time displacement", "Every par
         val uy = sin(a)
         val extent = abs(w * ux) + abs(h * uy)
         val noise = Noise(seed)
-        val noiseScale = 1.0 / v["noiseSize"]
+        val noiseScale = 1.0 / (v["noiseSize"] / 100.0)
         val maxR = hypot(w / 2.0, h / 2.0)
         val map = v["map"]
         // 0..1 per pixel

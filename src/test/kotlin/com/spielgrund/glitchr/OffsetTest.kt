@@ -15,7 +15,7 @@ class OffsetTest {
 
     @Test
     fun `moves and repeats at the edge`() {
-        val out = run("shiftX" to 250, "shiftY" to -30)
+        val out = run("shiftX" to 25000, "shiftY" to -3000)
         for (y in 0 until 160 step 7) for (x in 0 until 240 step 9) {
             assertEquals(src[Math.floorMod(x - 250, 240), Math.floorMod(y + 30, 160)], out[x, y])
         }

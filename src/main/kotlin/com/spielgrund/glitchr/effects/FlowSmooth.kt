@@ -27,7 +27,7 @@ object FlowSmooth : Effect("flowsmooth", "Flow smooth", "The picture streams end
         Param.Slider("layers", "Layers", 2, 8, 2, tip = "Copies of the picture crossfading into each other; more is calmer and softer"),
         Param.Slider("fade", "Crossfade", 5, 100, 100, " %", "How much of its cycle a copy spends fading in and out: 100 % = always fading (softest), less = longer fully visible (sharper)"),
         Param.Slider("variation", "Segment offset", 0, 100, 60, " %", "Every segment is at its own point in time, so the picture doesn't pulse as a whole"),
-        Param.Slider("segment", "Segment size", 4, 2000, 160, " px", canvasMax = true),
+        Param.Slider("segment", "Segment size", 400, 200000, 16000, " px", canvasMax = true, decimals = 2),
         Param.Slider("segmentSoftness", "Segment edges", 0, 100, 100, " %", "Width of the soft mask where neighbouring segments blend: 100 % = across the whole segment, 0 % = hard borders"),
         Param.Slider("scatter", "Scatter along the flow", 0, 2000, 0, " px", "Shifts every segment by its own distance along the flow direction, so the flow doesn't look like one sheet; the segments blend at their soft edges", canvasMax = true),
         Param.Heading("flowHeading", "Flow"),
@@ -51,7 +51,7 @@ object FlowSmooth : Effect("flowsmooth", "Flow smooth", "The picture streams end
         val n = v["layers"]
         val fade = v["fade"] / 100.0
         val variation = v["variation"] / 100.0
-        val segment = v["segment"].toDouble()
+        val segment = (v["segment"] / 100.0).toDouble()
         val softness = v["segmentSoftness"] / 100.0
         val direct = v["method"] == 1
         val soft = v["edge"] == 1

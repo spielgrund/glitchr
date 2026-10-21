@@ -8,14 +8,20 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
      * [max] is the upper end of the slider; with [canvasMax] the editor uses the larger
      * side of the canvas instead (for lengths that should be able to span the whole picture).
      * With [decimals], the stored whole number is shown with that many decimal places
-     * (decimals = 1: 125 is 12.5).
+     * (decimals = 1: 125 is 12.5). [transform] marks positions, shifts and scales; angles are the
+     * sliders in degrees – both can be set to move in whole steps in animations (see [rotation]).
      */
     class Slider(
         key: String, label: String, val min: Int, val max: Int, default: Int,
         val unit: String = "", tip: String? = null, val canvasMax: Boolean = false, val decimals: Int = 0,
+        val transform: Boolean = false,
     ) : Param(key, label, default, tip) {
         /** Upper end of the slider on a [width]×[height] canvas. */
-        fun maxFor(width: Int, height: Int) = if (canvasMax) kotlin.math.max(min + 1, kotlin.math.max(width, height)) else max
+        fun maxFor(width: Int, height: Int) =
+            if (canvasMax) kotlin.math.max(min + 1, kotlin.math.max(width, height) * Math.pow(10.0, decimals.toDouble()).toInt()) else max
+
+        /** An angle: in degrees. */
+        val rotation get() = unit.trim() == "°"
     }
 
     class Choice(key: String, label: String, val options: List<String>, default: Int = 0, tip: String? = null) :
@@ -36,11 +42,20 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
     /** An own symbol pasted in (see [CustomIcon]): SVG or a black-and-white picture, stored as text. */
     class Icon(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
 
+    /** A 3D model pasted in or opened (see [Mesh]): OBJ text. */
+    class Model(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+
     /** A reference picture pasted in or opened (see [PaletteTransfer]); stored as text. */
     class Picture(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
 
-    /** Strokes drawn on the canvas (see [FlowStrokes]); stored as text, edited by dragging in the picture. */
-    class Flow(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+    /** Points on the canvas (see [PointList]): added and removed in a list, moved by dragging in the picture. */
+    class Points(key: String, label: String, defaultText: String, tip: String? = null, val activeWhen: Pair<String, Int>? = null) : Text(key, label, defaultText, tip)
+
+    /**
+     * Strokes drawn on the canvas (see [FlowStrokes]); stored as text, edited by dragging in the picture.
+     * With [activeWhen] (setting, value) only drawn while that setting has that value – like [Points].
+     */
+    class Flow(key: String, label: String, tip: String? = null, val activeWhen: Pair<String, Int>? = null) : Text(key, label, "", tip)
 
     /** A heading that starts a new group of settings in the editor; stores nothing meaningful. */
     class Heading(key: String, label: String) : Param(key, label, 0, null)
@@ -97,11 +112,11 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
         EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture)),
-        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
     )

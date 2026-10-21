@@ -532,6 +532,8 @@ data class EffectState(
     val texts: Map<String, String> = emptyMap(),
     /** Works on everything below instead of the source layer below. */
     val adjustment: Boolean = false,
+    /** For motion blur: the values at the moments the shutter is open; empty without. */
+    val motion: List<Map<String, Int>> = emptyList(),
 ) : LayerState
 
 /** What the renderer needs of a source layer. */
@@ -548,6 +550,8 @@ data class GeneratorState(
     val values: Map<String, Int>,
     val seed: Long,
     val texts: Map<String, String> = emptyMap(),
+    /** For motion blur: the values at the moments the shutter is open; empty without. */
+    val motion: List<Map<String, Int>> = emptyList(),
 ) : SourceState
 
 data class ImageState(

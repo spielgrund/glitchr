@@ -46,8 +46,8 @@ object Polar : Effect("polar", "Polar coordinates", "Bends the picture into a ci
         Param.Slider("twist", "Twist", -144000, 144000, 0, "°", "Turns the outside against the middle into a spiral (per radius)", decimals = 2),
         Param.Slider("fade", "Depth fade", 0, 100, 50, " %", "Tunnel: darkens towards the far end, where the rings get too fine to see"),
         Param.Toggle("seamless", "Hide seam", false, "Runs the picture forth and mirrored back, so its left and right ends meet without a seam"),
-        Param.Slider("centerX", "Center X", -2000, 2000, 0, " px", "Pixels from the middle of the canvas – can also be dragged with the handle in the picture"),
-        Param.Slider("centerY", "Center Y", -2000, 2000, 0, " px"),
+        Param.Slider("centerX", "Center X", -200000, 200000, 0, " px", "Pixels from the middle of the canvas – can also be dragged with the handle in the picture", decimals = 2, transform = true),
+        Param.Slider("centerY", "Center Y", -200000, 200000, 0, " px", decimals = 2, transform = true),
         Param.Choice("edge", "Edge", Edge.labels, default = Edge.WRAP.ordinal, tip = "What appears beyond the picture's top and bottom"),
         Param.Choice(
             "antialias", "Anti-aliasing", listOf("Off", "2 × 2", "4 × 4"), 1,
@@ -63,8 +63,8 @@ object Polar : Effect("polar", "Polar coordinates", "Bends the picture into a ci
         val w = src.width
         val h = src.height
         val mode = v["mode"]
-        val cx = w / 2.0 + v["centerX"]
-        val cy = h / 2.0 + v["centerY"]
+        val cx = w / 2.0 + (v["centerX"] / 100.0)
+        val cy = h / 2.0 + (v["centerY"] / 100.0)
         val radius = max(1.0, min(w, h) / 2.0 * v["radius"] / 100.0)
         val invert = v.bool("invert")
         val rotation = (v["rotation"] / 100.0) * PI / 180

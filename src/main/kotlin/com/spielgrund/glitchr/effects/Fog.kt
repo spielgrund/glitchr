@@ -28,7 +28,7 @@ object Fog : Effect("fog", "Fog", "Fog by the estimated depth: the further away,
         Param.Slider("fogEnd", "End", 0, 100, 100, " %", "This is where it is densest"),
         Param.Slider("ground", "Ground fog", -100, 100, 0, " %", "Positive: denser at the bottom, like fog above the ground · negative: denser at the top"),
         Param.Slider("wisps", "Wisps", 0, 100, 25, " %", "The fog is unevenly dense"),
-        Param.Slider("wispSize", "Wisp size", 4, 1000, 160, " px", canvasMax = true),
+        Param.Slider("wispSize", "Wisp size", 400, 100000, 16000, " px", canvasMax = true, decimals = 2),
         Param.Slider("haze", "Haze blur", 0, 100, 20, " px", "The picture gets soft in the fog"),
         Param.Slider("aerial", "Aerial perspective", 0, 100, 40, " %", "Distant things lose their color"),
     ) + Depth.params
@@ -48,7 +48,7 @@ object Fog : Effect("fog", "Fog", "Fog by the estimated depth: the further away,
         val end = max(start + 0.01, v["fogEnd"] / 100.0)
         val ground = v["ground"] / 100.0
         val wisps = v["wisps"] / 100.0
-        val wispSize = v["wispSize"].toDouble()
+        val wispSize = (v["wispSize"] / 100.0).toDouble()
         val aerial = v["aerial"] / 100.0
         val noise = Noise(seed)
         // the soft (hazy) picture, per channel

@@ -23,7 +23,7 @@ object WaterReflection : Effect("waterreflection", "Water reflection", "Mirrors 
         Param.Slider("squash", "Squash", 20, 200, 100, " %", "Height of the reflection against the picture"),
         Param.Heading("wavesHeading", "Waves"),
         Param.Slider("waves", "Waves", 0, 200, 40, " px", "How far the waves shift the reflection (nearest to us)"),
-        Param.Slider("waveSize", "Wave size", 2, 400, 40, " px", "Size of the waves close to us; towards the horizon they get finer"),
+        Param.Slider("waveSize", "Wave size", 200, 40000, 4000, " px", "Size of the waves close to us; towards the horizon they get finer", decimals = 2),
         Param.Slider("stretch", "Wave stretch", 100, 1000, 400, " %", "Waves are long sideways and short in depth"),
         Param.Slider("ripple", "Ripples", 0, 100, 40, " %", "Finer, choppier ripples on top"),
         Param.Slider("phase", "Phase", -360000, 360000, 0, "°", "Moves the waves – animate it", decimals = 2),
@@ -44,7 +44,7 @@ object WaterReflection : Effect("waterreflection", "Water reflection", "Mirrors 
         val perspective = v["perspective"] / 100.0
         val squash = v["squash"] / 100.0
         val amplitude = v["waves"].toDouble()
-        val waveSize = v["waveSize"].toDouble()
+        val waveSize = (v["waveSize"] / 100.0).toDouble()
         val stretch = v["stretch"] / 100.0
         val ripple = v["ripple"] / 100.0
         val phase = Math.toRadians(v["phase"] / 100.0)

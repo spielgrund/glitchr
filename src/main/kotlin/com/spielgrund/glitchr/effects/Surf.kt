@@ -36,7 +36,7 @@ object Surf : Effect("surf", "Surf", "Waves and spray run out from every area of
 
         Param.Heading("wavesHeading", "Waves"),
         Param.Slider("direction", "Direction", 0, 35900, 9000, "°", "Where the surf runs to; 90° = down", decimals = 2),
-        Param.Slider("spread", "Spread", 10, 360, 200, "°", "How far around the area the waves reach; 180° = the half facing the direction, 360° = all around"),
+        Param.Slider("spread", "Spread", 1000, 36000, 20000, "°", "How far around the area the waves reach; 180° = the half facing the direction, 360° = all around", decimals = 2),
         Param.Slider("stretch", "Stretch", 100, 600, 180, " %", "Waves reach further in the direction than to the sides"),
         Param.Slider("count", "Count", 1, 60, 4, tip = "Waves per area"),
         Param.Slider("spacing", "Spacing", 2, 500, 28, " px", "Distance of the first wave from the area"),
@@ -46,7 +46,7 @@ object Surf : Effect("surf", "Surf", "Waves and spray run out from every area of
         Param.Slider("width", "Line width", 1, 400, 30, " px", "Width of the lines", decimals = 1),
         Param.Slider("fade", "Fade", 0, 100, 60, " %", "Outer waves become weaker"),
         Param.Slider("wobble", "Wobble", 0, 200, 25, " px", "Waves bend like drawn by hand"),
-        Param.Slider("wobbleSize", "Wobble size", 5, 1000, 120, " px"),
+        Param.Slider("wobbleSize", "Wobble size", 500, 100000, 12000, " px", decimals = 2),
         Param.Toggle("outline", "Outline", true, "A line all around every area that sends waves"),
 
         Param.Heading("colorHeading", "Color"),
@@ -58,7 +58,7 @@ object Surf : Effect("surf", "Surf", "Waves and spray run out from every area of
         Param.Heading("sprayHeading", "Spray"),
         Param.Slider("spray", "Spray", 0, 100, 45, " %", "Little foam clouds along the crests; they travel with their wave"),
         Param.Slider("sprayReach", "Spray reach", 1, 300, 35, " px", "How far the spray flies off the crest, outwards"),
-        Param.Slider("spraySize", "Cloud size", 1, 200, 12, " px", "Size of the foam clouds"),
+        Param.Slider("spraySize", "Cloud size", 100, 20000, 1200, " px", "Size of the foam clouds", decimals = 2),
         Param.Slider("spraySoft", "Cloud softness", 1, 100, 35, " %", "Soft, misty clouds or crisp ones"),
     )
 
@@ -93,16 +93,16 @@ object Surf : Effect("surf", "Surf", "Waves and spray run out from every area of
         val halfWidth = v["width"] / 20.0
         val fade = v["fade"] / 100.0
         val wobble = v["wobble"].toDouble()
-        val wobbleScale = 1.0 / v["wobbleSize"]
+        val wobbleScale = 1.0 / (v["wobbleSize"] / 100.0)
         val outline = v.bool("outline")
-        val cosSpread = cos(Math.toRadians(v["spread"] / 2.0))
+        val cosSpread = cos(Math.toRadians((v["spread"] / 100.0) / 2.0))
         val colorMode = v["colorMode"]
         val custom = v["color"] or 0xFF000000.toInt()
         val colorMix = v["colorMix"] / 100f
         val strength = v["strength"] / 100f
         val spray = v["spray"] / 100.0
         val sprayReach = v["sprayReach"].toDouble()
-        val cloudSize = v["spraySize"].toDouble()
+        val cloudSize = (v["spraySize"] / 100.0).toDouble()
         val cloudSoft = v["spraySoft"] / 100.0
         val s = seed.toInt() xor (seed ushr 32).toInt()
         val sprayNoise = Noise(seed + 77)

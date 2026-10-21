@@ -56,7 +56,7 @@ abstract class TilePattern(
     override val params = buildList {
         add(Param.Choice("pattern", "Pattern", names))
         add(Param.Slider("colors", "Colors", 2, 12, 5, tip = "How many of the picture's most striking colors are used"))
-        add(Param.Slider("size", "Size", 4, 600, defaultSize, " px"))
+        add(Param.Slider("size", "Size", 400, 60000, defaultSize * 100, " px", decimals = 2))
         add(Param.Slider("angle", "Angle", 0, 17900, 0, "°", decimals = 2))
         val mappings = listOf("By picture", "Random", "In order", "Black/white", "Gradient", "Gradient per band", "Stripe gradient")
         add(
@@ -112,7 +112,7 @@ abstract class TilePattern(
         val bands = if (withBands) v["bands"] else 8
         val stroke = if (withBands) v["stroke"] / 100.0 else 0.22
         val armLength = if (withBands) v["length"] / 100.0 else 1.0
-        val s = v["size"].toDouble()
+        val s = (v["size"] / 100.0).toDouble()
         val a = (v["angle"] / 100.0) * PI / 180
         val ca = cos(a)
         val sa = sin(a)

@@ -63,7 +63,7 @@ object Grow : Effect("grow", "Grow", "Spreading like an infection: the start pix
         ),
         Param.Slider("immunity", "Immunity", 0, 100, 40, " %", "Random resistance per pixel – makes the front ragged"),
         Param.Slider("noise", "Noise", 0, 200, 60, " %", "A noise field makes regions easier or harder to infect"),
-        Param.Slider("noiseSize", "Noise size", 2, 500, 40, " px"),
+        Param.Slider("noiseSize", "Noise size", 200, 50000, 4000, " px", decimals = 2),
         Param.Choice("imageValue", "Picture works via", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
         Param.Slider("imageInfluence", "Picture influence", -200, 200, 0, " %", "Positive: high values (e.g. bright spots) get infected more easily, negative: less easily"),
         Param.Slider("direction", "Direction", 0, 35900, 0, "°", "It prefers to spread in this direction", decimals = 2),
@@ -154,7 +154,7 @@ object Grow : Effect("grow", "Grow", "Spreading like an infection: the start pix
         val peakRate = peakShare.pow(bayPower) * (1 - peakShare).pow(crowding)
         val immunity = v["immunity"] / 100.0
         val noiseAmount = v["noise"] / 100.0
-        val noiseSize = max(1.0, v["noiseSize"].toDouble() / n)
+        val noiseSize = max(1.0, (v["noiseSize"] / 100.0).toDouble() / n)
         val imageValue = v["imageValue"]
         val imageInfluence = v["imageInfluence"] / 100.0
         val dirStrength = v["directionStrength"] / 100.0

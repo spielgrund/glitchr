@@ -41,7 +41,7 @@ class UvTextureTest {
     @Test
     fun `moving, turning and scaling change the placement, deterministically`() {
         val plain = UvTexture.apply(ramp, UvTexture.defaultValues(base), 3L)
-        for (change in listOf("offsetU" to 100, "rotation" to 3000, "scale" to 50)) {
+        for (change in listOf("offsetU" to 100, "rotation" to 3000, "scale" to 5000)) {
             val moved = UvTexture.apply(ramp, UvTexture.defaultValues(base + change), 3L)
             assertTrue(!plain.data.contentEquals(moved.data), change.first)
         }

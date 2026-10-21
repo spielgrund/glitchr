@@ -48,15 +48,15 @@ object NoiseField : Effect("noisefield", "Noise", "Directional noise with many w
     override val params = listOf(
         Param.Choice("type", "Noise", types, default = 4), // Wert-Noise
         Param.Slider("direction", "Direction", 0, 35900, 0, "°", "Direction of the noise; along this direction the start/end values change", decimals = 2),
-        Param.Slider("scaleStart", "Size start", 2, 1000, 2, " px"),
-        Param.Slider("scaleEnd", "Size end", 2, 1000, 120, " px"),
+        Param.Slider("scaleStart", "Size start", 200, 100000, 200, " px", decimals = 2),
+        Param.Slider("scaleEnd", "Size end", 200, 100000, 12000, " px", decimals = 2),
         Param.Slider("stretchStart", "Stretch start", 100, 1500, 100, " %", "Pulls the noise into streaks along the direction"),
         Param.Slider("stretchEnd", "Stretch end", 100, 1500, 100, " %"),
         Param.Slider("detailStart", "Detail start", 1, 8, 3, tip = "Finer layers (fractal, ridged)"),
         Param.Slider("detailEnd", "Detail end", 1, 8, 3),
         Param.Slider("contrastStart", "Contrast start", 0, 400, 100, " %"),
         Param.Slider("contrastEnd", "Contrast end", 0, 400, 100, " %"),
-        Param.Slider("offset", "Offset", 0, 2000, 0, " px", "Shifts the noise along the direction"),
+        Param.Slider("offset", "Offset", 0, 200000, 0, " px", "Shifts the noise along the direction", decimals = 2, transform = true),
         Param.Slider(
             "imageShape", "Picture shapes noise", 0, 100, 50, " %",
             "The brightness shapes of the picture bend the noise and flow into it – it grows out of the subject instead of lying on top",
@@ -88,9 +88,9 @@ object NoiseField : Effect("noisefield", "Noise", "Directional noise with many w
         val uy = sin(dir)
         // half the picture's extent along the direction, so t runs 0..1 from one side to the other
         val reach = max(1.0, (abs(w * ux) + abs(h * uy)) / 2)
-        val logScale0 = ln(v["scaleStart"].toDouble())
-        val logScale1 = ln(v["scaleEnd"].toDouble())
-        val offset = v["offset"].toDouble()
+        val logScale0 = ln((v["scaleStart"] / 100.0).toDouble())
+        val logScale1 = ln((v["scaleEnd"] / 100.0).toDouble())
+        val offset = (v["offset"] / 100.0).toDouble()
         val mixMode = v["mix"]
         val amount = v["amount"] / 100.0
         val threshold = v["threshold"] / 100.0

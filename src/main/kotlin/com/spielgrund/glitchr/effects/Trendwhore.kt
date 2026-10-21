@@ -35,7 +35,7 @@ object Trendwhore : Effect("trendwhore", "Trendwhore 3D", "Glossy early-2000s 3D
                 "Ribbon twist: a twisting bundle of bands · Slab rush: slabs rushing at you · Liquid chrome: blobby chrome tubes and loops · Chrome blades: sweeping chrome with a wire globe",
         ),
         Param.Choice("twPalette", "Palette", listOf("Style's own") + TrendwhoreShapes.PALETTES, 0, "Style's own: the colors that go with the style"),
-        Param.Slider("size", "Size", 10, 300, 100, " %"),
+        Param.Slider("size", "Size", 1000, 30000, 10000, " %", decimals = 2, transform = true),
         Param.Slider("shards", "Amount", 0, 100, 50, " %", "How many of the style's main shapes: shards, bodies, bubbles, particles, spikes, slabs or cubes"),
         Param.Slider("ribbons", "Secondary", 0, 100, 50, " %", "The style's second element: ribbons, mesh, tubes, trails, big shards, loose spikes, bands, light panels or blades"),
         Param.Slider("light", "Light", 0, 100, 50, " %", "Bright streaks and glowing rings"),
@@ -182,7 +182,7 @@ internal object TrendwhoreShapes {
         val ribbons = v["ribbons"] / 100.0
         val light = v["light"] / 100.0
         val hud = v["hud"] / 100.0
-        val s = min(w, h) * v["size"] / 100.0
+        val s = min(w, h) * (v["size"] / 100.0) / 100.0
         fun pick() = pal[1 + random.nextInt(pal.size - 1)]
         val bodies = style >= 4
         val vx = w * if (bodies) 0.45 + random.nextDouble() * 0.1 else 0.35 + random.nextDouble() * 0.3

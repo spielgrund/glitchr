@@ -26,13 +26,13 @@ object Tiling : Effect("tiling", "Tiling", "Repeats the picture as tiles – sea
         Param.Toggle("seamless", "Seamless", true, "Hides the picture's own edges: towards them it cross-fades into a copy shifted by half a picture"),
         Param.Toggle("stochastic", "Stochastic", true, "Breaks up the repetition: randomly shifted parts of the picture blended into each other (Reroll = another arrangement)"),
         Param.Slider("cells", "Cells", 1, 8, 2, tip = "Random patches per repeat of the picture: more = mixed in smaller pieces"),
-        Param.Slider("rotation", "Random rotation", 0, 180, 0, "°", "Each patch is turned by a random angle up to ± this much; 180° = any direction"),
+        Param.Slider("rotation", "Random rotation", 0, 18000, 0, "°", "Each patch is turned by a random angle up to ± this much; 180° = any direction", decimals = 2),
         Param.Slider("blend", "Transition width", 1, 50, 25, " %", "Width of the transitions: small = hard borders, large = softly blended"),
         Param.Slider("blendNoise", "Transition noise", 0, 100, 0, " %", "Makes the transitions irregular, so even narrow ones look natural"),
         Param.Heading("evenHeading", "Even out"),
         Param.Slider("evenLight", "Brightness", 0, 100, 0, " %", "Evens out bright and dark areas (light falloff in a photo), fine structure stays"),
         Param.Slider("evenColor", "Color", 0, 100, 0, " %", "Removes large color casts, brightness and fine structure stay"),
-        Param.Slider("evenSize", "Area size", 3, 50, 12, " %", "Size of the evened-out areas, of the picture: small = also smaller patches, large = only gradients"),
+        Param.Slider("evenSize", "Area size", 300, 5000, 1200, " %", "Size of the evened-out areas, of the picture: small = also smaller patches, large = only gradients", decimals = 2),
     )
 
     /** The picture with its halved levels (mipmaps), so it can be shrunk into many tiles without flickering. */
@@ -128,12 +128,12 @@ object Tiling : Effect("tiling", "Tiling", "Repeats the picture as tiles – sea
         val seamless = v.bool("seamless")
         val stochastic = v.bool("stochastic")
         val cells = v["cells"]
-        val rotation = v["rotation"].toDouble()
+        val rotation = (v["rotation"] / 100.0).toDouble()
         val blend = (v["blend"] / 100.0).coerceIn(0.01, 0.5)
         val blendNoise = v["blendNoise"] / 100.0
         val evenLight = v["evenLight"] / 100.0
         val evenColor = v["evenColor"] / 100.0
-        val evenSize = (v["evenSize"] / 100.0).coerceIn(0.03, 0.5)
+        val evenSize = ((v["evenSize"] / 100.0) / 100.0).coerceIn(0.03, 0.5)
         val evening = evenLight > 0 || evenColor > 0
         val s = seed.toInt() xor (seed ushr 32).toInt()
         val noise = Noise(seed + 401)

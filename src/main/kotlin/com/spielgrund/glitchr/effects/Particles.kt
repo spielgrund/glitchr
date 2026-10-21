@@ -48,7 +48,7 @@ object Particles : Effect("shapes", "Particles", "Rebuilds the picture from geom
         Param.Choice("form", "Shape", forms),
         Param.Slider("density", "Density", 10, 400, 100, " %", "How densely the particles lie: at 100 % they fit together without gaps, however large they are"),
         Param.Slider("abstraction", "Abstraction", 0, 100, 40, " %", "How much the picture is first simplified into color areas (blobs). Large blobs give large particles"),
-        Param.Slider("particleSize", "Particle size", 10, 400, 100, " %", "Scales all particles; their base size follows the size of their color area"),
+        Param.Slider("particleSize", "Particle size", 1000, 40000, 10000, " %", "Scales all particles; their base size follows the size of their color area", decimals = 2, transform = true),
         Param.Slider("sizeJitter", "Size variation", 0, 100, 30, " %", "0 %: all particles of an area the same size. 100 %: widely scattered"),
         Param.Slider("colorRange", "Color variety", 0, 100, 50, " %", "0 %: the area's average color. 100 %: every particle takes a random original color from its area"),
         Param.Slider("detail", "Detail at edges", 0, 100, 0, " %", "Makes particles at the borders of the color areas smaller"),
@@ -66,7 +66,7 @@ object Particles : Effect("shapes", "Particles", "Rebuilds the picture from geom
         val random = Random(seed)
         val blobs = blobify(src, v["abstraction"] / 100.0, seed)
         val (edge, direction) = edges(blobs.image)
-        val sizeFactor = v["particleSize"] / 100.0
+        val sizeFactor = (v["particleSize"] / 100.0) / 100.0
         val largest = min(w, h) / 2.0
         val detail = v["detail"] / 100.0
         val opacity = v["opacity"] / 100f

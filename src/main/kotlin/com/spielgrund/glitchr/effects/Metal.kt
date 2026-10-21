@@ -76,7 +76,7 @@ object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, go
         Param.Toggle("invert", "Invert relief", false, "Dark is high, bright is low"),
         Param.Heading("surfaceHeading", "Surface"),
         Param.Choice("surface", "Surface", surfaces, BRUSHED),
-        Param.Slider("surfaceSize", "Size", 1, 200, 6, " px", canvasMax = true),
+        Param.Slider("surfaceSize", "Size", 100, 20000, 600, " px", canvasMax = true, decimals = 2),
         Param.Slider("surfaceStrength", "Strength", 0, 200, 50, " %"),
         Param.Slider("brushAngle", "Direction", 0, 17900, 0, "°", "Direction of the brush strokes", decimals = 2),
         Param.Heading("envHeading", "Reflection"),
@@ -137,7 +137,7 @@ object Metal : Effect("metal", "Metal", "Turns everything into metal: chrome, go
 
         // the surface finish, added to the height
         val surface = v["surface"]
-        val sSize = v["surfaceSize"].toDouble()
+        val sSize = (v["surfaceSize"] / 100.0).toDouble()
         val sAmp = v["surfaceStrength"] / 100.0
         if (surface != 0 && sAmp > 0) {
             val noise = Noise(seed)

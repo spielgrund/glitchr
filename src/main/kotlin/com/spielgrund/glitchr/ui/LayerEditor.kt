@@ -53,6 +53,9 @@ interface LayerEditorHost {
 
     /** Values were replaced wholesale: rebuild the editor. */
     fun rebuildEditor(focusMaskMode: Boolean = false)
+
+    /** The point selected in a layer's point list (see [Param.Points]), shown and dragged on the canvas; -1 none. */
+    var selectedPoint: Int
 }
 
 /** Settings of one layer: effect or generator parameters or picture placement, opacity, blend mode and mask. */
@@ -114,6 +117,8 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         valueChanged = null
         form.section(title)
         for (p in layer.params) {
+            // points or arrows of another mode: not shown
+            if (!active(layer, p)) continue
             val value = layer.values.getValue(p.key)
             val set = { v: Int ->
                 if (layer.values[p.key] != v) {
@@ -129,7 +134,11 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 }
                 is Param.Choice -> form.row(p.label, JComboBox(p.options.toTypedArray()).apply {
                     selectedIndex = value
-                    addActionListener { set(selectedIndex) }
+                    addActionListener {
+                        set(selectedIndex)
+                        // settings that only belong to some choices (points, arrows) come and go
+                        if (layer.params.any { activeKey(it) == p.key }) host.rebuildEditor()
+                    }
                 }, p.tip, anim(p.key))
                 is Param.Toggle -> form.full(JCheckBox(p.label, value != 0).apply {
                     toolTipText = p.tip
@@ -139,7 +148,9 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 is Param.Heading -> form.section(p.label)
                 is Param.Flow -> buildFlow(layer, p)
                 is Param.Icon -> buildIcon(layer, p)
+                is Param.Points -> buildPoints(layer, p)
                 is Param.Picture -> buildPicture(layer, p)
+                is Param.Model -> buildModel(layer, p)
                 is Param.Ramp -> form.full(RampField(layer.texts[p.key] ?: p.defaultText) { text ->
                     if (layer.texts[p.key] != text) {
                         layer.texts[p.key] = text
@@ -180,7 +191,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             addActionListener {
                 layer.values.putAll(layer.defaults())
                 // texts too (ramps, curves, own text) – but drawn flow strokes and pasted icons stay
-                val flows = layer.params.filter { it is Param.Flow || it is Param.Icon || it is Param.Picture }.map { it.key }.toSet()
+                val flows = layer.params.filter { it is Param.Flow || it is Param.Icon || it is Param.Picture || it is Param.Points || it is Param.Model }.map { it.key }.toSet()
                 layer.texts.putAll(layer.textDefaults().filterKeys { it !in flows })
                 host.layerChanged()
                 host.rebuildEditor()
@@ -194,6 +205,23 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                 addActionListener { l.seedPerFrame = isSelected; host.layerChanged() }
             })
         }
+    }
+
+    /** The choice that decides whether [p] is in use (see [Param.Points], [Param.Flow]), or null. */
+    private fun activeKey(p: Param) = when (p) {
+        is Param.Points -> p.activeWhen?.first
+        is Param.Flow -> p.activeWhen?.first
+        else -> null
+    }
+
+    /** Whether [p] is in use with the layer's current choices. */
+    private fun active(layer: ParamLayer, p: Param): Boolean {
+        val rule = when (p) {
+            is Param.Points -> p.activeWhen
+            is Param.Flow -> p.activeWhen
+            else -> null
+        } ?: return true
+        return layer.values[rule.first] == rule.second
     }
 
     /** Called when a setting of the shown layer changes, for parts of the editor that show results (the palette swatches). */
@@ -313,6 +341,154 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         return null
     }
 
+    /**
+     * Points on the canvas: a list to add and delete them; the selected one is marked in the
+     * picture and can be dragged there – as can any other, which then becomes selected.
+     */
+    private fun buildPoints(layer: ParamLayer, p: Param.Points) {
+        val points = com.spielgrund.glitchr.effects.PointList.parse(layer.texts[p.key] ?: p.defaultText)
+        val model = javax.swing.DefaultListModel<String>()
+        points.forEachIndexed { i, pt -> model.addElement("Point ${i + 1}     ${(pt.x * 100).roundToInt()} %, ${(pt.y * 100).roundToInt()} %") }
+        val list = javax.swing.JList(model).apply {
+            selectionMode = javax.swing.ListSelectionModel.SINGLE_SELECTION
+            // as many rows as points, up to eight – then it scrolls
+            visibleRowCount = points.size.coerceIn(3, 8)
+            if (host.selectedPoint in points.indices) selectedIndex = host.selectedPoint
+        }
+        form.full(JLabel(p.label).apply { toolTipText = p.tip; border = javax.swing.BorderFactory.createEmptyBorder(4, 16, 2, 0) })
+        form.full(javax.swing.JScrollPane(list).apply {
+            // as high as its rows, even where the editor is narrow (the layout then falls back to minimum sizes)
+            val height = list.preferredScrollableViewportSize.height + 6
+            preferredSize = java.awt.Dimension(60, height)
+            minimumSize = java.awt.Dimension(60, height)
+        })
+        // the selected point's place, in pixels from the middle of the canvas
+        val (cw, ch) = host.imageSize ?: (1000 to 1000)
+        val sel = points.getOrNull(list.selectedIndex)
+        fun moveSelected(x: Double?, y: Double?) {
+            val i = list.selectedIndex
+            if (i !in points.indices) return
+            val now = com.spielgrund.glitchr.effects.PointList.parse(layer.texts[p.key] ?: "").toMutableList()
+            if (i !in now.indices) return
+            now[i] = java.awt.geom.Point2D.Double(x ?: now[i].x, y ?: now[i].y)
+            layer.texts[p.key] = com.spielgrund.glitchr.effects.PointList.format(now)
+            model.set(i, "Point ${i + 1}     ${(now[i].x * 100).roundToInt()} %, ${(now[i].y * 100).roundToInt()} %")
+            host.layerChanged()
+        }
+        if (sel != null) {
+            form.row("Point X", SliderField(-cw * 100, cw * 100, ((sel.x - 0.5) * cw * 100).roundToInt(), 0, " px", 2) { v ->
+                moveSelected(0.5 + v / 100.0 / cw, null)
+            }, "Of the selected point, from the middle of the canvas")
+            form.row("Point Y", SliderField(-ch * 100, ch * 100, ((sel.y - 0.5) * ch * 100).roundToInt(), 0, " px", 2) { v ->
+                moveSelected(null, 0.5 + v / 100.0 / ch)
+            }, "Of the selected point, from the middle of the canvas")
+        }
+        // another point picked: the sliders show it
+        list.addListSelectionListener { if (!it.valueIsAdjusting && host.selectedPoint != list.selectedIndex) { host.selectedPoint = list.selectedIndex; host.rebuildEditor() } }
+        fun store(changed: List<java.awt.geom.Point2D.Double>, select: Int) {
+            layer.texts[p.key] = com.spielgrund.glitchr.effects.PointList.format(changed)
+            host.selectedPoint = select
+            host.layerChanged()
+            host.rebuildEditor()
+        }
+        val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
+        buttons.add(JButton("Add").apply {
+            toolTipText = "A new point – next to the selected one, or in the middle"
+            addActionListener {
+                val at = points.getOrNull(list.selectedIndex)?.let { java.awt.geom.Point2D.Double((it.x + 0.08).coerceIn(0.0, 1.0), (it.y + 0.08).coerceIn(0.0, 1.0)) }
+                    ?: java.awt.geom.Point2D.Double(0.5, 0.5)
+                store(points + at, points.size)
+            }
+        })
+        buttons.add(javax.swing.Box.createHorizontalStrut(6))
+        buttons.add(JButton("Delete").apply {
+            isEnabled = list.selectedIndex in points.indices
+            addActionListener {
+                val i = list.selectedIndex
+                if (i in points.indices) store(points.filterIndexed { k, _ -> k != i }, minOf(i, points.size - 2))
+            }
+        })
+        form.full(buttons)
+        form.full(hint("Drag a point in the picture to move it; the selected one is marked."))
+    }
+
+    /**
+     * A 3D model: OBJ pasted (text or a copied file) or opened, with how many faces it has; the
+     * script for Blender that puts the selected object on the clipboard as OBJ text.
+     */
+    private fun buildModel(layer: ParamLayer, p: Param.Model) {
+        val text = layer.texts[p.key] ?: ""
+        val mesh = com.spielgrund.glitchr.effects.Mesh.of(text)
+        form.row(p.label, JLabel(when {
+            text.isBlank() -> "none – built-in shape"
+            mesh == null -> "can't be read"
+            else -> "${mesh.faces} faces, ${mesh.triangles} triangles" + if (mesh.uv != null) ", with UVs" else ""
+        }), p.tip)
+        fun store(value: String?) {
+            if (value == null) return
+            // the model is read here already, to say what's wrong
+            val problem = try {
+                if (com.spielgrund.glitchr.effects.Mesh.parseObj(value) == null) "No faces found – paste OBJ text or an .obj file." else null
+            } catch (e: com.spielgrund.glitchr.effects.Mesh.Companion.TooBig) {
+                "This model has ${e.faces} faces – at most ${com.spielgrund.glitchr.effects.Mesh.MAX_FACES}. In Blender, a Decimate modifier brings it down."
+            }
+            if (problem != null) {
+                javax.swing.JOptionPane.showMessageDialog(form, problem, p.label, javax.swing.JOptionPane.INFORMATION_MESSAGE)
+                return
+            }
+            // only what the model needs: positions, texture places, normals and faces
+            layer.texts[p.key] = value.lineSequence().map { it.trim() }
+                .filter { it.startsWith("v ") || it.startsWith("vt ") || it.startsWith("vn ") || it.startsWith("f ") }
+                .joinToString("\n")
+            host.layerChanged()
+            host.rebuildEditor()
+        }
+        fun fromFile(file: java.io.File) = try { file.readText() } catch (e: Exception) { null }
+        val buttons = JPanel(java.awt.GridLayout(2, 2, 6, 6)).apply { isOpaque = false }
+        buttons.add(JButton("Paste").apply {
+            toolTipText = "OBJ text from the clipboard (e.g. from the Blender script), or a copied .obj file"
+            addActionListener {
+                val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                val value = try {
+                    when {
+                        clipboard.isDataFlavorAvailable(java.awt.datatransfer.DataFlavor.javaFileListFlavor) ->
+                            (clipboard.getData(java.awt.datatransfer.DataFlavor.javaFileListFlavor) as List<*>).filterIsInstance<java.io.File>().firstNotNullOfOrNull { fromFile(it) }
+                        clipboard.isDataFlavorAvailable(java.awt.datatransfer.DataFlavor.stringFlavor) -> clipboard.getData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String
+                        else -> null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+                if (value == null) javax.swing.JOptionPane.showMessageDialog(form, "The clipboard holds no OBJ text or file.", p.label, javax.swing.JOptionPane.INFORMATION_MESSAGE)
+                store(value)
+            }
+        })
+        buttons.add(JButton("Open…").apply {
+            addActionListener {
+                val chooser = javax.swing.JFileChooser().apply { fileFilter = javax.swing.filechooser.FileNameExtensionFilter("Wavefront OBJ", "obj") }
+                if (chooser.showOpenDialog(form) == javax.swing.JFileChooser.APPROVE_OPTION) store(fromFile(chooser.selectedFile))
+            }
+        })
+        buttons.add(JButton("Remove").apply {
+            isEnabled = text.isNotBlank()
+            addActionListener { layer.texts[p.key] = ""; host.layerChanged(); host.rebuildEditor() }
+        })
+        buttons.add(JButton("Blender script").apply {
+            toolTipText = "Copies a script for Blender: run it there and the selected object is on the clipboard as OBJ – then press Paste here"
+            addActionListener {
+                java.awt.Toolkit.getDefaultToolkit().systemClipboard.setContents(java.awt.datatransfer.StringSelection(com.spielgrund.glitchr.effects.Mesh.BLENDER_SCRIPT), null)
+                javax.swing.JOptionPane.showMessageDialog(
+                    form,
+                    "The script is on the clipboard.\n\nIn Blender: select the object, open the Scripting tab, make a new text, paste the script and press Run Script\n" +
+                        "(or paste it into the Python console). Then press Paste here.",
+                    "Blender script", javax.swing.JOptionPane.INFORMATION_MESSAGE,
+                )
+            }
+        })
+        form.full(buttons)
+    }
+
+
     /** An own icon: pasted from the clipboard or opened from a file, shown small, removable. */
     private fun buildIcon(layer: ParamLayer, p: Param.Icon) {
         val text = layer.texts[p.key] ?: ""
@@ -418,16 +594,19 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             host.layerChanged()
             host.rebuildEditor()
         }
-        fun spinner(value: Double, min: Int, max: Int, set: (Int) -> Unit) =
-            javax.swing.JSpinner(javax.swing.SpinnerNumberModel(value.roundToInt().coerceIn(min, max), min, max, 1)).apply {
-                addChangeListener { set(this.value as Int) }
+        // positions in pixels with fractions: steps of one pixel, two decimals
+        fun spinner(value: Double, limit: Double, set: (Double) -> Unit) =
+            javax.swing.JSpinner(javax.swing.SpinnerNumberModel(value.coerceIn(-limit, limit), -limit, limit, 1.0)).apply {
+                editor = javax.swing.JSpinner.NumberEditor(this, "0.##")
+                addChangeListener { set(Math.round((this.value as Number).toDouble() * 100) / 100.0) }
             }
-        val limit = 100_000
-        form.row("X", spinner(layer.x, -limit, limit) { if (it != layer.x.roundToInt()) { layer.x = it.toDouble(); host.layerChanged() } }, anim = anim(AnimKeys.X))
-        form.row("Y", spinner(layer.y, -limit, limit) { if (it != layer.y.roundToInt()) { layer.y = it.toDouble(); host.layerChanged() } }, anim = anim(AnimKeys.Y))
-        form.row("Scale", SliderField(1, 1000, (layer.scale * 100).roundToInt(), 100, "%") { percent ->
-            val s = percent / 100.0
-            if ((layer.scale * 100).roundToInt() == percent) return@SliderField
+        val limit = 100_000.0
+        form.row("X", spinner(layer.x, limit) { if (Math.abs(it - layer.x) > 1e-9) { layer.x = it; host.layerChanged() } }, anim = anim(AnimKeys.X))
+        form.row("Y", spinner(layer.y, limit) { if (Math.abs(it - layer.y) > 1e-9) { layer.y = it; host.layerChanged() } }, anim = anim(AnimKeys.Y))
+        // scale in hundredths of a percent, rotation in hundredths of a degree
+        form.row("Scale", SliderField(100, 100_000, (layer.scale * 10_000).roundToInt(), 10_000, "%", 2) { steps ->
+            val s = steps / 10_000.0
+            if ((layer.scale * 10_000).roundToInt() == steps) return@SliderField
             // scale around the center
             val b = layer.bounds
             layer.scale = s
@@ -435,10 +614,10 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             layer.y = b.centerY - layer.image.height * s / 2
             host.layerChanged()
         }, "Double-click the slider: 100 %", anim(AnimKeys.SCALE))
-        form.row("Rotation", SliderField(-1800, 1800, (layer.rotation * 10).roundToInt(), 0, "°", 1) { tenths ->
-            if ((layer.rotation * 10).roundToInt() == tenths) return@SliderField
+        form.row("Rotation", SliderField(-18000, 18000, (layer.rotation * 100).roundToInt(), 0, "°", 2) { hundredths ->
+            if ((layer.rotation * 100).roundToInt() == hundredths) return@SliderField
             // around the middle of the picture: position and size stay
-            layer.rotation = tenths / 10.0
+            layer.rotation = hundredths / 100.0
             host.layerChanged()
         }, "Around the middle of the image. In the picture: Shift + drag a corner", anim(AnimKeys.ROTATION))
         form.full(JCheckBox("Smooth scaling", layer.smooth).apply {

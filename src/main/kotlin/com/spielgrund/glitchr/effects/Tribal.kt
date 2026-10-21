@@ -45,7 +45,7 @@ object Tribal : Effect("tribal", "Tribal", "Tribal ornaments in one piece – 90
         Param.Slider("count", "Branches", 1, 40, 9, tip = "Strokes growing out of the trunk"),
         Param.Slider("levels", "Branch levels", 1, 4, 1, tip = "Branches growing out of branches: more levels make wider, more sweeping shapes"),
         Param.Slider("sub", "Sub-branches", 1, 4, 2, tip = "How many branches grow out of each branch on the next level"),
-        Param.Slider("size", "Size", 10, 200, 90, " %"),
+        Param.Slider("size", "Size", 1000, 20000, 9000, " %", decimals = 2, transform = true),
         Param.Slider("thickness", "Thickness", 5, 300, 100, " %"),
         Param.Slider("barbs", "Barbs", 0, 100, 40, " %", "Hooks and thorns on the strokes – always one, three or five"),
         Param.Slider("curl", "Curl", 0, 200, 100, " %", "How much the strokes bend"),
@@ -57,9 +57,9 @@ object Tribal : Effect("tribal", "Tribal", "Tribal ornaments in one piece – 90
         Param.Color("color", "Color", 0x000000),
         Param.Heading("placeHeading", "Placement"),
         Param.Toggle("fit", "Fit to canvas", true, "Scales and centres the finished ornament so it fits completely onto the canvas"),
-        Param.Slider("posX", "Position X", -1000, 1000, 0, " %", "Moves the ornament, from the middle of the canvas", decimals = 1),
-        Param.Slider("posY", "Position Y", -1000, 1000, 0, " %", decimals = 1),
-        Param.Slider("scale", "Scale", 5, 500, 100, " %", "Of the ornament, independent of the canvas"),
+        Param.Slider("ornamentX", "Position X", -1000, 1000, 0, " %", "Moves the ornament, from the middle of the canvas", decimals = 1, transform = true),
+        Param.Slider("ornamentY", "Position Y", -1000, 1000, 0, " %", decimals = 1, transform = true),
+        Param.Slider("scale", "Scale", 500, 50000, 10000, " %", "Of the ornament, independent of the canvas", decimals = 2, transform = true),
         Param.Toggle("transparent", "Transparent background", false, "Only the ornament, without the base color"),
         Param.Heading("bandsHeading", "Polynesian bands"),
         Param.Choice("pattern", "Pattern", patterns, 0),
@@ -92,7 +92,7 @@ object Tribal : Effect("tribal", "Tribal", "Tribal ornaments in one piece – 90
         // one piece: around the middle, or – for a pair – around a third of the width
         val pieceX = if (pair) w * 0.32 else w / 2
         // a pair has two pieces side by side: each one narrower
-        val size = min(w, h) * v["size"] / 100.0 * (if (pair) 0.62 else if (shape == 1) 1.0 else 0.8)
+        val size = min(w, h) * (v["size"] / 100.0) / 100.0 * (if (pair) 0.62 else if (shape == 1) 1.0 else 0.8)
         val height = if (shape == 0) size else min(h * 0.92, size * 1.9)
         val thick = v["thickness"] / 100.0
         val barbs = v["barbs"] / 100.0
@@ -256,8 +256,8 @@ object Tribal : Effect("tribal", "Tribal", "Tribal ornaments in one piece – 90
         val b = Rectangle2D.Double()
         shapes.forEachIndexed { i, shape -> if (i == 0) b.setRect(shape.bounds2D) else b.add(shape.bounds2D) }
         val t = AffineTransform()
-        t.translate(w / 2 + v["posX"] / 1000.0 * w, h / 2 + v["posY"] / 1000.0 * h)
-        t.scale(v["scale"] / 100.0, v["scale"] / 100.0)
+        t.translate(w / 2 + v["ornamentX"] / 1000.0 * w, h / 2 + v["ornamentY"] / 1000.0 * h)
+        t.scale((v["scale"] / 100.0) / 100.0, (v["scale"] / 100.0) / 100.0)
         if (v.bool("fit") && b.width > 0 && b.height > 0) {
             // the whole ornament with a little margin
             val fit = min(w * margin / b.width, h * margin / b.height)

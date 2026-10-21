@@ -22,19 +22,26 @@ object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mi
     internal fun edgeOf(choice: Int) = when (choice) { 1 -> Edge.WRAP; 2 -> Edge.MIRROR; 3 -> Edge.CLAMP; else -> null }
 
     override val params = listOf(
-        Param.Slider("offsetX", "Shift X", -50000, 50000, 0, " px", decimals = 1),
-        Param.Slider("offsetY", "Shift Y", -50000, 50000, 0, " px", decimals = 1),
-        Param.Slider("scale", "Scale", 10, 10000, 1000, " %", decimals = 1),
+        Param.Slider("offsetX", "Shift X", -50000, 50000, 0, " px", decimals = 1, transform = true),
+        Param.Slider("offsetY", "Shift Y", -50000, 50000, 0, " px", decimals = 1, transform = true),
+        Param.Slider("scale", "Scale", 10, 10000, 1000, " %", decimals = 1, transform = true),
         Param.Slider("stretchX", "Stretch X", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in X"),
         Param.Slider("stretchY", "Stretch Y", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in Y"),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
-        Param.Slider("centerX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Scaling and rotation happen around this point"),
-        Param.Slider("centerY", "Center Y", -1000, 2000, 500, " %", decimals = 1),
+        Param.Slider("centerX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Scaling and rotation happen around this point", transform = true),
+        Param.Slider("centerY", "Center Y", -1000, 2000, 500, " %", decimals = 1, transform = true),
         Param.Toggle("mirrorX", "Mirror X", false, "Swap left and right"),
         Param.Toggle("mirrorY", "Mirror Y", false, "Swap top and bottom"),
         Param.Choice("edge", "Edge", edgeOptions, tip = "What comes in from outside the picture"),
         Param.Toggle("smooth", "Smooth", true, "Off: hard pixels (nearest neighbor) instead of smooth interpolation"),
+        Param.Heading("blurHeading", "Motion blur"),
+        Param.Toggle("motionBlur", "Motion blur", false, "Smears the picture along its animated shift, scaling and turning, like a camera with an open shutter"),
+        Param.Slider("shutter", "Shutter angle", 0, 720, 180, "", "How long the shutter is open: 360 = one whole frame, 180 = half (film look), 720 = two frames"),
+        Param.Slider("blurSamples", "Samples", 2, 64, 12, tip = "Copies blended per frame: more = smoother smear, slower"),
     )
+
+    /** The settings that motion blur follows. */
+    val MOVING = setOf("offsetX", "offsetY", "scale", "stretchX", "stretchY", "rotation", "centerX", "centerY")
 
     override val random = false
 

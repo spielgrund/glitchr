@@ -34,7 +34,7 @@ object Flowers : Effect("flowers", "Flowers", "Roses, tulips, daisies, sunflower
         Param.Choice("kind", "Flower", kinds, 0),
         Param.Choice("layout", "Layout", listOf("One in the middle", "Scattered", "Bouquet"), 0),
         Param.Slider("count", "Count", 1, 200, 12, tip = "Scattered and bouquet"),
-        Param.Slider("size", "Size", 3, 2000, 160, " px", "Radius of a flower", canvasMax = true),
+        Param.Slider("size", "Size", 300, 200000, 16000, " px", "Radius of a flower", canvasMax = true, decimals = 2, transform = true),
         Param.Slider("variation", "Size variation", 0, 100, 40, " %"),
         Param.Toggle("stems", "Stems and leaves", true),
         Param.Slider("shading", "Shading", 0, 100, 60, " %", "Darker at the heart, lighter at the tips"),
@@ -51,7 +51,7 @@ object Flowers : Effect("flowers", "Flowers", "Roses, tulips, daisies, sunflower
         val w = src.width.toDouble()
         val h = src.height.toDouble()
         val random = Random(seed)
-        val size = v["size"].toDouble()
+        val size = (v["size"] / 100.0).toDouble()
         val variation = v["variation"] / 100.0
         val kindChoice = v["kind"]
         val custom = v["colors"] == 1
