@@ -112,6 +112,10 @@ object Generators {
             Gradient, withBase = false,
         ),
         Generator(
+            "colorbands", "Colorbands", "Bands of color through a gradient as in Ramp – linear, radial, angle, diamond, spiral …; smooth, in hard steps or hard at the color stops; bent by waves and noise",
+            Colorbands, withBase = false,
+        ),
+        Generator(
             "shape", "Shape", "A geometric shape: line, triangle, polygon, star, circle or ring; filled with a color or a gradient, with outline",
             Shape, defaultBase = 0x000000,
         ),
@@ -184,6 +188,22 @@ object Generators {
         Generator(
             "lightning", "Lightning", "Lightning bolts from one or more points, in a direction or along drawn arrows – forking and glowing", Lightning,
             defaultBase = 0x05060F,
+        ),
+        Generator(
+            "portal", "Portal", "A portal – swirling vortex, ring of spinning sparks or rippling surface – with a ragged, glowing rim and sparks flying off; its inside can be a hole; animate the time", Portal,
+            defaultBase = 0x06080C,
+        ),
+        Generator(
+            "explosion", "Explosion", "An explosion – billowing fireball or mushroom cloud – with flash, shockwave and glowing debris, cooling to smoke; animate the progress", Explosion,
+            defaultBase = 0x0B0D12,
+        ),
+        Generator(
+            "caustics", "Water caustics", "The wobbling net of light under water – pool swells, ocean wave trains, rings or a honeycomb of cells; focus (also varying at random), colored dispersion; animate the time, also as a seamless loop", Caustics,
+            withBase = false,
+        ),
+        Generator(
+            "barbwire", "Barbed wire", "Barbed or razor wire – strands sagging across the picture, along drawn arrows or as rings, optionally coiled like concertina wire; rusty metal with a shadow", Barbwire,
+            defaultBase = 0xE6E1D8,
         ),
         Generator(
             "errors", "Error cascade", "Error messages – Windows 98, XP or Mac OS 9 – bouncing away like the cards when you've won Solitaire, leaving trails; animate the progress", ErrorCascade,

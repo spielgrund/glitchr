@@ -73,6 +73,12 @@ enum class RampPalette(private val label: String, private vararg val stops: Pair
     RAINBOW(
         "Rainbow", 0.0 to 0xFF0000, 0.17 to 0xFFFF00, 0.33 to 0x00FF00, 0.5 to 0x00FFFF, 0.67 to 0x0000FF,
         0.83 to 0xFF00FF, 1.0 to 0xFF0000,
+    ),
+
+    /** Glowing neon rings: crimson, orange, yellow, lime, cyan, violet and back – even steps, so it also works hard at the stops. */
+    NEON_RINGS(
+        "Neon rings", 0.0 to 0xE8123C, 1.0 / 6 to 0xFF8A1C, 2.0 / 6 to 0xFFE11E, 3.0 / 6 to 0x9EE02C,
+        4.0 / 6 to 0x1EC6E8, 5.0 / 6 to 0x5B5CF0, 1.0 to 0xE8123C,
     );
 
     val ramp get() = ColorRamp(stops.map { (pos, rgb) -> ColorStop(pos, rgb) })

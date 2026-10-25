@@ -439,7 +439,8 @@ e.to_mesh_clear()
  * A 3D model, pasted from Blender (as OBJ text or file, up to 1024 faces) or one of the built-in
  * shapes, rendered with a z-buffer in perspective: turned on three axes, moved and scaled; as
  * plastic, chrome, toon, textured with the picture below or in its normals' colors; with a
- * wireframe over it or alone; lit from a direction, with gloss and a rim light.
+ * wireframe over it or alone; lit from a direction, with gloss and a rim light. Polygons can be
+ * see-through: then they are laid over each other from back to front instead of hiding each other.
  */
 object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blender as OBJ, or a built-in shape – turned in space and rendered as plastic, chrome, toon, textured or wireframe") {
     private val materials = listOf("Plastic", "Chrome", "Toon", "Texture: the picture", "Normals")
@@ -465,6 +466,8 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
         Param.Slider("rim", "Rim light", 0, 100, 30, " %", "Light along the outline"),
         Param.Slider("light", "Light direction", -18000, 18000, 13500, "°", "Where the light comes from, around the picture: 135° = top left", decimals = 2),
         Param.Slider("ambient", "Ambient", 0, 100, 25, " %", "Light in the shadows"),
+        Param.Slider("opacity", "Opacity", 0, 100, 100, " %", "Of every polygon: below 100 % the faces behind and inside show through, layered over each other"),
+        Param.Slider("opacityVariation", "Opacity variation", 0, 100, 0, " %", "Every polygon gets its own opacity, at random, up to this much less – Reroll for others"),
         Param.Choice("wire", "Wireframe", listOf("Off", "Over the faces", "Only"), 0, "The polygons' edges (not the diagonals of split faces)"),
         Param.Color("wireColor", "Wire color", 0xFFFFFF),
         Param.Slider("wireWidth", "Wire width", 25, 1000, 120, " px", decimals = 2),
@@ -474,10 +477,10 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
 
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
         val mesh = Mesh.of(v.text("model")) ?: Mesh.builtIn(v["builtin"])
-        return render(if (v.bool("transparent")) Pixels(src.width, src.height) else src, src, mesh, v)
+        return render(if (v.bool("transparent")) Pixels(src.width, src.height) else src, src, mesh, v, seed)
     }
 
-    private fun render(ground: Pixels, picture: Pixels, mesh: Mesh, v: Values): Pixels {
+    private fun render(ground: Pixels, picture: Pixels, mesh: Mesh, v: Values, seed: Long): Pixels {
         val w = ground.width
         val h = ground.height
         var k = (v["antialias"] + 1).coerceIn(1, 4)
@@ -539,12 +542,19 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
         val wireColor = v["wireColor"]
         val halfWire = v["wireWidth"] / 100.0 * k / 2
         val uvs = mesh.uv
+        // every polygon's opacity; all solid: a z-buffer, otherwise laid over each other from back to front
+        val opacity = v["opacity"] / 100.0
+        val variation = v["opacityVariation"] / 100.0
+        val alphas = kotlin.random.Random(seed).let { r -> DoubleArray(tris) { opacity * (1 - variation * r.nextDouble()) } }
+        val seeThrough = opacity < 1 || variation > 0
+        val order = if (!seeThrough) (0 until tris).toList()
+        else (0 until tris).sortedBy { t -> iz[t * 3] + iz[t * 3 + 1] + iz[t * 3 + 2] }
 
-        // in bands of output rows: a z-buffer for the band, shaded, then averaged down
+        // in bands of output rows: a z-buffer for the band (or the layered colors), shaded, then averaged down
         val band = 8
         val bands = (h + band - 1) / band
         val lists = Array(bands) { ArrayList<Int>() }
-        for (t in 0 until tris) {
+        for (t in order) {
             if (!usable[t]) continue
             val y0 = min(sy[t * 3], min(sy[t * 3 + 1], sy[t * 3 + 2]))
             val y1 = max(sy[t * 3], max(sy[t * 3 + 1], sy[t * 3 + 2]))
@@ -563,6 +573,8 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
             val bary1 = FloatArray(ww * rows)
             val bary2 = FloatArray(ww * rows)
             val edge = FloatArray(ww * rows)
+            // see-through: the colors laid over each other so far, premultiplied, and their coverage
+            val layered = if (seeThrough) FloatArray(ww * rows * 4) else null
             for (t in lists[b]) {
                 val i0 = t * 3; val i1 = i0 + 1; val i2 = i0 + 2
                 val area = (sx[i1] - sx[i0]) * (sy[i2] - sy[i0]) - (sx[i2] - sx[i0]) * (sy[i1] - sy[i0])
@@ -586,17 +598,32 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
                         if (l0 < 0 || l1 < 0 || l2 < 0) continue
                         val z = l0 * iz[i0] + l1 * iz[i1] + l2 * iz[i2]
                         val j = (y - rowFrom) * ww + x
+                        // distance to the nearest own edge of the polygon, in pixels: 1-2 is across corner 0, …
+                        var d = Double.MAX_VALUE
+                        if (flags and 2 != 0) d = min(d, l0 * e0)
+                        if (flags and 4 != 0) d = min(d, l1 * e1)
+                        if (flags and 1 != 0) d = min(d, l2 * e2)
+                        if (layered != null) {
+                            // shaded right away and laid over what lies behind; the wire stays solid
+                            val c = shade(
+                                t, l1 * iz[i1] / z, l2 * iz[i2] / z, d,
+                                mesh, cam, nrm, uvs, eye, material, metal, own?.get(t) ?: base, smooth, gloss, rim, ambient, lx, ly, lz, wire, wireColor, halfWire, picture,
+                            )
+                            if (c == 0) continue
+                            val a = if (wire > 0 && d <= halfWire) 1f else alphas[t].toFloat()
+                            val q = j * 4
+                            layered[q] = (c shr 16 and 0xFF) / 255f * a + layered[q] * (1 - a)
+                            layered[q + 1] = (c shr 8 and 0xFF) / 255f * a + layered[q + 1] * (1 - a)
+                            layered[q + 2] = (c and 0xFF) / 255f * a + layered[q + 2] * (1 - a)
+                            layered[q + 3] = a + layered[q + 3] * (1 - a)
+                            continue
+                        }
                         if (z <= depth[j]) continue
                         depth[j] = z.toFloat()
                         tri[j] = t
                         // perspective-correct shares of the corners
                         bary1[j] = (l1 * iz[i1] / z).toFloat()
                         bary2[j] = (l2 * iz[i2] / z).toFloat()
-                        // distance to the nearest own edge of the polygon, in pixels: 1-2 is across corner 0, …
-                        var d = Double.MAX_VALUE
-                        if (flags and 2 != 0) d = min(d, l0 * e0)
-                        if (flags and 4 != 0) d = min(d, l1 * e1)
-                        if (flags and 1 != 0) d = min(d, l2 * e2)
                         edge[j] = d.toFloat()
                     }
                 }
@@ -604,6 +631,30 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
             // shading, then k × k averaged into the output
             val acc = DoubleArray(4)
             val outRows = (rows + k - 1) / k
+            if (layered != null) {
+                // see-through: k × k of the layered colors averaged, then over the ground
+                for (oy in 0 until outRows) {
+                    val y = b * band + oy
+                    if (y >= h) break
+                    for (x in 0 until w) {
+                        acc.fill(0.0)
+                        for (dy in 0 until k) for (dx in 0 until k) {
+                            val j = (oy * k + dy) * ww + x * k + dx
+                            if (j >= ww * rows) continue
+                            for (c in 0..3) acc[c] += layered[j * 4 + c].toDouble()
+                        }
+                        val a = acc[3] / (k * k)
+                        if (a <= 0) continue
+                        val i = y * w + x
+                        val g = out.data[i]
+                        val ga = (g ushr 24) / 255.0
+                        val oa = ga + a - ga * a
+                        fun mix(sh: Int, total: Double) = (((g shr sh and 0xFF) / 255.0 * ga * (1 - a) + total / (k * k)) / oa * 255 + 0.5).toInt().coerceIn(0, 255)
+                        out.data[i] = ((oa * 255 + 0.5).toInt().coerceIn(0, 255) shl 24) or (mix(16, acc[0]) shl 16) or (mix(8, acc[1]) shl 8) or mix(0, acc[2])
+                    }
+                }
+                return@forEach
+            }
             for (oy in 0 until outRows) {
                 val y = b * band + oy
                 if (y >= h) break

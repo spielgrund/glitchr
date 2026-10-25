@@ -444,6 +444,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 for (menu in effectMenus { addLayer(it) }) add(menu)
             })
             add(adjustmentMenu())
+            addSeparator()
+            add(quickItem("Quick add generator…", KeyEvent.VK_F1) { quickSearch(QuickKind.GENERATOR) })
+            add(quickItem("Quick add effect…", KeyEvent.VK_F2) { quickSearch(QuickKind.EFFECT) })
+            add(quickItem("Quick add adjustment layer…", KeyEvent.VK_F3) { quickSearch(QuickKind.ADJUSTMENT) })
+            addSeparator()
             add(item("Duplicate", KeyEvent.VK_J) { duplicateSelected() })
             add(JMenuItem("Delete").apply {
                 accelerator = KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0)
@@ -487,6 +492,11 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 "Animated angles move in whole degrees; keyframes keep their fractions",
                 PREF_WHOLE_ROTATIONS,
             ) { WholeSteps.rotations = it })
+            add(JMenuItem("Edit quick search keywords…").apply {
+                toolTipText = "Opens the list of keywords the quick search (F1, F2, F3) finds the filters by – a text file you can edit"
+                addActionListener { editQuickKeywords() }
+            })
+            addSeparator()
             add(whole(
                 "Whole-number transformations in animations",
                 "Animated positions, shifts and scales move in whole pixels and percent; keyframes keep their fractions",
@@ -532,6 +542,46 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 toolTipText = effect.description
                 addActionListener { pick(effect) }
             })
+        }
+    }
+
+    private enum class QuickKind(val title: String) {
+        GENERATOR("Add generator"), EFFECT("Add effect"), ADJUSTMENT("Add adjustment layer")
+    }
+
+    private fun quickItem(text: String, key: Int, action: () -> Unit) = JMenuItem(text).apply {
+        accelerator = KeyStroke.getKeyStroke(key, 0)
+        addActionListener { action() }
+    }
+
+    /** Everything the quick search can add, with its keywords (read anew each time, so edits to the list count right away). */
+    private fun quickEntries(generators: Boolean): List<SearchEntry<Any>> {
+        val filters = Generators.all.map { "generator ${it.id}" to it.name } + Effects.all.map { "effect ${it.id}" to it.name }
+        val keywords = QuickSearchKeywords.load(filters)
+        return if (generators) Generators.all.map { SearchEntry(it, "generator", it.id, it.name, "Generator", keywords["generator ${it.id}"] ?: emptyList()) }
+        else Effects.categories.flatMap { c -> c.effects.map { SearchEntry(it, "effect", it.id, it.name, c.name, keywords["effect ${it.id}"] ?: emptyList()) } }
+    }
+
+    /** The quick search window (F1 generators, F2 effects, F3 adjustment layers): type, pick, and the layer is added. */
+    private fun quickSearch(kind: QuickKind) {
+        QuickSearchDialog(this, kind.title, quickEntries(kind == QuickKind.GENERATOR)) { item ->
+            when (kind) {
+                QuickKind.GENERATOR -> addGenerator(item as Generator)
+                QuickKind.EFFECT -> addLayer(item as Effect)
+                QuickKind.ADJUSTMENT -> addLayer(item as Effect, adjustment = true)
+            }
+        }.open()
+    }
+
+    /** Opens the quick search's keyword list in the system's text editor (writing it first if needed). */
+    private fun editQuickKeywords() {
+        QuickSearchKeywords.load(Generators.all.map { "generator ${it.id}" to it.name } + Effects.all.map { "effect ${it.id}" to it.name })
+        val file = QuickSearchKeywords.file
+        try {
+            val desktop = java.awt.Desktop.getDesktop()
+            if (desktop.isSupported(java.awt.Desktop.Action.EDIT)) desktop.edit(file) else desktop.open(file)
+        } catch (e: Exception) {
+            JOptionPane.showMessageDialog(this, "The keyword list is here:\n${file.absolutePath}", "Quick search keywords", JOptionPane.INFORMATION_MESSAGE)
         }
     }
 

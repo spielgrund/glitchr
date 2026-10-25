@@ -25,11 +25,31 @@ enum class BlendMode(val label: String, private val f: (Int, Int) -> Int) {
     SCREEN("Screen", { b, t -> 255 - (255 - b) * (255 - t) / 255 }),
     MULTIPLY("Multiply", { b, t -> b * t / 255 }),
     ADD("Add", { b, t -> min(255, b + t) }),
-    DIFFERENCE("Difference", { b, t -> abs(b - t) });
+    DIFFERENCE("Difference", { b, t -> abs(b - t) }),
+
+    /** Pure black (within 1 %) becomes see-through. */
+    CUT_BLACK("Cut black", { _, t -> t }),
+
+    /** Pure white (within 1 %) becomes see-through. */
+    CUT_WHITE("Cut white", { _, t -> t }),
+
+    /** Pure mid grey (within 1 %) becomes see-through. */
+    CUT_GREY("Cut grey", { _, t -> t });
+
+    /** Whether this mode takes away a color of the top picture ([cut]). */
+    val cuts get() = this == CUT_BLACK || this == CUT_WHITE || this == CUT_GREY
 
     fun apply(base: Int, top: Int): Int =
-        if (this == NORMAL) top
+        if (this == NORMAL || cuts) top
         else argb(alpha(top), f(red(base), red(top)), f(green(base), green(top)), f(blue(base), blue(top)))
+
+    /** [top], or transparent where it is the cut color – every channel within 1 % of it. Unchanged for the other modes. */
+    fun cut(top: Int): Int {
+        if (!cuts) return top
+        val key = when (this) { CUT_BLACK -> 0; CUT_WHITE -> 255; else -> 128 }
+        val near = abs(red(top) - key) <= 2 && abs(green(top) - key) <= 2 && abs(blue(top) - key) <= 2
+        return if (near) 0 else top
+    }
 
     override fun toString() = label
 }

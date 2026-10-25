@@ -117,7 +117,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         valueChanged = null
         form.section(title)
         for (p in layer.params) {
-            // points or arrows of another mode: not shown
+            // settings, points or arrows of another mode: not shown
             if (!active(layer, p)) continue
             val value = layer.values.getValue(p.key)
             val set = { v: Int ->
@@ -212,10 +212,11 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         is Param.Points -> p.activeWhen?.first
         is Param.Flow -> p.activeWhen?.first
         else -> null
-    }
+    } ?: p.shownFor?.first
 
     /** Whether [p] is in use with the layer's current choices. */
     private fun active(layer: ParamLayer, p: Param): Boolean {
+        p.shownFor?.let { (key, values) -> if (layer.values[key] !in values) return false }
         val rule = when (p) {
             is Param.Points -> p.activeWhen
             is Param.Flow -> p.activeWhen
@@ -690,7 +691,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             }
         })
         when (mask.mode) {
-            MaskMode.OFF -> form.full(hint("Without a mask the effect works on the whole picture. “Find” below starts a painted mask from the picture, the mask noise sliders a noise mask."))
+            MaskMode.OFF -> form.full(hint("Without a mask the effect works on the whole picture. The mask noise sliders below start a noise mask."))
             MaskMode.NOISE -> form.full(hint("The mask starts white (full effect); “Mask noise” below scatters noise specks onto it, and scatter or streaks move and smear the noise itself."))
             MaskMode.BRUSH -> buildMaskTools()
             MaskMode.LINEAR, MaskMode.RADIAL -> {
@@ -748,8 +749,6 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             })
         }
 
-        // quick selections, always at hand; they switch to a painted mask
-        buildAutoSelect()
         buildRefine()
 
         form.section("Mask noise")
@@ -781,7 +780,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         form.full(clipboard)
     }
 
-    /** Sliders that refine the last selection (magic wand or “Find”) on this layer's mask, while nothing else changed it. */
+    /** Sliders that refine the last selection (magic wand) on this layer's mask, while nothing else changed it. */
     private fun buildRefine() {
         val op = host.brush.lastSelection?.takeIf { it.mask === layer.mask } ?: return
         // its own indented block under the selection buttons, so it reads as part of the selection
@@ -859,110 +858,6 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             addActionListener { set { it.copy(seed = kotlin.random.Random.nextLong()) } }
         })
         form.full(bottom)
-    }
-
-    /** Quick selections found by picture analysis: subject, background, sky, depth. */
-    private fun buildAutoSelect() {
-        val mask = layer.mask
-        val kinds = com.spielgrund.glitchr.effects.AutoSelect.Kind.entries.toTypedArray()
-        val chosen = lastAutoSelect
-        form.section("Find")
-        form.row("Find", JComboBox(kinds).apply {
-            selectedItem = chosen
-            putClientProperty("JComboBox.isTableCellEditor", true)
-            addActionListener {
-                lastAutoSelect = selectedItem as com.spielgrund.glitchr.effects.AutoSelect.Kind
-                host.rebuildEditor()
-            }
-        }, "Picks out parts of the picture by simple analysis – a quick start; its settings below steer it")
-        val values = findValues.getOrPut(chosen) { com.spielgrund.glitchr.effects.AutoSelect.defaults(chosen) }
-        val live = host.brush.lastSelection?.takeIf { it.mask === mask && it.findKind == chosen }
-
-        /** Recomputes a live selection with the new settings, in the background; only the newest result counts. */
-        fun recompute() {
-            val op = host.brush.lastSelection?.takeIf { it.mask === mask && it.findKind == chosen } ?: return
-            val image = host.maskTarget?.image ?: return
-            val settings = values.toMap()
-            val generation = ++findGeneration
-            findExecutor.execute {
-                if (generation != findGeneration) return@execute
-                val result = com.spielgrund.glitchr.effects.AutoSelect.select(image, chosen, settings)
-                javax.swing.SwingUtilities.invokeLater {
-                    if (generation != findGeneration || host.brush.lastSelection !== op) return@invokeLater
-                    op.setRaw(result)
-                    op.apply()
-                    host.maskChanged()
-                }
-            }
-        }
-
-        // the settings of this kind of analysis
-        for (param in com.spielgrund.glitchr.effects.AutoSelect.params(chosen)) {
-            when (param) {
-                is com.spielgrund.glitchr.effects.Param.Slider -> form.row(
-                    param.label,
-                    SliderField(param.min, param.max, values[param.key] ?: param.default, param.default, param.unit.trim(), param.decimals) {
-                        values[param.key] = it
-                        recompute()
-                    },
-                    param.tip,
-                )
-                is com.spielgrund.glitchr.effects.Param.Toggle -> form.full(JCheckBox(param.label, (values[param.key] ?: param.default) != 0).apply {
-                    toolTipText = param.tip
-                    addActionListener {
-                        values[param.key] = if (isSelected) 1 else 0
-                        recompute()
-                    }
-                })
-                else -> {}
-            }
-        }
-
-        val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 4)).apply { isOpaque = false }
-        fun run(mode: Int, button: JButton) {
-            val target = host.maskTarget ?: return
-            val image = target.image ?: return
-            val settings = values.toMap()
-            button.isEnabled = false
-            cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR)
-            // the analysis can take a moment on large pictures: off the UI thread
-            findExecutor.execute {
-                val result = com.spielgrund.glitchr.effects.AutoSelect.select(image, chosen, settings)
-                javax.swing.SwingUtilities.invokeLater {
-                    mask.ensurePainted(image.width, image.height)
-                    if (mask.mode != MaskMode.BRUSH) {
-                        // “Select” starts from nothing; adding or taking away from what another type showed makes no sense
-                        mask.fill(0)
-                        mask.mode = MaskMode.BRUSH
-                    }
-                    val op = SelectionOp(mask, mask.painted?.copyOf(), image.width, image.height, mode, false, 0, 0) { result }
-                    op.findKind = chosen
-                    host.brush.lastSelection = op
-                    op.apply()
-                    host.showMask = true
-                    host.maskChanged()
-                    host.layerListChanged()
-                    cursor = java.awt.Cursor.getDefaultCursor()
-                    button.isEnabled = true
-                    host.rebuildEditor()
-                }
-            }
-        }
-        for ((label, mode, tip) in listOf(
-            Triple("Select", 0, "Replaces the mask with what was found"),
-            Triple("Add", 1, "Adds what was found to the mask"),
-            Triple("Subtract", 2, "Takes what was found away from the mask"),
-        )) {
-            if (mode > 0) buttons.add(javax.swing.Box.createHorizontalStrut(6))
-            buttons.add(JButton(label).apply {
-                toolTipText = "$tip. It stays live: the settings above change it until you convert it to a brush mask"
-                addActionListener { run(mode, this) }
-            })
-        }
-        form.full(buttons)
-        if (live != null) {
-            form.full(hint("Live preview: the settings above and the refine sliders below change this selection right away."))
-        }
     }
 
     /** Tool choice and settings for the painted mask. */
@@ -1047,16 +942,4 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
 
     /** The mask type box, so the noise sliders can switch it to “Noise”. */
     private var typeBox: JComboBox<MaskMode>? = null
-
-    companion object {
-        /** The settings of each kind of “Find”, kept between layers. */
-        private val findValues = HashMap<com.spielgrund.glitchr.effects.AutoSelect.Kind, MutableMap<String, Int>>()
-
-        /** Runs the analyses one after another, off the UI thread; only the newest live result is used. */
-        private val findExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "glitch-find").apply { isDaemon = true } }
-        @Volatile private var findGeneration = 0
-
-        /** The last chosen kind of quick selection, kept between layers. */
-        private var lastAutoSelect = com.spielgrund.glitchr.effects.AutoSelect.Kind.SUBJECT
-    }
 }

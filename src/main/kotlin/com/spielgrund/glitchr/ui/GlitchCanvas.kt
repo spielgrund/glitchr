@@ -80,7 +80,7 @@ class Brush {
     /** Magic wand: grow along soft gradients (light falling across a surface), stopping at hard edges. */
     var gradients = true
 
-    /** The last selection (magic wand or “Find”), while it can still be refined; null after any other mask edit. */
+    /** The last magic wand selection, while it can still be refined; null after any other mask edit. */
     var lastSelection: SelectionOp? = null
 }
 
@@ -112,17 +112,8 @@ class SelectionOp(
     /** Soft edge, in mask pixels. */
     var feather = 0
 
-    /** For a selection from “Find”: which kind, so its settings can recompute it while it is live. */
-    var findKind: com.spielgrund.glitchr.effects.AutoSelect.Kind? = null
-
     private var raw: FloatArray? = null
     private var rawTolerance = -1
-
-    /** New raw values, e.g. recomputed with other settings of “Find”. */
-    fun setRaw(values: FloatArray) {
-        raw = values
-        rawTolerance = tolerance
-    }
 
     fun apply() {
         if (raw == null || rawTolerance != tolerance) {

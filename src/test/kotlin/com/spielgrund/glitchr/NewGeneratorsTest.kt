@@ -447,6 +447,28 @@ class NewGeneratorsTest {
     }
 
     @Test
+    fun `see-through polygons show the ground and the faces behind`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("model3d")!!
+        fun run(vararg c: Pair<String, Int>) = g.generate(160, 120, g.defaultValues(mapOf("builtin" to 1, "material" to 0, "color" to 0xFF0000, "gloss" to 0, "rim" to 0, *c)), 1L)
+        val ground = 0xFF15131C.toInt()
+        // solid as before at 100 %
+        val solid = run()
+        assertEquals(solid.data.toList(), run("opacity" to 100, "opacityVariation" to 0).data.toList())
+        // half see-through: the middle between the red of the cube and the dark ground, the front over the back
+        val half = run("opacity" to 50)[80, 60]
+        assertTrue((half shr 16 and 0xFF) in 60 until (solid[80, 60] shr 16 and 0xFF), "lighter than the ground, darker than solid: ${(half shr 16 and 0xFF)}")
+        assertTrue((half shr 16 and 0xFF) > (run("opacity" to 25)[80, 60] shr 16 and 0xFF), "more opaque, more red")
+        // nothing at 0 %, the ground untouched
+        assertTrue(run("opacity" to 0).data.all { it == ground })
+        // variation: every polygon its own opacity, other ones with another seed
+        val varied = g.defaultValues(mapOf("builtin" to 1, "opacityVariation" to 100))
+        assertTrue(!g.generate(160, 120, varied, 1L).data.contentEquals(g.generate(160, 120, varied, 2L).data))
+        // on transparency: half covered
+        val clear = run("opacity" to 50, "transparent" to 1, "builtin" to 0)
+        assertTrue(clear.data.any { (it ushr 24) in 60..230 } && clear[2, 2] ushr 24 == 0)
+    }
+
+    @Test
     fun `the noise sphere grows hairy with energy and churns with time`() {
         val g = com.spielgrund.glitchr.effects.Generators.byId("noisesphere")!!
         fun run(vararg c: Pair<String, Int>) = g.generate(200, 160, g.defaultValues(mapOf("glow" to 0, "streaks" to 0, *c)), 2L)
@@ -506,5 +528,145 @@ class NewGeneratorsTest {
         assertTrue(!run("time" to 5300).data.contentEquals(a.data), "they move with the time")
         val dark = Pixels(40, 40, IntArray(1600) { 0xFF000000.toInt() })
         assertTrue(ff.apply(dark, ff.defaultValues(mapOf("time" to 5000)), 5L).data.contentEquals(dark.data), "no bright areas, no fireflies")
+    }
+
+    @Test
+    fun `portals swirl, spark and ripple, and can be a hole`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("portal")!!
+        fun run(values: Map<String, Int>) = g.generate(200, 160, Values(g.defaults().apply { putAll(values) }, g.textDefaults()), 1L)
+        val ground = 0xFF06080C.toInt()
+        for (style in 0..2) {
+            val p = run(mapOf("style" to style))
+            assertTrue(p[100, 80] != ground, "style $style: something in the middle")
+            assertTrue((p[100, 80] shr 8 and 0xFF) > (p[100, 80] and 0xFF), "style $style: greenish")
+            assertEquals(ground, p[2, 2], "style $style: the corner untouched")
+        }
+        // color schemes: Stargate blue is blue, Custom takes the own colors, Rainbow runs through several hues
+        val blue = run(mapOf("scheme" to 2))[100, 80]
+        assertTrue((blue and 0xFF) > (blue shr 16 and 0xFF) + 40, "blue")
+        val own = run(mapOf("scheme" to 9, "color" to 0xFF0000, "core" to 0xFF0000, "rimColor" to 0xFF0000))[100, 80]
+        assertTrue((own shr 16 and 0xFF) > (own shr 8 and 0xFF) + 40, "custom red")
+        val rainbow = run(mapOf("scheme" to 8, "sparks" to 0))
+        assertTrue(rainbow.data.count { (it shr 16 and 0xFF) > (it and 0xFF) + 60 } > 200 && rainbow.data.count { (it and 0xFF) > (it shr 16 and 0xFF) + 60 } > 200, "rainbow")
+        // the time turns it
+        assertTrue(!run(mapOf("time" to 250)).data.contentEquals(run(emptyMap()).data))
+        // a hole: transparent inside, the rim still lit
+        val hole = run(mapOf("inside" to 2, "sparks" to 0))
+        assertEquals(0, hole[100, 80] ushr 24, "see-through middle")
+        assertEquals(255, hole[2, 2] ushr 24, "the ground stays")
+        // moved by its center
+        val moved = run(mapOf("centerX" to -600, "sparks" to 0, "glow" to 0))
+        assertTrue(moved[40, 80] != ground && moved[180, 80] == ground)
+        // only the portal on transparency
+        assertEquals(0, run(mapOf("transparent" to 1, "glow" to 0, "sparks" to 0))[2, 2] ushr 24)
+    }
+
+    @Test
+    fun `explosions burn, cool to smoke and are gone at both ends`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("explosion")!!
+        fun run(values: Map<String, Int>) = g.generate(200, 160, Values(g.defaults().apply { putAll(values) }, g.textDefaults()), 1L)
+        val ground = 0xFF0B0D12.toInt()
+        fun lum(c: Int) = (c shr 16 and 0xFF) + (c shr 8 and 0xFF) + (c and 0xFF)
+        val calm = mapOf("glow" to 0, "debris" to 0, "shockwave" to 0, "flash" to 0)
+        for (style in 0..1) {
+            val p = run(calm + ("style" to style))
+            assertTrue(p[100, 80] != ground, "style $style: something in the middle")
+            assertEquals(ground, p[2, 2], "style $style: the corner untouched")
+        }
+        // hot and bright at first, dark smoke later
+        val early = run(calm + ("progress" to 800))
+        val late = run(calm + ("progress" to 9000))
+        assertTrue(lum(early[100, 80]) > lum(late[100, 80]) + 150, "cools: ${lum(early[100, 80])} vs ${lum(late[100, 80])}")
+        // nothing at all at 0 % and 100 %, with everything switched on
+        for (style in 0..1) for (progress in listOf(0, 10000)) {
+            val full = mapOf("style" to style, "progress" to progress, "debris" to 100, "shockwave" to 100, "flash" to 100, "smoke" to 100, "glow" to 300)
+            assertTrue(run(full).data.all { it == ground }, "style $style at $progress: empty")
+        }
+        // flash, shockwave and debris light up more of the picture
+        val lit = run(mapOf("progress" to 1500, "debris" to 100, "shockwave" to 100))
+        assertTrue(lit.data.count { it != ground } > run(calm + ("progress" to 1500)).data.count { it != ground } + 500)
+        // moved by its center
+        val moved = run(calm + ("centerX" to -600))
+        assertTrue(moved[40, 80] != ground && moved[180, 80] == ground)
+        // only the explosion on transparency
+        assertEquals(0, run(calm + ("transparent" to 1))[2, 2] ushr 24)
+    }
+
+    @Test
+    fun `barbed wire stretches, criss-crosses, follows arrows, rings and coils`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("barbwire")!!
+        fun run(values: Map<String, Int>, strokes: String = "") =
+            g.generate(240, 160, Values(g.defaults().apply { putAll(values) }, g.textDefaults().apply { put("strokes", strokes) }), 1L)
+        val ground = 0xFFE6E1D8.toInt()
+        fun wire(p: Pixels, x0: Int, y0: Int, x1: Int, y1: Int) =
+            (y0..y1).sumOf { y -> (x0..x1).count { x -> p[x, y] != ground } }
+        // one strand across the middle, no sag: wire there, none at the top
+        val one = run(mapOf("count" to 1, "wobble" to 0))
+        assertTrue(wire(one, 0, 75, 239, 85) > 500, "wire across the middle")
+        assertEquals(0, wire(one, 0, 0, 239, 40), "nothing at the top")
+        // both kinds and coiled draw
+        for (kind in 0..1) for (coiled in 0..1) {
+            assertTrue(wire(run(mapOf("kind" to kind, "coiled" to coiled)), 0, 0, 239, 159) > 800, "kind $kind coiled $coiled")
+        }
+        // an arrow: wire along it, nothing else
+        val drawn = run(mapOf("layout" to 1, "wobble" to 0), "0.1,0.2 0.9,0.2")
+        assertTrue(wire(drawn, 40, 26, 200, 38) > 300 && wire(drawn, 0, 100, 239, 159) == 0)
+        assertTrue(run(mapOf("layout" to 1)).data.all { it == ground }, "no arrows, no wire")
+        // a ring: around the middle, the middle itself free
+        val ring = run(mapOf("layout" to 2, "count" to 1, "size" to 3000, "wobble" to 0))
+        assertTrue(wire(ring, 115, 26, 125, 38) > 20 && wire(ring, 110, 70, 130, 90) == 0)
+        // no sag by default: the strand runs straight
+        assertEquals(0, g.defaults()["sag"])
+        // criss-cross: wires at different angles, lying over each other
+        val criss = run(mapOf("layout" to 3, "count" to 4))
+        assertTrue(wire(criss, 0, 0, 239, 159) > 2000)
+        assertTrue(!criss.data.contentEquals(run(mapOf("count" to 4)).data))
+        // sliding: the barbs move along the wire – right, left, every second wire the other way
+        fun barbs(p: Pixels, cy: Int) = BooleanArray(240) { x -> (cy - 20..cy + 20).any { y -> y in 0 until 160 && kotlin.math.abs(y - cy) > 6 && p[x, y] != ground } }
+        fun moved(a: BooleanArray, b: BooleanArray) = (-60..60).maxByOrNull { d -> (60 until 180).count { x -> a[x] && b[x + d] } }!!
+        val still = run(mapOf("count" to 1, "wobble" to 0, "rust" to 0))
+        val right = run(mapOf("count" to 1, "wobble" to 0, "rust" to 0, "slide" to 300))
+        val left = run(mapOf("count" to 1, "wobble" to 0, "rust" to 0, "slide" to 300, "slideDirection" to 1))
+        assertTrue(moved(barbs(still, 80), barbs(right, 80)) in 28..32, "right: ${moved(barbs(still, 80), barbs(right, 80))}")
+        assertTrue(moved(barbs(still, 80), barbs(left, 80)) in -32..-28, "left: ${moved(barbs(still, 80), barbs(left, 80))}")
+        val two = mapOf("count" to 2, "wobble" to 0, "rust" to 0, "spacing" to 5000)
+        val twoStill = run(two)
+        val alternating = run(two + mapOf("slide" to 300, "slideDirection" to 2))
+        assertTrue(moved(barbs(twoStill, 40), barbs(alternating, 40)) in 28..32, "first wire right")
+        assertTrue(moved(barbs(twoStill, 120), barbs(alternating, 120)) in -32..-28, "second wire left")
+        assertTrue(!run(two + mapOf("slide" to 300, "slideDirection" to 3)).data.contentEquals(run(two + mapOf("slide" to 300)).data), "random differs")
+        // on transparency: only the wire
+        val clear = run(mapOf("transparent" to 1, "count" to 1, "wobble" to 0))
+        assertEquals(0, clear[5, 10] ushr 24)
+        assertTrue(clear.data.count { it ushr 24 == 255 } > 200)
+    }
+
+    @Test
+    fun `colorbands run through the gradient, smooth or hard`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("colorbands")!!
+        val bw = "0.0000:#000000 1.0000:#ffffff"
+        fun run(values: Map<String, Int>, ramp: String = bw) =
+            g.generate(200, 20, Values(g.defaults().apply { putAll(values) }, g.textDefaults().apply { put("ramp", ramp) }), 1L)
+        fun grays(p: Pixels) = (0 until 200).map { p[it, 10] and 0xFF }
+        // smooth, once across: rising from black to white
+        val smooth = grays(run(mapOf("transition" to 0, "repeats" to 1)))
+        assertTrue(smooth.first() < 10 && smooth.last() > 245 && smooth.zipWithNext().all { (a, b) -> b >= a })
+        assertTrue(smooth.toSet().size > 100, "many shades")
+        // hard steps: only the steps' colors, apart from the one anti-aliased pixel at each edge
+        val stepped = grays(run(mapOf("transition" to 1, "steps" to 4, "repeats" to 1)))
+        val levels = setOf(0, 85, 170, 255)
+        assertTrue(stepped.count { it in levels } >= 196, "four flat steps")
+        assertEquals(levels, stepped.filter { it in levels }.toSet())
+        // hard at the stops: two stops → the first color up to the second stop
+        val three = "0.0000:#ff0000 0.5000:#00ff00 1.0000:#0000ff"
+        val atStops = run(mapOf("transition" to 2, "repeats" to 1), three)
+        assertEquals(0xFFFF0000.toInt(), atStops[40, 10])
+        assertEquals(0xFF00FF00.toInt(), atStops[160, 10])
+        // softened edges have more shades between
+        val soft = grays(run(mapOf("transition" to 1, "steps" to 4, "repeats" to 1, "softness" to 1000)))
+        assertTrue(soft.count { it !in levels } > 20)
+        // repeats and shift
+        assertTrue(grays(run(mapOf("transition" to 0, "repeats" to 4))).zipWithNext().count { (a, b) -> a - b > 150 } == 3, "three jumps back")
+        assertTrue(!run(mapOf("shift" to 2500)).data.contentEquals(run(emptyMap()).data))
     }
 }

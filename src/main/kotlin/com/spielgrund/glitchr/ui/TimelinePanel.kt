@@ -379,6 +379,21 @@ class TimelinePanel(private val host: TimelineHost) : JPanel(BorderLayout()) {
             host.keysEdited()
         }
 
+        /** Mirrors the selected keyframes in time, between the first and last of all of them, so tracks stay in step; they stay selected. */
+        private fun flipSelected() {
+            if (selection.size < 2) return
+            val lo = selection.minOf { it.frame }
+            val hi = selection.maxOf { it.frame }
+            val flipped = mutableSetOf<Sel>()
+            for ((group, sels) in selection.groupBy { it.layerId to it.key }) {
+                val layer = layerOf(group.first) ?: continue
+                for (f in Animator.flip(layer, group.second, sels.map { it.frame }.toSet(), lo, hi)) flipped += Sel(layer.id, group.second, f)
+            }
+            selection.clear()
+            selection += flipped
+            host.keysEdited()
+        }
+
         private fun deleteSelected() {
             if (selection.isEmpty()) return
             for (sel in selection) {
@@ -418,6 +433,11 @@ class TimelinePanel(private val host: TimelineHost) : JPanel(BorderLayout()) {
                 addActionListener { setEasing(easing) }
             })
             addSeparator()
+            add(JMenuItem("Flip in time").apply {
+                toolTipText = "Mirrors the selected keyframes between the first and the last of them, so they run backwards"
+                isEnabled = n > 1
+                addActionListener { flipSelected() }
+            })
             add(JMenuItem(if (n == 1) "Delete keyframe" else "Delete $n keyframes").apply { addActionListener { deleteSelected() } })
         }
 
@@ -426,9 +446,29 @@ class TimelinePanel(private val host: TimelineHost) : JPanel(BorderLayout()) {
                 addActionListener {
                     selection.clear()
                     row.layer.tracks[row.key]?.keys?.forEach { selection += Sel(row.layer.id, row.key, it.frame) }
-                    repaint()
+                    // the tracks, not this menu
+                    this@TrackView.repaint()
                 }
             })
+            addSeparator()
+            for ((easing, text, tip) in listOf(
+                Triple(Easing.LINEAR, "All keyframes linear", "Even speed between all keyframes of this setting"),
+                Triple(Easing.EASE, "All keyframes ease in/out", "Every keyframe of this setting starts and ends slowly"),
+                Triple(Easing.HOLD, "All keyframes hold", "Every keyframe of this setting keeps its value until the next one, then jumps"),
+            )) add(JMenuItem(text).apply {
+                toolTipText = tip
+                addActionListener { if (Animator.setEasing(row.layer, row.key, easing)) host.keysEdited() }
+            })
+            add(JMenuItem("Flip keyframes in time").apply {
+                toolTipText = "Mirrors all keyframes of this setting between its first and last one, so the animation runs backwards"
+                addActionListener {
+                    if (Animator.flip(row.layer, row.key).isEmpty()) return@addActionListener
+                    // the selected ones of this setting now sit elsewhere
+                    selection.removeAll { it.layerId == row.layer.id && it.key == row.key }
+                    host.keysEdited()
+                }
+            })
+            addSeparator()
             add(JMenuItem("Remove animation").apply {
                 toolTipText = "Deletes all keyframes of this setting; it keeps its current value"
                 addActionListener {

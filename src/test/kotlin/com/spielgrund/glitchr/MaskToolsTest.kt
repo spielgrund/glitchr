@@ -43,6 +43,26 @@ class MaskToolsTest {
     }
 
     @Test
+    fun `the find key keeps what is found and keys out the rest`() {
+        val key = com.spielgrund.glitchr.effects.FindKey
+        fun alphaMean(p: Pixels, x0: Int, x1: Int, y0: Int, y1: Int) =
+            (y0 until y1).sumOf { y -> (x0 until x1).sumOf { x -> (p[x, y] ushr 24).toDouble() } } / ((x1 - x0) * (y1 - y0)) / 255
+        val subject = key.apply(scene, key.defaultValues(), 1L)
+        assertTrue(alphaMean(subject, 85, 115, 85, 125) > 0.8 && alphaMean(subject, 5, 60, 70, 145) < 0.2, "the object stays, the ground goes")
+        // the colors themselves stay
+        assertEquals(scene[100, 100] and 0xFFFFFF, subject[100, 100] and 0xFFFFFF)
+        // background: the other way round; sky: the top
+        assertTrue(alphaMean(key.apply(scene, key.defaultValues(mapOf("find" to 1)), 1L), 85, 115, 85, 125) < 0.2)
+        val sky = key.apply(scene, key.defaultValues(mapOf("find" to 2)), 1L)
+        assertTrue(alphaMean(sky, 10, 190, 5, 50) > 0.9 && alphaMean(sky, 10, 190, 70, 145) < 0.1)
+        // the sky's own settings are its own: a different subject area size leaves it alone
+        assertContentEquals(sky.data, key.apply(scene, key.defaultValues(mapOf("find" to 2, "coarse" to 90)), 1L).data)
+        // only the chosen kind's settings are shown
+        val shown = key.params.filter { p -> p.shownFor?.let { (k, values) -> k == "find" && 2 in values } ?: true }.map { it.key }
+        assertTrue("skyLight" in shown && "spread" !in shown && "depthSharp" !in shown)
+    }
+
+    @Test
     fun `selections replace, add to or take from the painted mask`() {
         val mask = Mask().apply { mode = MaskMode.BRUSH }
         val left = FloatArray(100) { if (it % 10 < 5) 1f else 0f }

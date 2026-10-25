@@ -4,6 +4,13 @@ import com.spielgrund.glitchr.image.Pixels
 
 /** A setting of an effect. All values are stored as Int; the editor is built from these definitions. */
 sealed class Param(val key: String, val label: String, val default: Int, val tip: String?) {
+    /** Shown only while the choice [Pair.first] has one of the values [Pair.second] (see [shownWhen]); null: always. */
+    var shownFor: Pair<String, Set<Int>>? = null
+        private set
+
+    /** This setting, shown in the editor only while the choice [key] has one of [values]. */
+    fun shownWhen(key: String, vararg values: Int) = apply { shownFor = key to values.toSet() }
+
     /**
      * [max] is the upper end of the slider; with [canvasMax] the editor uses the larger
      * side of the canvas instead (for lengths that should be able to span the whole picture).
@@ -114,9 +121,10 @@ object Effects {
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
         EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
         EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
-        EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast)),
+        EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
+        EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture)),
-        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
     )

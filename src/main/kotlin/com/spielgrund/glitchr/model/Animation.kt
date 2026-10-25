@@ -239,12 +239,42 @@ object Animator {
     /** Gives every keyframe of all [layers] the same [easing]; false if there was nothing to change. */
     fun setEasingAll(layers: List<Layer>, easing: Easing): Boolean {
         var changed = false
-        for (layer in layers) for ((key, track) in layer.tracks.toList()) {
-            if (track.keys.all { it.easing == easing }) continue
-            layer.tracks[key] = Track(track.kind, track.keys.map { it.copy(easing = easing) })
-            changed = true
-        }
+        for (layer in layers) for (key in layer.tracks.keys.toList()) if (setEasing(layer, key, easing)) changed = true
         return changed
+    }
+
+    /**
+     * Flips keyframes of [layer]'s track [key] in time: the ones at [frames] (all, if null) are
+     * mirrored between frame [lo] and [hi] (their own first and last, if not given), so the
+     * animation runs backwards there. Each stretch between them keeps how it runs (linear, ease,
+     * hold) – it now starts at the other end – and the last one keeps how it runs on beyond.
+     * Keyframes they land on are replaced. Returns the flipped keyframes' new frames.
+     */
+    fun flip(layer: Layer, key: String, frames: Set<Int>? = null, lo: Int? = null, hi: Int? = null): List<Int> {
+        val track = layer.tracks[key] ?: return emptyList()
+        val chosen = track.keys.filter { frames == null || it.frame in frames }
+        if (chosen.isEmpty()) return emptyList()
+        val from = lo ?: chosen.first().frame
+        val to = hi ?: chosen.last().frame
+        val n = chosen.size - 1
+        // the i-th new keyframe is the mirrored (n − i)-th; it runs into the next the way the stretch it now starts ran before
+        val flipped = (0..n).map { i ->
+            val old = chosen[n - i]
+            val easing = if (i < n) chosen[n - i - 1].easing else chosen[n].easing
+            Keyframe(from + to - old.frame, old.value, easing)
+        }
+        val landing = flipped.map { it.frame }.toSet()
+        val rest = track.keys.filter { it !in chosen && it.frame !in landing }
+        layer.tracks[key] = Track(track.kind, (rest + flipped).sortedBy { it.frame })
+        return flipped.map { it.frame }
+    }
+
+    /** Sets every keyframe of [layer]'s track [key] to [easing]; whether anything changed. */
+    fun setEasing(layer: Layer, key: String, easing: Easing): Boolean {
+        val track = layer.tracks[key] ?: return false
+        if (track.keys.all { it.easing == easing }) return false
+        layer.tracks[key] = Track(track.kind, track.keys.map { it.copy(easing = easing) })
+        return true
     }
 
     /** The keyframes of all layers moved to a new frame rate, so they keep their time. */

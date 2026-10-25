@@ -226,6 +226,34 @@ class AnimationTest {
         assertTrue(all.all { it.easing == Easing.LINEAR })
         assertEquals(30.0, a.tracks["rx"]!!.keyAt(20)!!.value, "values and frames stay")
         assertEquals(false, Animator.setEasingAll(listOf(a, b), Easing.LINEAR), "nothing left to change")
+        // one track only: the others stay as they are
+        Animator.addKey(a, "ry", 0)
+        assertTrue(Animator.setEasing(a, "rx", Easing.EASE))
+        assertTrue(a.tracks["rx"]!!.keys.all { it.easing == Easing.EASE })
+        assertTrue(a.tracks["ry"]!!.keys.all { it.easing != Easing.EASE } && b.tracks.values.flatMap { it.keys }.all { it.easing == Easing.LINEAR })
+        assertEquals(false, Animator.setEasing(a, "rx", Easing.EASE))
+        assertEquals(false, Animator.setEasing(a, "nothing", Easing.EASE))
+    }
+
+    @Test
+    fun `keyframes flip in time, keeping how each stretch runs`() {
+        val a = ImageLayer(testImage(20, 20))
+        a.tracks[AnimKeys.ROTATION] = com.spielgrund.glitchr.model.Track(
+            com.spielgrund.glitchr.model.ValueKind.NUMBER,
+            listOf(Keyframe(0, 0.0, Easing.EASE), Keyframe(10, 90.0, Easing.HOLD), Keyframe(40, 30.0, Easing.LINEAR)),
+        )
+        assertEquals(listOf(0, 30, 40), Animator.flip(a, AnimKeys.ROTATION))
+        val keys = a.tracks[AnimKeys.ROTATION]!!.keys
+        assertEquals(listOf(0, 30, 40), keys.map { it.frame }, "mirrored between the first and last")
+        assertEquals(listOf(30.0, 90.0, 0.0), keys.map { it.value }, "runs backwards")
+        // 0→30 was the hold stretch (10→40), 30→40 the eased one (0→10); the last keeps its own
+        assertEquals(listOf(Easing.HOLD, Easing.EASE, Easing.LINEAR), keys.map { it.easing })
+        // flipped twice: as before
+        Animator.flip(a, AnimKeys.ROTATION)
+        assertEquals(listOf(Keyframe(0, 0.0, Easing.EASE), Keyframe(10, 90.0, Easing.HOLD), Keyframe(40, 30.0, Easing.LINEAR)), a.tracks[AnimKeys.ROTATION]!!.keys)
+        // only some, between given frames: the others stay
+        assertEquals(listOf(20, 10), Animator.flip(a, AnimKeys.ROTATION, setOf(0, 10), 0, 20).sortedDescending())
+        assertEquals(listOf(10 to 90.0, 20 to 0.0, 40 to 30.0), a.tracks[AnimKeys.ROTATION]!!.keys.map { it.frame to it.value })
     }
 
     @Test

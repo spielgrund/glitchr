@@ -153,21 +153,67 @@ class ColorField(rgb: Int, private val title: String, private val onChange: (Int
     }
 }
 
+/** The modifier keys held during the latest key or mouse event anywhere in the program – the spinner arrows repeat from a timer, which carries none. */
+private object HeldKeys {
+    @Volatile
+    var modifiers = 0
+        private set
+
+    init {
+        java.awt.Toolkit.getDefaultToolkit().addAWTEventListener(
+            { e -> if (e is java.awt.event.InputEvent) modifiers = e.modifiersEx },
+            java.awt.AWTEvent.KEY_EVENT_MASK or java.awt.AWTEvent.MOUSE_EVENT_MASK,
+        )
+    }
+
+    val shift get() = modifiers and java.awt.event.InputEvent.SHIFT_DOWN_MASK != 0
+    val alt get() = modifiers and java.awt.event.InputEvent.ALT_DOWN_MASK != 0
+}
+
 /**
- * Slider with an editable number field next to it; double-clicking the slider resets it
- * to [default]. [onChange] is called with every new value.
+ * A spinner model that steps in whole numbers (shown value), in tens with Shift held and – for
+ * values with decimals – in tenths with Alt held; it lands on the step's grid (12.37 goes up to 13).
  */
+private class StepModel(value: Number, minimum: Number, maximum: Number, private val factor: Double) :
+    SpinnerNumberModel(value, minimum as Comparable<*>, maximum as Comparable<*>, if (factor == 1.0) 1 else 1 / factor) {
+    // (the bounds stay of the value's own type, whole numbers or not, so the model can compare them)
+    private val min = minimum.toDouble()
+    private val max = maximum.toDouble()
+
+    override fun getNextValue(): Any? = stepped(1)
+
+    override fun getPreviousValue(): Any? = stepped(-1)
+
+    private fun stepped(direction: Int): Any? {
+        val v = (number as Number).toDouble()
+        val step = when {
+            HeldKeys.shift -> 10.0
+            HeldKeys.alt && factor >= 10 -> 0.1
+            else -> 1.0
+        }
+        // the next point of the step's grid in that direction (a little slack against rounding)
+        val n = v / step
+        val next = (if (direction > 0) kotlin.math.floor(n + 1e-6) + 1 else kotlin.math.ceil(n - 1e-6) - 1) * step
+        var result = Math.round(next * factor) / factor
+        if (direction > 0 && v >= max || direction < 0 && v <= min) return null
+        result = result.coerceIn(min, max)
+        return if (factor == 1.0) result.toInt() else result
+    }
+}
+
 /**
- * Slider with a number field for a whole-number value. With [decimals], the field shows
- * the value divided by 10^decimals (and steps by the smallest decimal place).
+ * Slider with a number field for a whole-number value; double-clicking the slider resets it to
+ * [default], [onChange] is called with every new value. With [decimals], the field shows the
+ * value divided by 10^decimals. The field's arrows (and the arrow keys) step by 1 of the shown
+ * value, by 10 with Shift and by 0.1 with Alt (see [StepModel]).
  */
 class SliderField(
     min: Int, max: Int, value: Int, private val default: Int, unit: String = "", decimals: Int = 0, onChange: (Int) -> Unit,
 ) : JPanel(GridBagLayout()) {
     private val factor = Math.pow(10.0, decimals.toDouble())
     private val slider = JSlider(min, max, value.coerceIn(min, max))
-    private val spinner = if (decimals == 0) JSpinner(SpinnerNumberModel(value.coerceIn(min, max), min, max, 1))
-    else JSpinner(SpinnerNumberModel(value.coerceIn(min, max) / factor, min / factor, max / factor, 1 / factor)).apply {
+    private val spinner = if (decimals == 0) JSpinner(StepModel(value.coerceIn(min, max), min, max, 1.0))
+    else JSpinner(StepModel(value.coerceIn(min, max) / factor, min / factor, max / factor, factor)).apply {
         editor = JSpinner.NumberEditor(this, "0." + "0".repeat(decimals))
     }
 

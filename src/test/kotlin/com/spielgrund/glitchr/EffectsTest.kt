@@ -46,7 +46,7 @@ class EffectsTest {
     @Test
     fun `every effect keeps the size, changes the image and is deterministic`() {
         for (effect in Effects.all) {
-            val values = Values(effect.defaults())
+            val values = Values(effect.defaults(), effect.textDefaults())
             val a = effect.apply(src, values, 42L)
             val b = effect.apply(src, values, 42L)
             assertEquals(src.width, a.width, effect.name)
@@ -64,7 +64,7 @@ class EffectsTest {
     fun `every effect sits in exactly one category`() {
         val ids = Effects.all.map { it.id }
         assertEquals(ids.size, ids.toSet().size, "duplicate: ${ids.groupBy { it }.filter { it.value.size > 1 }.keys}")
-        assertEquals(78, ids.size)
+        assertEquals(85, ids.size)
         for (category in Effects.categories) assertFalse(category.effects.isEmpty(), category.name)
     }
 

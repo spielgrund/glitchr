@@ -104,4 +104,40 @@ class RendererTest {
         layer.visible = true
         assertNotEquals(src, Renderer().render(src, listOf(layer.state())))
     }
+
+    @Test
+    fun `cut blend modes take away only pure black, white or grey`() {
+        val black = com.spielgrund.glitchr.model.BlendMode.CUT_BLACK
+        assertEquals(0, black.cut(0xFF000000.toInt()))
+        assertEquals(0, black.cut(0xFF020202.toInt()), "within 1 %")
+        assertEquals(0xFF040404.toInt(), black.cut(0xFF040404.toInt()), "just beyond stays")
+        assertEquals(0xFF808080.toInt(), black.cut(0xFF808080.toInt()))
+        assertEquals(0, com.spielgrund.glitchr.model.BlendMode.CUT_WHITE.cut(0xFFFEFFFD.toInt()))
+        assertEquals(0, com.spielgrund.glitchr.model.BlendMode.CUT_GREY.cut(0xFF818080.toInt()))
+        assertEquals(0xFF707070.toInt(), com.spielgrund.glitchr.model.BlendMode.CUT_GREY.cut(0xFF707070.toInt()))
+        // an effect whose result is black on the right: cut black shows the picture there
+        val pic = Pixels(2, 1, intArrayOf(0xFF000000.toInt(), 0xFFFFFFFF.toInt()))
+        val layer = EffectLayer(CountingInvert())
+        layer.blend = black
+        val out = Renderer().render(pic, listOf(layer.state()))
+        assertEquals(0xFFFFFFFF.toInt(), out.data[0], "white result stays")
+        assertEquals(0xFFFFFFFF.toInt(), out.data[1], "black result cut away")
+    }
+
+    @Test
+    fun `luma key and color key make dark parts or the key color transparent`() {
+        val pic = Pixels(3, 1, intArrayOf(0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFF00FF00.toInt()))
+        val luma = com.spielgrund.glitchr.effects.LumaKey
+        val l = luma.apply(pic, luma.defaultValues(emptyMap()), 0)
+        assertEquals(0, l.data[0] ushr 24, "dark keyed out")
+        assertEquals(255, l.data[1] ushr 24, "bright stays")
+        assertEquals(0, luma.apply(pic, luma.defaultValues(mapOf("keyOut" to 1)), 0).data[1] ushr 24, "or the bright")
+        val color = com.spielgrund.glitchr.effects.ColorKey
+        val c = color.apply(pic, color.defaultValues(emptyMap()), 0)
+        assertEquals(0, c.data[2] ushr 24, "green keyed out")
+        assertEquals(255, c.data[0] ushr 24)
+        assertEquals(255, c.data[1] ushr 24)
+        val matte = color.apply(pic, color.defaultValues(mapOf("matte" to 1)), 0)
+        assertEquals(0xFF000000.toInt(), matte.data[2], "the matte: black where keyed out")
+    }
 }

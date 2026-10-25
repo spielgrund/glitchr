@@ -1,0 +1,152 @@
+# GlitchR quick search keywords (F1 generators · F2 effects · F3 adjustment layers)
+#
+# One line per filter:   kind id: keyword, keyword, …
+#   kind  "generator" or "effect" (effects are offered for adjustment layers too)
+#   id    the filter's id – keep it as it is
+# The filter's own name always counts; add any words you think of – English, German,
+# abbreviations, typos you keep making. Lines starting with # are ignored.
+# Filters added to GlitchR later are appended to this file automatically.
+
+# ---------------------------------------------------------------- generators
+
+generator color: fill, solid, plain, background, flat, farbe, fläche, hintergrund, einfarbig
+generator gradient: verlauf, ramp, linear, radial, diamond, angle, fade
+generator colorbands: bands, stripes, rings, spiral, ramp, streifen, bänder, farbbänder
+generator shape: form, circle, ring, star, polygon, triangle, line, kreis, stern, dreieck, linie
+generator moire: moire, interference, lines, rings, op art, overlay, muster
+generator mandala: ornament, symmetry, rosette, circle, symmetrie, kreis
+generator spirograph: spiral, gear, curves, hypotrochoid, stencil, zahnrad, spirale
+generator noise: perlin, fractal, worley, voronoi, clouds, grain, rauschen, wolken, textur
+generator pattern: checkerboard, stripes, hexagon, truchet, tiles, schachbrett, muster, kacheln
+generator geometric: op art, bands, lines, black white, geometrie, linien
+generator generative: lines, flow lines, mirror tiles, algorithmic, generativ, linien
+generator grid: dots, circles, hatching, halftone, modules, raster, punkte, gitter
+generator ridgelines: unknown pleasures, joy division, waves, lines, spectrogram, ridge, wellen
+generator trendshapes: y2k, flyer, swoosh, halftone, blobs, speed lines, 2000s, retro
+generator trendwhore: y2k, 3d, chrome, abstract, shards, ribbons, wireframe, 2000s, retro
+generator chromeshapes: y2k, chrome, metal, symbols, stars, hearts, flowers, glossy, metall
+generator noisesphere: sphere, ball, particles, filaments, burst, hairy, kugel, partikel
+generator model3d: 3d, obj, blender, mesh, object, model, torus, cube, skull, duck, würfel, ente, schädel
+generator lightning: bolt, thunder, electric, storm, flash, blitz, gewitter, strom
+generator portal: vortex, gate, stargate, ring, swirl, wormhole, tor, wirbel
+generator explosion: boom, blast, fireball, bomb, mushroom cloud, fire, smoke, kaboom, feuerball, rauch, atompilz
+generator caustics: water, pool, light, ripples, ocean, sea, underwater, wasser, licht, meer, unterwasser
+generator barbwire: barbed wire, razor wire, fence, concertina, stacheldraht, zaun
+generator errors: error, windows, dialog, popup, message, solitaire, fehler, meldung, fenster
+generator tribal: tattoo, ornament, sigilism, polynesian, flames, tribal tattoo
+generator flowers: flower, rose, tulip, daisy, sunflower, bouquet, blossom, blumen, rose, tulpe, strauß
+generator chaostype: typography, carson, grunge, text, letters, type, typo, schrift, buchstaben
+generator blackhole: black hole, interstellar, space, accretion, stars, schwarzes loch, weltall
+generator chars: text, letters, ascii, characters, type, schrift, buchstaben, zeichen
+
+# ---------------------------------------------------------------- effects: glitch
+
+effect pixelsort: sort, sorting, streaks, smear, sortieren, schlieren
+effect pixelbleed: bleed, drip, smear, run, verlaufen, schmieren
+effect pixelstretch: stretch, smear, drag, streak, ziehen, strecken
+effect jpeg: jpeg, compression, artifacts, blocks, kompression, artefakte
+effect datamosh: mosh, compression, blocks, codec, glitch
+effect blocks: blocks, block glitch, shift, corrupt, blöcke, fehler
+effect bitcrush: bits, crush, posterize, quantize, lofi, bit
+effect rgb: rgb, chromatic, split, channel shift, aberration, farbversatz, kanäle
+effect slices: slice, shift, cut, strips, scheiben, streifen, versatz
+effect slitscan: slit scan, scan, time, stretch, schlitz
+
+# ---------------------------------------------------------------- effects: distort & repeat
+
+effect offset: shift, move, wrap, offset, verschieben
+effect transform: move, scale, rotate, position, size, verschieben, skalieren, drehen
+effect tilegrid: grid, tiles, repeat, kacheln, raster, wiederholen
+effect tiling: tile, repeat, pattern, mirror, kacheln, wiederholen, spiegeln
+effect breakopen: crack, break, shatter, open, pieces, roll, aufbrechen, zerbrechen, risse
+effect noise: displace, distort, warp, noise, verzerren, verschieben
+effect flow: flow, arrows, smear, direction, fließen, pfeile
+effect flowsmooth: flow, smooth, liquify, smear, fließen, verflüssigen
+effect turbulence: turbulence, swirl, warp, distort, wirbel, verwirbeln
+effect twist: twist, twirl, swirl, spin, drehen, verdrehen, wirbel
+effect polar: polar, circle, round, rectangular, kreis, polarkoordinaten
+effect tunnel: tunnel, infinite, zoom, vortex, endlos
+effect sphere: sphere, bulge, fisheye, ball, kugel, wölben
+effect kaleido: kaleidoscope, mirror, symmetry, mandala, kaleidoskop, spiegeln
+effect waterreflection: water, reflection, mirror, lake, ripples, wasser, spiegelung, see
+effect feedback: feedback, echo, recursion, zoom, droste, rückkopplung
+effect blobecho: echo, blob, outline, contour, rings, kontur
+effect surf: surf, wave, warp, ripple, welle, wellen
+
+# ---------------------------------------------------------------- effects: color & sharpness
+
+effect colorcorrect: color, levels, curves, brightness, contrast, saturation, hue, farbe, helligkeit, kontrast, sättigung, kurven
+effect ramp: gradient map, ramp, colorize, fire, verlauf, einfärben
+effect lab: lab, color space, channels, farbraum, kanäle
+effect palette: palette, color transfer, match colors, image colors, farbpalette, farben übertragen
+effect reducecolors: posterize, palette, quantize, dither, colors, farben reduzieren, dithering
+effect filler: fill, areas, flood, regions, paint bucket, füllen, flächen
+effect blur: blur, soft, gauss, motion, radial, unschärfe, weichzeichnen
+effect sharpen: sharpen, unsharp mask, crisp, schärfen, scharf
+effect glow: glow, bloom, light, shine, leuchten, glühen, schein
+effect h264prep: h264, video, export, prep, compression, codec
+
+# ---------------------------------------------------------------- effects: keying
+
+effect lumakey: luma key, key, mask, transparent, brightness, black, white, freistellen, maske, helligkeit
+effect colorkey: chroma key, green screen, blue screen, key, transparent, greenscreen, freistellen
+effect findkey: find, subject, background, sky, depth, cutout, remove background, motiv, hintergrund, himmel, freistellen
+
+# ---------------------------------------------------------------- effects: growth & simulation
+
+effect grow: grow, expand, dilate, spread, wachsen, ausbreiten
+effect horns: horns, spikes, thorns, grow, hörner, stacheln, dornen
+effect bubbles: bubbles, foam, circles, blasen, schaum
+effect diffgrowth: differential growth, coral, brain, maze, organic, koralle, labyrinth
+effect erosion: erosion, rain, landscape, terrain, water, regen, landschaft
+effect erosionfast: erosion, rivers, landscape, terrain, flüsse, landschaft
+effect inkfill: ink, reveal, blot, spread, fire, lightning, ice, tinte, aufdecken, fleck, enthüllen
+effect bleed: blood, bleed, drip, drips, gore, horror, blut, tropfen, bluten
+
+# ---------------------------------------------------------------- effects: patterns & generative
+
+effect noisefield: noise, perlin, fractal, grain, rauschen, körnung
+effect pattern: pattern, checkerboard, stripes, hexagon, muster, streifen
+effect geometric: op art, geometric, lines, geometrie, linien
+effect moirefilter: moire, interference, lines, overlay, muster
+effect generative: generative, lines, flow lines, algorithmic, generativ
+effect grid: halftone, dots, grid, modules, hatching, raster, punkte
+effect chars: ascii, text, letters, characters, schrift, zeichen
+effect carsontype: carson, typography, grunge, text, chaos, schrift, typo
+effect ridgelines: unknown pleasures, joy division, lines, spectrogram, waves, linien
+effect shapes: particles, shapes, blobs, abstract, partikel, formen
+effect uvtexture: uv, texture, map, wrap, textur
+
+# ---------------------------------------------------------------- effects: material & optics
+
+effect glass: glass, refraction, frosted, ribbed, glas, brechung, milchglas
+effect metal: metal, chrome, emboss, shiny, metall, chrom, glänzend
+effect hologram: hologram, holo, foil, rainbow, iridescent, hologramm, folie, regenbogen
+effect lens: optics, lens, distortion, chromatic aberration, vignette, fisheye, cracked, linse, objektiv, verzerrung
+effect blackhole: black hole, gravity, lensing, space, schwarzes loch, gravitation
+effect tv: tv, crt, scanlines, vhs, retro, monitor, fernseher, röhre
+effect fire: fire, flames, burn, feuer, flammen, brennen
+effect fireflies: fireflies, embers, sparks, particles, glühwürmchen, funken, glut
+effect freeze: freeze, ice, frost, frozen, cold, winter, eis, einfrieren, gefroren, kalt
+effect luminescence: bioluminescence, black light, uv, glow, neon, biolumineszenz, schwarzlicht, leuchten
+
+# ---------------------------------------------------------------- effects: depth
+
+effect zmap: depth, z map, z-map, 3d, depth map, tiefe, tiefenkarte
+effect fog: fog, haze, mist, depth, nebel, dunst
+effect wiggle: wiggle, wigglegram, parallax, 3d, camera, wackeln, kamera
+
+# ---------------------------------------------------------------- effects: time
+
+effect timefeedback: time feedback, echo, trails, zeit, spuren
+effect timeblend: blend, frames, average, overlay, zeit, mischen
+effect timedifference: difference, motion, frames, zeit, unterschied, bewegung
+effect timedisplace: time displacement, displace, frames, zeit, verschiebung
+effect rgbtime: rgb, time split, channels, delay, zeit, kanäle
+effect blocktime: block, time glitch, frames, datamosh, zeit, blöcke
+effect stutter: stutter, freeze, repeat, frames, stottern, wiederholen
+effect timegrid: grid, frames, time, contact sheet, zeit, raster
+effect persistence: persistence, trails, ghosting, afterimage, nachleuchten, spuren
+effect strobe: strobe, stroboscope, flicker, flash, stroboskop, flackern
+effect timedatamosh: datamosh, motion, mosh, bewegung
+effect motionblur: motion blur, blur, speed, movement, bewegungsunschärfe, bewegung

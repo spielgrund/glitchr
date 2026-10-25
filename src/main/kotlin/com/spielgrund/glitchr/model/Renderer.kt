@@ -153,7 +153,7 @@ class Renderer {
 
         val compositeKey = listOf(image.opacity, image.blend)
         if (entry.below !== below || entry.group !== group || entry.compositeKey != compositeKey || entry.output == null) {
-            entry.output = if (below === blank && image.opacity >= 100) group
+            entry.output = if (below === blank && image.opacity >= 100 && !image.blend.cuts) group
             else over(below, group, image, space, applyMask = false)
             entry.below = below
             entry.group = group
@@ -305,7 +305,9 @@ class Renderer {
                 for (x in 0 until w) {
                     val i = y * w + x
                     val b = base.data[i]
-                    out.data[i] = lerpArgb(b, layer.blend.apply(b, fx.data[i]), m[x] * opacity)
+                    // a cut color of the result shows the picture below
+                    val t = layer.blend.cut(fx.data[i])
+                    out.data[i] = if (alpha(t) == 0) b else lerpArgb(b, layer.blend.apply(b, t), m[x] * opacity)
                 }
             }
             return out
@@ -329,7 +331,7 @@ class Renderer {
                 for (x in 0 until w) {
                     val i = y * w + x
                     val b = base.data[i]
-                    val t = top.data[i]
+                    val t = layer.blend.cut(top.data[i])
                     val ta = alpha(t) / 255f * m[x] * opacity
                     if (ta <= 0f) {
                         out.data[i] = b

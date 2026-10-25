@@ -1,0 +1,2 @@
+Maske Alpha from Luma
+Blend Mode Cut Black, Cut White, Cut Grey
