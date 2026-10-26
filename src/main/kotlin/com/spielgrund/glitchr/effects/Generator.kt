@@ -100,7 +100,7 @@ class Generator(
     }
 }
 
-/** All generators, in menu order. */
+/** All generators, in menu order: alphabetical (see [menuOrder]). */
 object Generators {
     val all: List<Generator> = listOf(
         Generator(
@@ -202,6 +202,14 @@ object Generators {
             withBase = false,
         ),
         Generator(
+            "sky", "Sky", "A sky through a virtual camera (or as a 360° panorama or fisheye) – gradient, Preetham or physical atmosphere, sun, drifting clouds, stars, ground or water", Sky,
+            withBase = false, withPosition = false,
+        ),
+        Generator(
+            "jellyfish", "Jellyfish", "Sea jellies with a pulsing, glowing bell, frilly oral arms and long tentacles – from a center or swimming along drawn arrows; rotation, pulse, waves, current, rocking; animate the time", Jellyfish,
+            defaultBase = 0x041222,
+        ),
+        Generator(
             "barbwire", "Barbed wire", "Barbed or razor wire – strands sagging across the picture, along drawn arrows or as rings, optionally coiled like concertina wire; rusty metal with a shadow", Barbwire,
             defaultBase = 0xE6E1D8,
         ),
@@ -232,7 +240,7 @@ object Generators {
             hidden = setOf("invert", "scaleByBrightness"),
             defaultBase = 0x000000,
         ),
-    )
+    ).sortedBy { menuOrder(it.name) }
 
     fun byId(id: String) = all.firstOrNull { it.id == id }
 }

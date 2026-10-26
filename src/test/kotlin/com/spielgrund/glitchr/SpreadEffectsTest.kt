@@ -93,6 +93,13 @@ class SpreadEffectsTest {
         // bigger drops: more blood below
         fun drops(size: Int) = red(Bleed.apply(src, Bleed.defaultValues(mapOf("progress" to 10000, "drips" to 100, "dropSize" to size)), 1L), 30, 61, 130, 159)
         assertTrue(drops(300) > drops(50) + 50, "drop size: ${drops(300)} vs ${drops(50)}")
+        // a white bar on a dark, opaque ground: as white areas it bleeds below itself, as dark areas the ground bleeds onto its top
+        val flat = Pixels(160, 160).also { it.data.fill(0xFF141420.toInt()) }
+        for (y in 40..60) for (x in 30..130) flat.data[y * 160 + x] = -1
+        val whiteAreas = Bleed.apply(flat, Bleed.defaultValues(mapOf("progress" to 10000, "drips" to 100, "source" to 2)), 1L)
+        assertTrue(red(whiteAreas, 30, 55, 130, 60) > 300 && red(whiteAreas, 30, 40, 130, 44) < 50, "white areas gather at the bar's bottom")
+        val darkAreas = Bleed.apply(flat, Bleed.defaultValues(mapOf("progress" to 10000, "drips" to 100, "source" to 1)), 1L)
+        assertTrue(red(darkAreas, 30, 36, 130, 44) > 200, "dark areas: the ground above it bleeds onto it")
         // only the blood: the bar itself gone where there's no blood
         val only = Bleed.apply(src, Bleed.defaultValues(mapOf("progress" to 10000, "onlyBlood" to 1, "coat" to 0)), 1L)
         assertTrue(only[80, 42] ushr 24 == 0)
@@ -140,5 +147,22 @@ class SpreadEffectsTest {
         assertTrue(fringes(run("dispersion" to 100, "transparent" to 1)) > fringes(run("transparent" to 1)) + 50)
         // only the light: the dark water transparent
         assertTrue(run("transparent" to 1).data.any { it ushr 24 < 60 })
+    }
+
+    @Test
+    fun `a galaxy skin is fixed in the picture, not on the shapes, and slides against the camera`() {
+        val g = com.spielgrund.glitchr.effects.GalaxySkin
+        fun square(x0: Int) = Pixels(200, 120).also { p -> for (y in 20..100) for (x in x0 until x0 + 80) p.data[y * 200 + x] = 0xFF808080.toInt() }
+        val a = g.apply(square(20), g.defaultValues(mapOf("rim" to 0)), 1L)
+        val b = g.apply(square(60), g.defaultValues(mapOf("rim" to 0)), 1L)
+        // where both shapes cover the picture, the space is the same: it stays put while the shape moves
+        for (y in 30..90) for (x in 70..90) assertTrue(a[x, y] == b[x, y], "screen-fixed at ($x, $y)")
+        // outside the shapes nothing changes
+        assertTrue(a[150, 60] == 0 && a[5, 5] == 0)
+        // the camera moves it
+        assertTrue(!g.apply(square(20), g.defaultValues(mapOf("panX" to 800)), 1L).data.contentEquals(g.apply(square(20), g.defaultValues(), 1L).data))
+        // the rim glows along the edges
+        val rim = g.apply(square(20), g.defaultValues(mapOf("rim" to 300, "nebula" to 0, "stars" to 0)), 1L)
+        assertTrue(ch(rim[21, 60], 0) > ch(rim[60, 60], 0) + 40, "rim")
     }
 }

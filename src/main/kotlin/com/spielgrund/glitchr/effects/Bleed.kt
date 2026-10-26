@@ -24,8 +24,11 @@ import kotlin.random.Random
  */
 object Bleed : Effect("bleed", "Bleed", "Blood gathers on the lower edges of the shapes – from alpha or dark areas – and runs down in drips, in any direction; animate the progress") {
     override val params = listOf(
-        Param.Choice("source", "Shapes from", listOf("Alpha (else dark areas)", "Dark areas"), 0, "What bleeds: the opaque parts (if the picture has no transparency: the dark ones), or everything darker than the threshold"),
-        Param.Slider("threshold", "Black threshold", 0, 100, 30, " %", "Dark areas: up to which brightness a pixel belongs to a shape"),
+        Param.Choice(
+            "source", "Shapes from", listOf("Alpha (else dark areas)", "Dark areas", "White areas"), 0,
+            "What bleeds: the opaque parts (if the picture has no transparency: the dark ones), everything darker than the threshold, or everything brighter",
+        ),
+        Param.Slider("threshold", "Threshold", 0, 100, 30, " %", "Dark areas: up to this brightness · White areas: from this far below white (30 % = brighter than 70 %)"),
         Param.Slider("progress", "Progress", 0, 10000, 6000, " %", "0 %: no blood · it gathers on the lower edges, then drips run down – animate it", decimals = 2),
         Param.Slider("angle", "Direction", -18000, 18000, 0, "°", "Where the blood runs: 0° = down, 90° = right", decimals = 2),
         Param.Heading("bloodHeading", "Blood"),
@@ -54,9 +57,14 @@ object Bleed : Effect("bleed", "Bleed", "Blood gathers on the lower edges of the
         val hasAlpha = src.data.any { alpha(it) < 250 }
         val threshold = v["threshold"] / 100.0 * 255
         val byAlpha = v["source"] == 0 && hasAlpha
+        val white = v["source"] == 2
         val inShape = if (byAlpha) BooleanArray(w * h) { alpha(src.data[it]) >= 128 } else {
-            // dark areas smoothed, so specks don't each bleed
-            val raw = FloatArray(w * h) { val c = src.data[it]; if (alpha(c) >= 128 && luma(c) < threshold) 1f else 0f }
+            // dark or white areas smoothed, so specks don't each bleed
+            val raw = FloatArray(w * h) {
+                val c = src.data[it]
+                val bright = luma(c)
+                if (alpha(c) >= 128 && (if (white) bright > 255 - threshold else bright < threshold)) 1f else 0f
+            }
             val soft = Blur.gauss(raw, w, h, max(0.6, size * 0.005))
             BooleanArray(w * h) { soft[it] >= 0.5f }
         }

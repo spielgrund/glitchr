@@ -190,12 +190,20 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         it != null && it.mask.mode != MaskMode.OFF && (it !is ImageLayer && flowParam(it) == null && handleOf(it) == null || showMask)
     }
 
-    /** The handle the active effect layer puts on the canvas, if any (see [CanvasHandle]). */
-    private fun handleOf(l: Layer?) = when (l) {
-        is EffectLayer -> l.effect.canvasHandle
-        // generators can have one too (e.g. Lightning's point)
-        is com.spielgrund.glitchr.model.GeneratorLayer -> l.generator.effect?.canvasHandle
-        else -> null
+    /**
+     * The handle the active effect layer puts on the canvas, if any (see [CanvasHandle]) – not while
+     * its settings are hidden in the current mode (then dragging draws arrows, say).
+     */
+    private fun handleOf(l: Layer?): com.spielgrund.glitchr.effects.CanvasHandle? {
+        val handle = when (l) {
+            is EffectLayer -> l.effect.canvasHandle
+            // generators can have one too (e.g. Lightning's point)
+            is com.spielgrund.glitchr.model.GeneratorLayer -> l.generator.effect?.canvasHandle
+            else -> null
+        } ?: return null
+        val p = l as com.spielgrund.glitchr.model.ParamLayer
+        val rule = p.params.firstOrNull { it.key == handle.xKey }?.shownFor ?: return handle
+        return handle.takeIf { p.values[rule.first] in rule.second }
     }
 
     /** Stored steps per pixel of a handle's setting: sliders with decimals keep fractions of a pixel. */

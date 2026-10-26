@@ -112,10 +112,17 @@ abstract class Effect(val id: String, val name: String, val description: String)
 /** Two slider settings ([xKey], [yKey], in pixels from the canvas middle) that a handle on the canvas moves. */
 data class CanvasHandle(val xKey: String, val yKey: String)
 
+/**
+ * How a name sorts in the menus: alphabetical, letters without their accents (Moiré as Moire),
+ * a space before letters (“Color fill” before “Colorbands”).
+ */
+internal fun menuOrder(name: String) =
+    java.text.Normalizer.normalize(name.lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}"), "")
+
 /** A group of effects in the menu. */
 class EffectCategory(val name: String, val effects: List<Effect>)
 
-/** All available effects, grouped and in menu order. */
+/** All available effects, grouped and in menu order: the groups and the effects in them alphabetical. */
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
@@ -124,10 +131,10 @@ object Effects {
         EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture)),
-        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence, GalaxySkin)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
-    )
+    ).map { c -> EffectCategory(c.name, c.effects.sortedBy { menuOrder(it.name) }) }.sortedBy { menuOrder(it.name) }
 
     val all: List<Effect> = categories.flatMap { it.effects }
 

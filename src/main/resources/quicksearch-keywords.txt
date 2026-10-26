@@ -31,6 +31,8 @@ generator lightning: bolt, thunder, electric, storm, flash, blitz, gewitter, str
 generator portal: vortex, gate, stargate, ring, swirl, wormhole, tor, wirbel
 generator explosion: boom, blast, fireball, bomb, mushroom cloud, fire, smoke, kaboom, feuerball, rauch, atompilz
 generator caustics: water, pool, light, ripples, ocean, sea, underwater, wasser, licht, meer, unterwasser
+generator sky: sky, atmosphere, sunset, sunrise, clouds, sun, hdri, panorama, preetham, nishita, horizon, himmel, wolken, sonnenuntergang, sonne, sterne, atmosphäre
+generator jellyfish: jelly, medusa, sea jelly, tentacles, ocean, underwater, glow, qualle, meduse, tentakel, meer, unterwasser
 generator barbwire: barbed wire, razor wire, fence, concertina, stacheldraht, zaun
 generator errors: error, windows, dialog, popup, message, solitaire, fehler, meldung, fenster
 generator tribal: tattoo, ornament, sigilism, polynesian, flames, tribal tattoo
@@ -127,6 +129,7 @@ effect blackhole: black hole, gravity, lensing, space, schwarzes loch, gravitati
 effect tv: tv, crt, scanlines, vhs, retro, monitor, fernseher, röhre
 effect fire: fire, flames, burn, feuer, flammen, brennen
 effect fireflies: fireflies, embers, sparks, particles, glühwürmchen, funken, glut
+effect galaxyskin: galaxy, space, stars, cosmic, nebula, fortnite, skin, universe, galaxie, weltraum, sterne, kosmos, all, nebel
 effect freeze: freeze, ice, frost, frozen, cold, winter, eis, einfrieren, gefroren, kalt
 effect luminescence: bioluminescence, black light, uv, glow, neon, biolumineszenz, schwarzlicht, leuchten
 

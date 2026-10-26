@@ -593,6 +593,117 @@ class NewGeneratorsTest {
     }
 
     @Test
+    fun `jellies hang from the center or swim along arrows, and pulse with the time`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("jellyfish")!!
+        fun run(values: Map<String, Int>, strokes: String = "") =
+            g.generate(200, 300, Values(g.defaults().apply { putAll(values) }, g.textDefaults().apply { put("strokes", strokes) }), 1L)
+        val ground = 0xFF041222.toInt()
+        fun changed(p: Pixels, x0: Int, y0: Int, x1: Int, y1: Int) = (y0..y1).sumOf { y -> (x0..x1).count { x -> p[x, y] != ground } }
+        val calm = mapOf("glow" to 0)
+        // from the center: the bell on the handle, the tentacles hanging below it, nothing above, the corners untouched
+        val one = run(calm)
+        assertTrue(changed(one, 75, 125, 125, 175) > 1500, "a bell at the center: ${changed(one, 75, 125, 125, 175)}")
+        assertTrue(changed(one, 60, 210, 140, 290) > 300, "tentacles below")
+        assertEquals(0, changed(one, 0, 0, 199, 90), "nothing above the bell")
+        assertEquals(ground, one[2, 2])
+        // the handle is for the center only: drawing arrows hides it
+        val jelly = com.spielgrund.glitchr.effects.Jellyfish
+        assertEquals("mode" to setOf(0), jelly.params.first { it.key == "centerX" }.shownFor)
+        // the time makes it pulse and wave; turned, it lies another way
+        assertTrue(!run(calm + ("time" to 30)).data.contentEquals(one.data), "pulses")
+        val turned = run(calm + ("rotation" to 9000))
+        assertTrue(changed(turned, 0, 130, 60, 170) > changed(one, 0, 130, 60, 170) + 200, "pointing right, tentacles trailing left")
+        assertEquals(0, changed(turned, 160, 100, 199, 200), "nothing right of the bell")
+        // along an arrow: the bell at its first point, the body on towards its end, nothing elsewhere; without arrows nothing at all
+        val arrow = run(calm + mapOf("mode" to 1, "tentacleLength" to 150, "armLength" to 100), "0.2000,0.9000 0.5000,0.5000 0.8000,0.1500")
+        assertTrue(changed(arrow, 15, 235, 70, 295) > 600, "bell at the start: ${changed(arrow, 15, 235, 70, 295)}")
+        assertTrue(changed(arrow, 70, 150, 130, 230) > 150, "the body towards the end")
+        assertEquals(0, changed(arrow, 150, 230, 199, 299), "nothing beside it")
+        // fitted, a small jelly still fills a long arrow down to its end
+        val small = run(calm + mapOf("mode" to 1, "size" to 1500), "0.5000,0.1000 0.5000,0.9000")
+        assertTrue(changed(small, 80, 250, 120, 270) > 30, "reaches the arrow's end")
+        assertEquals(0, changed(run(calm + mapOf("mode" to 1, "size" to 1500, "fit" to 0), "0.5000,0.1000 0.5000,0.9000"), 80, 250, 120, 270), "unfitted it stops short")
+        // smoothing takes out a shaky hand's wiggles, but keeps big turns
+        val shaky = "0.5000,0.1000 0.5300,0.2000 0.4700,0.3000 0.5300,0.4000 0.4700,0.5000 0.5300,0.6000 0.4700,0.7000 0.5000,0.8000"
+        assertTrue(!run(calm + mapOf("mode" to 1, "smoothing" to 0), shaky).data.contentEquals(run(calm + mapOf("mode" to 1, "smoothing" to 100), shaky).data), "wiggles go")
+        val kinked = "0.2000,0.9000 0.5000,0.6000 0.3000,0.4000 0.6000,0.1500"
+        assertContentEquals(run(calm + mapOf("mode" to 1, "smoothing" to 0), kinked).data, run(calm + mapOf("mode" to 1, "smoothing" to 100), kinked).data, "the shape stays")
+        assertTrue(run(calm + ("mode" to 1)).data.all { it == ground })
+        // only the jelly on transparency
+        assertEquals(0, run(calm + ("transparent" to 1))[2, 2] ushr 24)
+        // the complementary light turns the orange jelly's outline and tentacles blue
+        fun blueness(p: Pixels) = p.data.filter { it != ground }.sumOf { ((it and 0xFF) - (it shr 16 and 0xFF)).coerceAtLeast(0) }
+        assertTrue(blueness(run(calm + ("complement" to 100))) > blueness(run(calm + ("complement" to 0))) * 2, "complementary light")
+        // swirling arms: the arms turn with the time
+        assertTrue(!run(calm + mapOf("swirl" to 100, "pulse" to 0, "wave" to 0, "time" to 100)).data.contentEquals(run(calm + mapOf("swirl" to 100, "pulse" to 0, "wave" to 0)).data))
+        fun light(p: Pixels) = p.data.sumOf { (it shr 16 and 0xFF) + (it shr 8 and 0xFF) + (it and 0xFF) }
+        // turbulence swings the whole lower body; the arms' shadow darkens what lies behind them, never the water
+        val still = calm + mapOf("pulse" to 0, "wave" to 0, "swirl" to 0, "current" to 0, "rock" to 0)
+        assertTrue(!run(still + mapOf("turbulence" to 100, "time" to 30)).data.contentEquals(run(still + ("time" to 30)).data), "turbulence")
+        val lit = run(still + ("shadow" to 0))
+        val shaded = run(still + ("shadow" to 100))
+        assertTrue(light(shaded) < light(lit), "shadow")
+        assertTrue(shaded.data.indices.all { lit.data[it] != ground || shaded.data[it] == ground }, "no shadow on the water")
+        // overlapping jellies don't light each other up: the glow is one bloom over the result
+        val stacked = run(mapOf("mode" to 1), "0.5000,0.4000 0.5000,0.9000;0.5000,0.4000 0.5000,0.9000")
+        val single = run(mapOf("mode" to 1), "0.5000,0.4000 0.5000,0.9000")
+        assertTrue(light(stacked) < light(single) * 1.25, "stacked: ${light(stacked)} vs ${light(single)}")
+    }
+
+    @Test
+    fun `the sky is blue above, red at sunset, starry at night, and seen through a camera`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("sky")!!
+        fun run(vararg c: Pair<String, Int>) = g.generate(160, 100, Values(g.defaults().apply { putAll(mapOf(*c)) }, g.textDefaults()), 1L)
+        fun r(c: Int) = c shr 16 and 0xFF
+        fun b(c: Int) = c and 0xFF
+        fun lum(p: Pixels) = p.data.sumOf { r(it) + (it shr 8 and 0xFF) + b(it) } / p.data.size
+        // looking up into a clear day sky: blue
+        val up = run("tilt" to 7000, "clouds" to 0)
+        assertTrue(b(up[80, 50]) > r(up[80, 50]) + 30, "blue")
+        for (model in 0..2) {
+            val day = run("model" to model, "tilt" to 4000, "clouds" to 0)
+            assertTrue(b(day[80, 30]) > r(day[80, 30]), "model $model: bluish above")
+        }
+        // the sun low ahead: the horizon glows warm
+        val sunset = run("sunElevation" to 100, "sunAzimuth" to 0, "tilt" to 300, "clouds" to 0)
+        assertTrue(r(sunset[80, 50]) > b(sunset[80, 50]) + 40, "a red sunset")
+        // night: dark, with stars
+        val night = run("sunElevation" to -1800, "tilt" to 5000, "clouds" to 0)
+        assertTrue(lum(night) < 30 && night.data.any { r(it) > 120 }, "dark with stars")
+        // clouds come with the coverage and drift with the time
+        val clear = run("tilt" to 3000, "clouds" to 0)
+        val cloudy = run("tilt" to 3000, "clouds" to 70)
+        assertTrue(!clear.data.contentEquals(cloudy.data))
+        assertTrue(!cloudy.data.contentEquals(run("tilt" to 3000, "clouds" to 70, "time" to 3000).data), "drifting")
+        // projections and what lies below the horizon
+        assertTrue(!run("projection" to 1).data.contentEquals(run().data) && !run("projection" to 2).data.contentEquals(run().data))
+        assertTrue(!run("below" to 1, "tilt" to -2000).data.contentEquals(run("below" to 0, "tilt" to -2000).data), "water mirrors")
+        // the heading turns the view
+        assertTrue(!run("heading" to 9000).data.contentEquals(run().data))
+        // stars stay behind the clouds, and keep their place in the sky whatever the picture's size
+        fun starCount(p: Pixels) = p.data.count { r(it) > 120 }
+        assertTrue(starCount(run("sunElevation" to -1800, "tilt" to 5000, "clouds" to 100, "cloudDensity" to 100)) < starCount(night) / 3, "clouds hide the stars")
+        val big = g.generate(320, 200, Values(g.defaults().apply { putAll(mapOf("sunElevation" to -1800, "tilt" to 5000, "clouds" to 0)) }, g.textDefaults()), 1L)
+        assertTrue(kotlin.math.abs(starCount(big) - starCount(night) * 4) < starCount(night) * 2, "the same stars, more pixels: ${starCount(big)} vs ${starCount(night)}")
+        // towering clouds: dark bases make a storm darker
+        val stormy = mapOf("clouds" to 75, "cloudDensity" to 95, "cloudThickness" to 800, "tilt" to 1500)
+        assertTrue(lum(run(*(stormy + ("darkBases" to 100)).toList().toTypedArray())) < lum(run(*(stormy + ("darkBases" to 0)).toList().toTypedArray())) - 20, "dark bases")
+        assertTrue(!run(*(stormy + ("cloudThickness" to 0)).toList().toTypedArray()).data.contentEquals(run(*stormy.toList().toTypedArray()).data), "thickness")
+        // the sun behind thick clouds: no glare of its disk left
+        fun sunAt(p: Pixels) = p[80, 50].let { r(it) + (it shr 8 and 0xFF) + b(it) }
+        val clearSun = run("sunElevation" to 1500, "sunAzimuth" to 0, "tilt" to 1500, "clouds" to 0)
+        val hidden = run("sunElevation" to 1500, "sunAzimuth" to 0, "tilt" to 1500, "clouds" to 100, "cloudDensity" to 100, "cloudThickness" to 800)
+        assertTrue(sunAt(clearSun) > 700 && sunAt(hidden) < 600, "sun hidden: ${sunAt(clearSun)} vs ${sunAt(hidden)}")
+        // lightning: bolts and their flash brighten the storm; flashing, they come and go with the time
+        val storm = stormy + mapOf("darkBases" to 90, "tilt" to 800)
+        fun storm(vararg c: Pair<String, Int>) = run(*(storm + mapOf(*c)).toList().toTypedArray())
+        assertTrue(lum(storm("lightning" to 100)) > lum(storm("lightning" to 0)) + 3, "bolts")
+        assertTrue(storm("lightning" to 100).data.count { r(it) > 230 && b(it) > 230 } > 20, "bright bolts")
+        val frames = (0 until 40).map { lum(storm("lightning" to 100, "flashes" to 1, "time" to it * 25)) }
+        assertTrue(frames.max() > frames.min() + 3, "flashing: ${frames.min()}..${frames.max()}")
+    }
+
+    @Test
     fun `barbed wire stretches, criss-crosses, follows arrows, rings and coils`() {
         val g = com.spielgrund.glitchr.effects.Generators.byId("barbwire")!!
         fun run(values: Map<String, Int>, strokes: String = "") =
