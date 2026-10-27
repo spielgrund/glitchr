@@ -34,7 +34,27 @@ enum class BlendMode(val label: String, private val f: (Int, Int) -> Int) {
     CUT_WHITE("Cut white", { _, t -> t }),
 
     /** Pure mid grey (within 1 %) becomes see-through. */
-    CUT_GREY("Cut grey", { _, t -> t });
+    CUT_GREY("Cut grey", { _, t -> t }),
+
+    // added later, at the end, so the modes stored by number in effects (Feedback, …) keep their meaning
+
+    /** Gently darker or lighter by the top, like a diffuse light (as in Photoshop / the W3C formula). */
+    SOFT_LIGHT("Soft light", unit { b, t ->
+        if (t <= 0.5) b - (1 - 2 * t) * b * (1 - b)
+        else b + (2 * t - 1) * ((if (b <= 0.25) ((16 * b - 12) * b + 4) * b else kotlin.math.sqrt(b)) - b)
+    }),
+
+    /** Multiply in the darks of the base, screen in its lights: more contrast, the base's tones kept. */
+    OVERLAY("Overlay", unit { b, t -> if (b < 0.5) 2 * b * t else 1 - 2 * (1 - b) * (1 - t) }),
+
+    /** The top's brightness added to the base, mid grey changing nothing: base + 2·top − 1. */
+    LINEAR_LIGHT("Linear light", unit { b, t -> b + 2 * t - 1 }),
+
+    /** The top taken away from the base. */
+    SUBTRACT("Subtract", { b, t -> max(0, b - t) }),
+
+    /** The base divided by the top: white changes nothing, darker tops brighten it (black: white). */
+    DIVIDE("Divide", unit { b, t -> if (t <= 0) (if (b > 0) 1.0 else 0.0) else b / t });
 
     /** Whether this mode takes away a color of the top picture ([cut]). */
     val cuts get() = this == CUT_BLACK || this == CUT_WHITE || this == CUT_GREY
@@ -53,6 +73,10 @@ enum class BlendMode(val label: String, private val f: (Int, Int) -> Int) {
 
     override fun toString() = label
 }
+
+/** A blend formula on 0 … 1 made one on 0 … 255 channels, the result clamped and rounded. */
+private fun unit(f: (Double, Double) -> Double): (Int, Int) -> Int =
+    { b, t -> (f(b / 255.0, t / 255.0) * 255).roundToInt().coerceIn(0, 255) }
 
 private val nextId = AtomicInteger()
 

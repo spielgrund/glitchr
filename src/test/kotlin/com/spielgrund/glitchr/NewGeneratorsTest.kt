@@ -593,6 +593,33 @@ class NewGeneratorsTest {
     }
 
     @Test
+    fun `the spike ball sits at its center, loops in time and turns`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("spikeball")!!
+        fun run(values: Map<String, Int>, seed: Long = 1L) = g.generate(240, 180, g.defaultValues(values), seed)
+        val ground = 0xFF4A4A50.toInt()
+        val calm = mapOf("glow" to 0, "antialias" to 0)
+        val one = run(calm)
+        // around the middle many colors of metal, the corners untouched
+        assertTrue((100..140).sumOf { x -> (70..110).count { y -> one[x, y] != ground } } > 1200, "a ball at the center")
+        assertTrue(one.data.toSet().size > 200, "shaded metal")
+        assertEquals(ground, one[2, 2])
+        // a seamless loop: 100 % is 0 %, but in between it moves
+        assertContentEquals(one.data, run(calm + ("time" to 10000)).data)
+        assertTrue(!run(calm + ("time" to 2500)).data.contentEquals(one.data), "moves")
+        // turned, rerolled and recolored it looks different
+        assertTrue(!run(calm + ("rotX" to 9000)).data.contentEquals(one.data), "turns")
+        assertTrue(!run(calm, 2L).data.contentEquals(one.data), "rerolled")
+        assertTrue(!run(calm + ("scheme" to 2)).data.contentEquals(one.data), "gold")
+        // dragged to the left the right side stays empty
+        val moved = run(calm + ("centerX" to -800))
+        assertTrue((150..239).all { x -> (0..179).all { y -> moved[x, y] == ground } }, "moved left")
+        // only the ball on transparency; the core's glow lights the ground
+        assertEquals(0, run(calm + ("transparent" to 1))[2, 2] ushr 24)
+        val glowing = run(mapOf("antialias" to 0, "glow" to 200))
+        assertTrue(glowing[120, 30] != ground || glowing[60, 90] != ground, "glow around the ball")
+    }
+
+    @Test
     fun `jellies hang from the center or swim along arrows, and pulse with the time`() {
         val g = com.spielgrund.glitchr.effects.Generators.byId("jellyfish")!!
         fun run(values: Map<String, Int>, strokes: String = "") =

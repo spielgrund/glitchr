@@ -55,7 +55,7 @@ class EffectsTest {
             // Flow starts at 0 % offset on purpose: first the direction is drawn, then the picture moves;
             // the color correction and the transform start neutral, every change is the user's;
             // most time effects have nothing to work with without an animation
-            if (effect.id !in setOf("flow", "colorcorrect", "transform") && effect !is com.spielgrund.glitchr.effects.TimeEffect) assertFalse(a.data.contentEquals(src.data), "${effect.name} changes nothing")
+            if (effect.id !in setOf("flow", "colorcorrect", "curves", "transform", "colorcompressor") && effect !is com.spielgrund.glitchr.effects.TimeEffect) assertFalse(a.data.contentEquals(src.data), "${effect.name} changes nothing")
             ImageIO.write(a.toImage(), "png", File(outDir, "${effect.id}.png"))
         }
     }
@@ -64,7 +64,7 @@ class EffectsTest {
     fun `every effect sits in exactly one category`() {
         val ids = Effects.all.map { it.id }
         assertEquals(ids.size, ids.toSet().size, "duplicate: ${ids.groupBy { it }.filter { it.value.size > 1 }.keys}")
-        assertEquals(86, ids.size)
+        assertEquals(90, ids.size)
         for (category in Effects.categories) assertFalse(category.effects.isEmpty(), category.name)
     }
 

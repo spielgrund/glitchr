@@ -210,6 +210,10 @@ object Generators {
             defaultBase = 0x041222,
         ),
         Generator(
+            "spikeball", "Spike ball", "A ball of liquid-metal spikes like a chrome sea urchin – violet, chrome, gold …, iridescent, with a glowing core; turnable, animate the time as a seamless loop", SpikeBall,
+            defaultBase = 0x4A4A50,
+        ),
+        Generator(
             "barbwire", "Barbed wire", "Barbed or razor wire – strands sagging across the picture, along drawn arrows or as rings, optionally coiled like concertina wire; rusty metal with a shadow", Barbwire,
             defaultBase = 0xE6E1D8,
         ),

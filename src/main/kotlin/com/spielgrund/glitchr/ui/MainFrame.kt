@@ -347,6 +347,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             for (menu in effectMenus { addLayer(it) }) add(menu)
         }
         addButton.addActionListener { popup.show(addButton, 0, addButton.height) }
+        typeToSearch(popup, QuickKind.EFFECT)
         val adjustmentButton = JButton("+ Adjustment ▾").apply {
             isFocusable = false
             toolTipText = "An effect that works on all layers below it, like an adjustment layer in Photoshop"
@@ -355,6 +356,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             for (menu in effectMenus { addLayer(it, adjustment = true) }) add(menu)
         }
         adjustmentButton.addActionListener { adjustmentPopup.show(adjustmentButton, 0, adjustmentButton.height) }
+        typeToSearch(adjustmentPopup, QuickKind.ADJUSTMENT)
         val generatorButton = JButton("+ Generator ▾").apply {
             isFocusable = false
             toolTipText = "New layer that creates a pattern or noise without an image – effects above work on it"
@@ -366,6 +368,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             })
         }
         generatorButton.addActionListener { generatorPopup.show(generatorButton, 0, generatorButton.height) }
+        typeToSearch(generatorPopup, QuickKind.GENERATOR)
 
         // wraps onto a second row when the sidebar is too narrow for all buttons
         val buttons = JPanel(WrapLayout(FlowLayout.LEFT, 4, 4)).apply {
@@ -562,15 +565,37 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         else Effects.categories.flatMap { c -> c.effects.map { SearchEntry(it, "effect", it.id, it.name, c.name, keywords["effect ${it.id}"] ?: emptyList()) } }
     }
 
+    /**
+     * Typing while [popup] (or one of its submenus) is open closes it and goes on in the quick
+     * search of [kind], with the letter typed already in it.
+     */
+    private fun typeToSearch(popup: JPopupMenu, kind: QuickKind) {
+        val listener = object : javax.swing.event.MenuKeyListener {
+            override fun menuKeyTyped(e: javax.swing.event.MenuKeyEvent) {
+                val c = e.keyChar
+                if (e.isConsumed || !c.isLetterOrDigit() || e.isControlDown || e.isAltDown || e.isMetaDown) return
+                e.consume()
+                javax.swing.MenuSelectionManager.defaultManager().clearSelectedPath()
+                popup.isVisible = false
+                // right away, not later: the keys typed meanwhile wait in the queue and then go to the search
+                quickSearch(kind, c.toString())
+            }
+            override fun menuKeyPressed(e: javax.swing.event.MenuKeyEvent) {}
+            override fun menuKeyReleased(e: javax.swing.event.MenuKeyEvent) {}
+        }
+        popup.addMenuKeyListener(listener)
+        for (c in popup.components) if (c is JMenu) c.popupMenu.addMenuKeyListener(listener)
+    }
+
     /** The quick search window (F1 generators, F2 effects, F3 adjustment layers): type, pick, and the layer is added. */
-    private fun quickSearch(kind: QuickKind) {
+    private fun quickSearch(kind: QuickKind, typed: String = "") {
         QuickSearchDialog(this, kind.title, quickEntries(kind == QuickKind.GENERATOR)) { item ->
             when (kind) {
                 QuickKind.GENERATOR -> addGenerator(item as Generator)
                 QuickKind.EFFECT -> addLayer(item as Effect)
                 QuickKind.ADJUSTMENT -> addLayer(item as Effect, adjustment = true)
             }
-        }.open()
+        }.open(typed)
     }
 
     /** Opens the quick search's keyword list in the system's text editor (writing it first if needed). */

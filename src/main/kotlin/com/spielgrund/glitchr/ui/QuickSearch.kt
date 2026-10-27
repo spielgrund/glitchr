@@ -3,6 +3,10 @@ package com.spielgrund.glitchr.ui
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.KeyEventDispatcher
+import java.awt.KeyboardFocusManager
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
@@ -151,8 +155,26 @@ private fun plain(s: String) =
 class QuickSearchDialog<T>(owner: JFrame, title: String, private val entries: List<SearchEntry<T>>, private val pick: (T) -> Unit) :
     JDialog(owner, title, false) {
     private val field = JTextField(24)
-    private val model = DefaultListModel<SearchHit<T>>()
-    private val list = JList(model)
+    private val list = JList(DefaultListModel<SearchHit<T>>())
+
+    /**
+     * While the window is opening, the keys typed don't reach its field yet: they are caught here
+     * and written into it, until the field has the focus.
+     */
+    private val early = KeyEventDispatcher { e ->
+        if (field.isFocusOwner || !isDisplayable) return@KeyEventDispatcher false
+        if (e.isControlDown || e.isAltDown || e.isMetaDown) return@KeyEventDispatcher false
+        when (e.id) {
+            KeyEvent.KEY_TYPED -> if (!e.keyChar.isISOControl()) field.replaceSelection(e.keyChar.toString())
+            KeyEvent.KEY_PRESSED -> when (e.keyCode) {
+                KeyEvent.VK_BACK_SPACE -> if (field.text.isNotEmpty()) field.text = field.text.dropLast(1)
+                KeyEvent.VK_ESCAPE -> dispose()
+                KeyEvent.VK_ENTER -> take()
+            }
+        }
+        // everything else typed meanwhile stays away from the window behind
+        e.keyChar != KeyEvent.CHAR_UNDEFINED || e.keyCode in setOf(KeyEvent.VK_BACK_SPACE, KeyEvent.VK_ESCAPE, KeyEvent.VK_ENTER)
+    }
 
     init {
         isUndecorated = true
@@ -163,11 +185,16 @@ class QuickSearchDialog<T>(owner: JFrame, title: String, private val entries: Li
         )
         panel.add(JLabel(title).apply { font = font.deriveFont(java.awt.Font.BOLD) }, BorderLayout.NORTH)
         field.putClientProperty("JTextField.placeholderText", "Type to search …")
+        // the letter typed in a menu stays as it is, not selected (FlatLaf selects all when the field gets the focus)
+        field.putClientProperty("JTextField.selectAllOnFocusPolicy", "never")
         panel.add(field, BorderLayout.CENTER)
         list.selectionMode = ListSelectionModel.SINGLE_SELECTION
         list.visibleRowCount = 12
         list.isFocusable = false
         list.cellRenderer = Renderer()
+        // every row as high as the first: the list doesn't measure all its rows (HTML, slow) on every key
+        entries.firstOrNull()?.let { list.prototypeCellValue = SearchHit(it, "keyword") }
+        list.fixedCellWidth = 400
         panel.add(JScrollPane(list).apply { preferredSize = Dimension(420, 300) }, BorderLayout.SOUTH)
         contentPane = panel
 
@@ -199,21 +226,27 @@ class QuickSearchDialog<T>(owner: JFrame, title: String, private val entries: Li
         addWindowFocusListener(object : WindowAdapter() {
             override fun windowLostFocus(e: WindowEvent) = dispose()
         })
+        field.addFocusListener(object : FocusAdapter() {
+            override fun focusGained(e: FocusEvent) = KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(early)
+        })
         update()
         pack()
         // near the top of the window, in the middle
         setLocation(owner.x + (owner.width - width) / 2, owner.y + 90)
     }
 
+    /** The hits for what is typed, swapped in at once (filled one by one, the list would redo itself for each). */
     private fun update() {
-        model.clear()
-        for (hit in rankSearch(field.text, entries)) model.addElement(hit)
-        if (!model.isEmpty) list.selectedIndex = 0
+        val hits = DefaultListModel<SearchHit<T>>()
+        hits.addAll(rankSearch(field.text, entries))
+        list.model = hits
+        if (!hits.isEmpty) list.selectedIndex = 0
     }
 
     private fun move(by: Int) {
-        if (model.isEmpty) return
-        val i = (list.selectedIndex + by).coerceIn(0, model.size() - 1)
+        val size = list.model.size
+        if (size == 0) return
+        val i = (list.selectedIndex + by).coerceIn(0, size - 1)
         list.selectedIndex = i
         list.ensureIndexIsVisible(i)
     }
@@ -247,9 +280,19 @@ class QuickSearchDialog<T>(owner: JFrame, title: String, private val entries: Li
         private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     }
 
-    /** Shows it with the field ready to type into. */
-    fun open() {
+    override fun dispose() {
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(early)
+        super.dispose()
+    }
+
+    /** Shows it with the field ready to type into, already holding [typed] (the first letters typed in a menu). */
+    fun open(typed: String = "") {
+        field.text = typed
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(early)
         isVisible = true
         field.requestFocusInWindow()
+        field.caretPosition = field.text.length
+        // once the focus has arrived: the cursor behind what was typed, nothing selected
+        javax.swing.SwingUtilities.invokeLater { field.select(field.text.length, field.text.length) }
     }
 }

@@ -14,6 +14,8 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import com.spielgrund.glitchr.model.BlendMode
 
 /** Inverts the image and counts how often it ran. */
 private class CountingInvert : Effect("count", "Counter", "") {
@@ -103,6 +105,36 @@ class RendererTest {
         assertSame(src, Renderer().render(src, listOf(layer.state())))
         layer.visible = true
         assertNotEquals(src, Renderer().render(src, listOf(layer.state())))
+    }
+
+    @Test
+    fun `soft light, overlay, linear light, subtract and divide mix like in Photoshop`() {
+        fun grey(v: Int) = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
+        fun mix(mode: BlendMode, base: Int, top: Int) = mode.apply(grey(base), grey(top)) and 0xFF
+        // mid grey on top changes nothing with soft light, overlay and linear light
+        for (mode in listOf(BlendMode.SOFT_LIGHT, BlendMode.OVERLAY, BlendMode.LINEAR_LIGHT)) for (b in listOf(0, 60, 128, 200, 255)) {
+            assertTrue(kotlin.math.abs(mix(mode, b, 128) - b) <= 1, "$mode on $b")
+        }
+        // overlay: multiply in the darks, screen in the lights
+        assertEquals(51, mix(BlendMode.OVERLAY, 64, 102))
+        assertEquals(179, mix(BlendMode.OVERLAY, 192, 102), "screen half: 1 − 2·(1 − b)·(1 − t)")
+        // soft light: white lightens, black darkens, gently
+        assertEquals(160, mix(BlendMode.SOFT_LIGHT, 100, 255), "√b")
+        assertEquals(39, mix(BlendMode.SOFT_LIGHT, 100, 0), "b²")
+        // linear light: base + 2·top − 1, clamped
+        assertEquals(201, mix(BlendMode.LINEAR_LIGHT, 100, 178))
+        assertEquals(0, mix(BlendMode.LINEAR_LIGHT, 50, 0))
+        assertEquals(255, mix(BlendMode.LINEAR_LIGHT, 200, 255))
+        // subtract and divide
+        assertEquals(70, mix(BlendMode.SUBTRACT, 200, 130))
+        assertEquals(0, mix(BlendMode.SUBTRACT, 100, 130))
+        assertEquals(128, mix(BlendMode.DIVIDE, 128, 255), "white changes nothing")
+        assertEquals(255, mix(BlendMode.DIVIDE, 100, 64), "darker tops brighten")
+        assertEquals(199, mix(BlendMode.DIVIDE, 100, 128))
+        assertEquals(255, mix(BlendMode.DIVIDE, 10, 0), "black: white")
+        assertEquals(0, mix(BlendMode.DIVIDE, 0, 0))
+        // the top's transparency is kept
+        assertEquals(0x80, BlendMode.SUBTRACT.apply(grey(200), 0x80404040.toInt()) ushr 24)
     }
 
     @Test

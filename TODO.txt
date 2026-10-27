@@ -1,2 +1,9 @@
-Maske Alpha from Luma
-Blend Mode Cut Black, Cut White, Cut Grey
+Softlight Stack
+Ich nutze für die Nachbearbeitung immer einen bestimmten Stack.
+Erst ein großer Blur, ca 30-50px, dann Curven, wo die Tiefen einfach um 25% angehoben werden,
+danach wird das ganze mit Softlight über das Bild gelegt.
+Bild Compressor
+Ich hätte gerne einen Musikcompressor für meine Pixelwerte.
+Der Compressor nimmt die Pixelwerte, schaut wo der Hellste und der Dunkelste wert sind und zieht das ganze dann so,
+dass sie auf Maximum und minimum gesetzt werden. Ich glaube der Level Effekt von Aftereffects konnte das.
+Das müsste dann der Auto Level Effekt gewesen sein. Funktioniert das?

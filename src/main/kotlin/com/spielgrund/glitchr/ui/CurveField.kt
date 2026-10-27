@@ -24,7 +24,7 @@ import kotlin.math.roundToInt
  * Editor for the tone curves (see [Curves]): a channel choice (RGB, red, green, blue) and
  * a square to drag points in. Clicking adds a point, dragging moves it, right click (or
  * dragging it far off the square) removes it; the end points stay at the left and right
- * edge. Every change goes to [onChange] as the curves' text.
+ * edge. The square takes the whole width of the editor. Every change goes to [onChange] as the curves' text.
  */
 class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(BorderLayout(0, 4)) {
     private val curves = Curves.parse(text).map { it.toMutableList() }.toMutableList()
@@ -63,8 +63,13 @@ class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(
         private var dragged: Int? = null
 
         init {
-            preferredSize = Dimension(220, 220)
             minimumSize = Dimension(120, 120)
+            // as tall as it is wide: when the width changes, the height follows
+            addComponentListener(object : java.awt.event.ComponentAdapter() {
+                override fun componentResized(e: java.awt.event.ComponentEvent) {
+                    if (abs(height - width) > 1) revalidate()
+                }
+            })
             val mouse = object : MouseAdapter() {
                 override fun mousePressed(e: MouseEvent) {
                     val points = curves[channel]
@@ -124,6 +129,12 @@ class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(
         private fun toCurve(x: Int, y: Int): Pair<Int, Int> {
             val s = side() - 2 * pad
             return ((x - pad) * 255.0 / s).roundToInt().coerceIn(0, 255) to (255 - (y - pad) * 255.0 / s).roundToInt().coerceIn(0, 255)
+        }
+
+        /** A square across the whole width it is given (before it has one: a sensible start). */
+        override fun getPreferredSize(): Dimension {
+            val side = (if (width > 0) width else 300).coerceIn(160, 900)
+            return Dimension(side, side)
         }
 
         /** Side of the square. */

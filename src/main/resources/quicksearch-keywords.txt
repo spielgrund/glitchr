@@ -32,6 +32,7 @@ generator portal: vortex, gate, stargate, ring, swirl, wormhole, tor, wirbel
 generator explosion: boom, blast, fireball, bomb, mushroom cloud, fire, smoke, kaboom, feuerball, rauch, atompilz
 generator caustics: water, pool, light, ripples, ocean, sea, underwater, wasser, licht, meer, unterwasser
 generator sky: sky, atmosphere, sunset, sunrise, clouds, sun, hdri, panorama, preetham, nishita, horizon, himmel, wolken, sonnenuntergang, sonne, sterne, atmosphäre
+generator spikeball: spikes, spiky, urchin, sea urchin, chrome, liquid metal, thorns, ball, 3d, iridescent, stachel, stachelball, seeigel, chrom, flüssigmetall, dornen, kugel
 generator jellyfish: jelly, medusa, sea jelly, tentacles, ocean, underwater, glow, qualle, meduse, tentakel, meer, unterwasser
 generator barbwire: barbed wire, razor wire, fence, concertina, stacheldraht, zaun
 generator errors: error, windows, dialog, popup, message, solitaire, fehler, meldung, fenster
@@ -78,6 +79,9 @@ effect surf: surf, wave, warp, ripple, welle, wellen
 # ---------------------------------------------------------------- effects: color & sharpness
 
 effect colorcorrect: color, levels, curves, brightness, contrast, saturation, hue, farbe, helligkeit, kontrast, sättigung, kurven
+effect colorcompressor: color compressor, compressor, auto levels, auto contrast, levels, normalize, stretch, histogram, hue, saturation, luma, black point, white point, kompressor, farbkompressor, tonwert, tonwertkorrektur, automatisch, kontrast, sättigung, farbton
+effect softlightstack: soft light, softlight, glow, orton, bloom, finishing, look, grade, blur, weiches licht, nachbearbeitung, leuchten
+effect curves: curves, tone curve, contrast, s-curve, levels, brightness, gradation, kurven, gradationskurve, tonwertkurve, kontrast
 effect ramp: gradient map, ramp, colorize, fire, verlauf, einfärben
 effect lab: lab, color space, channels, farbraum, kanäle
 effect palette: palette, color transfer, match colors, image colors, farbpalette, farben übertragen
@@ -153,3 +157,4 @@ effect persistence: persistence, trails, ghosting, afterimage, nachleuchten, spu
 effect strobe: strobe, stroboscope, flicker, flash, stroboskop, flackern
 effect timedatamosh: datamosh, motion, mosh, bewegung
 effect motionblur: motion blur, blur, speed, movement, bewegungsunschärfe, bewegung
+effect feverdream: fever dream, eyes, eye, blink, staring, surreal, creepy, horror, nightmare, psychedelic, fiebertraum, augen, auge, blinzeln, starren, albtraum, gruselig

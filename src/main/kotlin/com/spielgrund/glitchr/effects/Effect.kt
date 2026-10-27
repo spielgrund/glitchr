@@ -127,10 +127,10 @@ object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
         EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
-        EffectCategory("Color & Sharpness", listOf(ColorCorrect, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
         EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
-        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture)),
+        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture, FeverDream)),
         EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence, GalaxySkin)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
