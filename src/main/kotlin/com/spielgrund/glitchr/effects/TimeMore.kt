@@ -333,7 +333,7 @@ object Stroboscope : TimeEffect("strobe", "Stroboscope", "Single copies of earli
         Param.Slider("copies", "Copies", 1, 20, 4),
         Param.Slider("spacing", "Spacing", 1, 60, 4, " frames"),
         Param.Choice("direction", "From", listOf("Past", "Future", "Both"), 0),
-        Param.Choice("blend", "Blend mode", BlendMode.entries.map { it.label }, BlendMode.SCREEN.ordinal),
+        Param.Choice("blend", "Blend mode", BlendMode.entries.map { it.label }, BlendMode.SCREEN.ordinal, order = BlendMode.menuOrder),
         Param.Slider("opacity", "Opacity", 0, 100, 70, " %", "Of the nearest copy"),
         Param.Slider("fade", "Fade", 0, 100, 30, " %", "Each further copy becomes this much weaker"),
         Param.Slider("tint", "Tint", 0, 100, 0, " %", "Colors the copies along the gradient from near to far"),

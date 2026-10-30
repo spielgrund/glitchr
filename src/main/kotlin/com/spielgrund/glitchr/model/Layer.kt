@@ -72,6 +72,24 @@ enum class BlendMode(val label: String, private val f: (Int, Int) -> Int) {
     }
 
     override fun toString() = label
+
+    companion object {
+        /**
+         * The modes in menu order: normal, then the lightening ones, those that lay over (contrast),
+         * the darkening ones ending in the comparing ones, the cutting ones. The stored order
+         * ([entries]) stays as it was, since effects store a mode by its number.
+         */
+        val menu = listOf(
+            NORMAL,
+            LIGHTEN, SCREEN, ADD,
+            OVERLAY, SOFT_LIGHT, LINEAR_LIGHT,
+            DARKEN, MULTIPLY, DIVIDE, DIFFERENCE, SUBTRACT,
+            CUT_BLACK, CUT_WHITE, CUT_GREY,
+        )
+
+        /** For a blend mode choice in an effect: shown in [menu] order, stored by number. */
+        val menuOrder get() = menu.map { it.ordinal }
+    }
 }
 
 /** A blend formula on 0 … 1 made one on 0 … 255 channels, the result clamped and rounded. */

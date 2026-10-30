@@ -62,6 +62,7 @@ effect transform: move, scale, rotate, position, size, verschieben, skalieren, d
 effect tilegrid: grid, tiles, repeat, kacheln, raster, wiederholen
 effect tiling: tile, repeat, pattern, mirror, kacheln, wiederholen, spiegeln
 effect breakopen: crack, break, shatter, open, pieces, roll, aufbrechen, zerbrechen, risse
+effect shatter: shatter, dissolve, disintegrate, dust, ash, snap, shards, fragments, pieces, crumble, blow away, particles, zerspringen, zerfallen, auflösen, staub, asche, scherben, splitter, bröckeln, zerbröseln
 effect noise: displace, distort, warp, noise, verzerren, verschieben
 effect flow: flow, arrows, smear, direction, fließen, pfeile
 effect flowsmooth: flow, smooth, liquify, smear, fließen, verflüssigen
@@ -158,3 +159,4 @@ effect strobe: strobe, stroboscope, flicker, flash, stroboskop, flackern
 effect timedatamosh: datamosh, motion, mosh, bewegung
 effect motionblur: motion blur, blur, speed, movement, bewegungsunschärfe, bewegung
 effect feverdream: fever dream, eyes, eye, blink, staring, surreal, creepy, horror, nightmare, psychedelic, fiebertraum, augen, auge, blinzeln, starren, albtraum, gruselig
+effect stickerface: sticker face, sticker, face, doodle, cartoon, eyes, mouth, nose, arms, hands, cheeks, smile, cute, kawaii, character, gesicht, augen, mund, nase, arme, hände, wangen, lächeln, niedlich, figur, kritzelei, wave, wiggle, fidget, jitter, boil, welle, zappeln, wackeln, cat, whiskers, paw, fang, vampire, katze, schnurrhaare, pfote, reißzahn, vampir, ears, cat ears, ohren, katzenohren, mund offen

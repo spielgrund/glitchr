@@ -31,8 +31,15 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
         val rotation get() = unit.trim() == "°"
     }
 
-    class Choice(key: String, label: String, val options: List<String>, default: Int = 0, tip: String? = null) :
-        Param(key, label, default, tip)
+    /**
+     * One of [options], stored as its index. With [order] the menu shows them in that order (indices
+     * into [options]) – so options can be regrouped without changing what stored values mean.
+     */
+    class Choice(key: String, label: String, val options: List<String>, default: Int = 0, tip: String? = null, val order: List<Int>? = null) :
+        Param(key, label, default, tip) {
+        /** The option indices in menu order. */
+        val shown get() = order ?: options.indices.toList()
+    }
 
     class Toggle(key: String, label: String, default: Boolean, tip: String? = null) :
         Param(key, label, if (default) 1 else 0, tip)
@@ -126,11 +133,11 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
         EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
         EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
-        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture, FeverDream)),
+        EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture, FeverDream, StickerFace)),
         EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence, GalaxySkin)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),

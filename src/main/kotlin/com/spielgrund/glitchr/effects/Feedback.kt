@@ -109,7 +109,7 @@ object Feedback : Effect("feedback", "Feedback", "Copies of the picture, its edg
         Param.Color("alphaColor", "Color", 0xFFFFFF),
         Param.Heading("mixHeading", "Compositing"),
         Param.Choice("order", "Order", listOf("Copies above the picture", "Picture above the copies"), tip = "On top lies the newest copy – or the picture (the edges, the blobs) itself"),
-        Param.Choice("blend", "Blend mode", BlendMode.entries.map { it.label }),
+        Param.Choice("blend", "Blend mode", BlendMode.entries.map { it.label }, order = BlendMode.menuOrder),
         Param.Slider("opacity", "Opacity of the copies", 0, 100, 100, " %"),
         Param.Slider("fade", "Decay", 0, 50, 0, " %", "Every further copy becomes this much more transparent"),
         Param.Choice(

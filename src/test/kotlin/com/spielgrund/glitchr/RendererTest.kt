@@ -138,6 +138,24 @@ class RendererTest {
     }
 
     @Test
+    fun `the blend mode menu groups lightening, laying over, darkening and comparing, cutting, stored numbers unchanged`() {
+        // every mode once
+        assertEquals(BlendMode.entries.toSet(), BlendMode.menu.toSet())
+        assertEquals(BlendMode.entries.size, BlendMode.menu.size)
+        val labels = BlendMode.menu.map { it.label }
+        assertEquals(
+            listOf("Normal", "Lighten", "Screen", "Add", "Overlay", "Soft light", "Linear light", "Darken", "Multiply", "Divide", "Difference", "Subtract", "Cut black", "Cut white", "Cut grey"),
+            labels,
+        )
+        // effects store a mode by its number: the old ones keep theirs
+        assertEquals(listOf("Normal", "Lighten", "Darken", "Screen", "Multiply", "Add", "Difference", "Cut black", "Cut white", "Cut grey"), BlendMode.entries.take(10).map { it.label })
+        // a choice in an effect shows the menu order but stores the mode's number
+        val choice = com.spielgrund.glitchr.effects.Feedback.params.first { it.key == "blend" } as com.spielgrund.glitchr.effects.Param.Choice
+        assertEquals(labels, choice.shown.map { choice.options[it] })
+        assertEquals(BlendMode.DIVIDE.ordinal, choice.shown[9])
+    }
+
+    @Test
     fun `cut blend modes take away only pure black, white or grey`() {
         val black = com.spielgrund.glitchr.model.BlendMode.CUT_BLACK
         assertEquals(0, black.cut(0xFF000000.toInt()))

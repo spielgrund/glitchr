@@ -132,10 +132,10 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                     val max = host.imageSize?.let { (w, h) -> p.maxFor(w, h) } ?: p.max
                     form.row(p.label, SliderField(p.min, max, value, p.default.coerceAtMost(max), p.unit, p.decimals, set), p.tip, anim(p.key))
                 }
-                is Param.Choice -> form.row(p.label, JComboBox(p.options.toTypedArray()).apply {
-                    selectedIndex = value
+                is Param.Choice -> form.row(p.label, JComboBox(p.shown.map { p.options[it] }.toTypedArray()).apply {
+                    selectedIndex = p.shown.indexOf(value)
                     addActionListener {
-                        set(selectedIndex)
+                        set(p.shown[selectedIndex])
                         // settings that only belong to some choices (points, arrows) come and go
                         if (layer.params.any { activeKey(it) == p.key }) host.rebuildEditor()
                     }
@@ -653,7 +653,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
             layer.opacity = it
             host.layerChanged()
         }, anim = anim(AnimKeys.OPACITY))
-        form.row("Blend mode", JComboBox(BlendMode.entries.toTypedArray()).apply {
+        form.row("Blend mode", JComboBox(BlendMode.menu.toTypedArray()).apply {
             selectedItem = layer.blend
             addActionListener {
                 layer.blend = selectedItem as BlendMode
