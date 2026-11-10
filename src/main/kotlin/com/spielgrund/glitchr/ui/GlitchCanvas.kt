@@ -206,9 +206,17 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         return handle.takeIf { p.values[rule.first] in rule.second }
     }
 
-    /** Stored steps per pixel of a handle's setting: sliders with decimals keep fractions of a pixel. */
-    private fun handleStep(l: com.spielgrund.glitchr.model.ParamLayer, key: String) =
-        Math.pow(10.0, (l.params.firstOrNull { it.key == key } as? Param.Slider)?.decimals?.toDouble() ?: 0.0)
+    /**
+     * Stored steps per pixel of a handle's setting: sliders with decimals keep fractions of a pixel; in percent,
+     * 100 % is half the canvas along that axis.
+     */
+    private fun handleStep(l: com.spielgrund.glitchr.model.ParamLayer, h: com.spielgrund.glitchr.effects.CanvasHandle, key: String): Double {
+        val step = Math.pow(10.0, (l.params.firstOrNull { it.key == key } as? Param.Slider)?.decimals?.toDouble() ?: 0.0)
+        if (!h.percent) return step
+        val img = image ?: return step
+        val half = (if (key == h.xKey) img.width else img.height) / 2.0
+        return step * 100 / kotlin.math.max(0.5, half)
+    }
 
     /** The handle that dragging moves, or null when dragging does something else. */
     private val activeHandle get() = if (editsMask || layer is ImageLayer) null else handleOf(layer)
@@ -577,8 +585,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
         val cx = originX() + img.width / 2.0 * zoom
         val cy = originY() + img.height / 2.0 * zoom
-        val px = cx + (l.values[h.xKey] ?: 0) / handleStep(l, h.xKey) * zoom
-        val py = cy + (l.values[h.yKey] ?: 0) / handleStep(l, h.yKey) * zoom
+        val px = cx + (l.values[h.xKey] ?: 0) / handleStep(l, h, h.xKey) * zoom
+        val py = cy + (l.values[h.yKey] ?: 0) / handleStep(l, h, h.yKey) * zoom
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         for ((color, width) in listOf(Color(0, 0, 0, 160) to 3f, Color.WHITE to 1.5f)) {
             g.color = color
@@ -1213,8 +1221,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                         val hi = if (s != null && img != null) s.maxFor(img.width, img.height) else Int.MAX_VALUE
                         return value.roundToInt().coerceIn(s?.min ?: Int.MIN_VALUE, hi)
                     }
-                    l.values[d.handle.xKey] = limit(d.handle.xKey, d.x + (p.x - d.start.x) * handleStep(l, d.handle.xKey))
-                    l.values[d.handle.yKey] = limit(d.handle.yKey, d.y + (p.y - d.start.y) * handleStep(l, d.handle.yKey))
+                    l.values[d.handle.xKey] = limit(d.handle.xKey, d.x + (p.x - d.start.x) * handleStep(l, d.handle, d.handle.xKey))
+                    l.values[d.handle.yKey] = limit(d.handle.yKey, d.y + (p.y - d.start.y) * handleStep(l, d.handle, d.handle.yKey))
                     onHandleEdited(false)
                 }
                 is ShapeDrag -> d.end = toImage(e.point)

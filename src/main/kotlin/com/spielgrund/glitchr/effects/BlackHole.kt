@@ -70,7 +70,8 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
         // the Einstein radius: a little beyond the shadow, as the photon ring is
         val einstein = shadow * 1.3 * v["lensing"] / 100.0
         val tilt = Math.toRadians(v["tilt"] / 100.0)
-        val cosTilt = max(cos(tilt), 0.015)
+        // never quite edge-on: the disk keeps a little thickness instead of shrinking to a hard line
+        val cosTilt = max(cos(tilt), 0.045)
         val rot = Math.toRadians(v["rotation"] / 100.0)
         val cosR = cos(rot)
         val sinR = sin(rot)
@@ -91,13 +92,18 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
         val light = FloatArray(n)
         val heat = FloatArray(n)
 
+        // how softly the disk's halves meet along the middle line, in pixels on screen
+        val seam = max(1.5, shadow * 0.06)
+
         /** The disk at a point (x, y) relative to the center, rotated into the disk's frame; [farOnly]: only its far half. */
         fun disk(px: Double, py: Double, farOnly: Boolean, out: DoubleArray) {
             out[0] = 0.0
             val x = px * cosR + py * sinR
             val yScreen = -px * sinR + py * cosR
-            // the far half lies above the middle on screen (the disk is tipped away from us)
-            if (farOnly && yScreen > 0) return
+            // the far half lies above the middle on screen (the disk is tipped away from us); it fades out towards the
+            // middle line instead of ending there in a hard edge – measured in the disk, so it stays at any view angle
+            val half = if (farOnly) smoothstep(0.0, inner * 0.35, -yScreen / cosTilt) else 1.0
+            if (half <= 0) return
             val y = yScreen / cosTilt
             val r = hypot(x, y)
             if (r < inner * 0.9 || r > outer * 1.15) return
@@ -115,7 +121,7 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
                     0.5 * noise.fbm(ln(r / inner) * 18.0, a * 4.0, 2)
                 e *= (1 - turbulence * 0.55 + turbulence * 0.9 * (m * 0.5 + 0.5)).coerceAtLeast(0.0)
             }
-            out[0] = e
+            out[0] = e * half
             out[1] = (inner / r).coerceIn(0.0, 1.0)
         }
 
@@ -130,18 +136,21 @@ object BlackHole : Effect("blackhole", "Black hole", "A black hole that bends th
                     GARGANTUA, LUMINET -> {
                         var e = 0.0
                         var t = 0.0
-                        // the disk as it is: its near half in front of the shadow, the far half only beside it
+                        // the disk as it is: its near half in front of the shadow, the far half only beside it – both
+                        // blended softly, along the middle line and at the shadow's edge
                         val x = px * cosR + py * sinR
-                        val near = -px * sinR + py * cosR > 0
-                        if (near || rho > shadow) {
+                        val front = max(smoothstep(-seam, seam, -px * sinR + py * cosR), smoothstep(shadow * 0.97, shadow * 1.01, rho))
+                        if (front > 0) {
                             disk(px, py, false, d)
-                            if (d[0] > e) { e = d[0]; t = d[1] }
+                            if (d[0] * front > e) { e = d[0] * front; t = d[1] }
                         }
-                        // the far half once more, lifted by the lens into an arc around the shadow (and a thin one inside it)
+                        // the far half once more, lifted by the lens into an arc around the shadow (and a thin one inside it);
+                        // further out the lens hardly bends, so this second picture fades away instead of doubling the disk
                         if (rho > 1e-6 && einstein > 0) {
                             val k = 1 - einstein * einstein / (rho * rho)
                             disk(px * k, py * k, true, d)
-                            if (d[0] > 0 && rho > shadow * 0.98) { e += d[0] * 0.9; t = max(t, d[1]) }
+                            val lensed = smoothstep(shadow * 0.96, shadow * 1.0, rho) * min(1.0, (einstein * 1.25 / rho).pow(3))
+                            if (d[0] > 0 && lensed > 0) { e += d[0] * 0.9 * lensed; t = max(t, d[1]) }
                         }
                         // the photon ring hugging the shadow
                         val ring = exp(-((rho - shadow * 1.03) / (shadow * 0.025)).pow(2)) * 0.9

@@ -25,7 +25,7 @@ import kotlin.random.Random
 object NoiseSphere : Effect("noisesphere", "Noise sphere", "A sphere of points and fine filaments shooting out by 3D noise – from a calm grainy ball to an exploding, hairy burst") {
     override val params = listOf(
         Param.Slider("energy", "Energy", 0, 100, 40, " %", "Calm and compact (0 %) up to exploding, hairy rays – animate it to the beat"),
-        Param.Slider("time", "Time", 0, 100000, 0, "", "Moves the noise: animate it and the sphere churns", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Moves the noise: animate it and the sphere churns", decimals = 3),
         Param.Slider("count", "Points", 500, 20000, 7000, tip = "How many points and filaments"),
         Param.Slider("size", "Size", 100, 10000, 3200, " %", "Radius, of the shorter side of the canvas", decimals = 2, transform = true),
         Param.Slider("reach", "Reach", 0, 300, 90, " %", "How long the filaments get at full energy, of the radius"),
@@ -91,7 +91,7 @@ object NoiseSphere : Effect("noisesphere", "Noise sphere", "A sphere of points a
         val random = Random(seed)
         val s = seed.toInt() xor (seed ushr 32).toInt()
         val energy = v["energy"] / 100.0
-        val time = v["time"] / 100.0
+        val time = v["time"] / 1000.0
         val count = v["count"]
         val radius = min(w, h) * v["size"] / 10000.0
         val reach = v["reach"] / 100.0

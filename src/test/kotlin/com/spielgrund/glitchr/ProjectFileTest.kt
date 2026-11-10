@@ -73,14 +73,11 @@ class ProjectFileTest {
         val file = File(dir, "old.glitchr")
         ZipOutputStream(file.outputStream()).use { zip ->
             zip.putNextEntry(ZipEntry("project.json"))
-            zip.write("""{"format":"glitchr","version":1,"layers":[{"effect":"rgb","values":{"rx":9999,"gone":5}}]}""".toByteArray())
-            zip.putNextEntry(ZipEntry("source.png"))
-            javax.imageio.ImageIO.write(src.toImage(), "png", zip)
+            zip.write("""{"format":"glitchr","version":5,"width":40,"height":30,"layers":[{"effect":"rgb","values":{"rx":9999,"gone":5}}]}""".toByteArray())
         }
         val loaded = ProjectFile.load(file)
-        assertEquals(2, loaded.layers.size, "version 1: the source image becomes the lowest image layer")
-        assertContentEquals(src.data, (loaded.layers[0] as ImageMemento).image.data)
-        val layer = loaded.layers[1] as EffectMemento
+        assertEquals(1, loaded.layers.size)
+        val layer = loaded.layers[0] as EffectMemento
         assertEquals(300, layer.values["rx"], "limited to the region")
         assertEquals(0, layer.values["ry"], "default value")
         assertEquals(null, layer.values["gone"])

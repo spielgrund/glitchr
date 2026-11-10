@@ -134,10 +134,10 @@ class SpreadEffectsTest {
         // bright lines over darker water
         assertTrue(sorted[sorted.size * 98 / 100] > sorted[sorted.size / 2] + 150, "a net: ${sorted[sorted.size / 2]} .. ${sorted[sorted.size * 98 / 100]}")
         assertTrue(net.data.none { lum(it) < 20 }, "no black holes")
-        assertTrue(!run("time" to 300).data.contentEquals(net.data), "the time moves it")
+        assertTrue(!run("time" to 3000).data.contentEquals(net.data), "the time moves it")
         // a seamless loop: at the loop length exactly the water at 0, in between it moves
-        assertContentEquals(run("loop" to 1, "time" to 0).data, run("loop" to 1, "time" to 2000).data)
-        assertTrue(!run("loop" to 1, "time" to 700).data.contentEquals(run("loop" to 1, "time" to 0).data))
+        assertContentEquals(run("loop" to 1, "time" to 0).data, run("loop" to 1, "time" to 20000).data)
+        assertTrue(!run("loop" to 1, "time" to 7000).data.contentEquals(run("loop" to 1, "time" to 0).data))
         // every kind of waves draws its own net
         val kinds = (0..3).map { run("waves" to it).data }
         for (a in 0..3) for (b in a + 1..3) assertTrue(!kinds[a].contentEquals(kinds[b]), "waves $a and $b differ")
@@ -201,11 +201,11 @@ class SpreadEffectsTest {
         assertTrue(sizes[0] < sizes[1] && sizes[1] < sizes[2], "they grow: $sizes")
         // the time only moves them: they look elsewhere, the eyes stay where they are
         val one = mapOf("count" to 1, "size" to 50, "blink" to 0, "tilt" to 0)
-        assertTrue(!run(one + ("time" to 0)).data.contentEquals(run(one + ("time" to 600)).data), "they look around")
-        assertTrue(abs(changed(run(one + ("time" to 0))) - changed(run(one + ("time" to 600)))) < 400, "same place and size")
+        assertTrue(!run(one + ("time" to 0)).data.contentEquals(run(one + ("time" to 60000)).data), "they look around")
+        assertTrue(abs(changed(run(one + ("time" to 0))) - changed(run(one + ("time" to 60000)))) < 400, "same place and size")
         // blinking shuts them now and then
         fun white(p: Pixels) = p.data.count { (it shr 16 and 0xFF) > 200 && (it shr 8 and 0xFF) > 185 }
-        val times = (0..1200 step 10).map { white(run(mapOf("count" to 1, "size" to 50, "blink" to 100, "time" to it))) }
+        val times = (0..120000 step 1000).map { white(run(mapOf("count" to 1, "size" to 50, "blink" to 100, "time" to it))) }
         assertTrue(times.minOrNull()!! < times.maxOrNull()!! / 3, "a blink")
         // looking at a point: the pupil follows it
         fun darkX(p: Pixels): Double {

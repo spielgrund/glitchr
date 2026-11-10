@@ -528,6 +528,12 @@ class NewGeneratorsTest {
         assertTrue(!run("time" to 5300).data.contentEquals(a.data), "they move with the time")
         val dark = Pixels(40, 40, IntArray(1600) { 0xFF000000.toInt() })
         assertTrue(ff.apply(dark, ff.defaultValues(mapOf("time" to 5000)), 5L).data.contentEquals(dark.data), "no bright areas, no fireflies")
+        // from a point they come out even of a dark picture, around it in all directions
+        val burst = ff.apply(dark, ff.defaultValues(mapOf("time" to 5000, "source" to 1, "glow" to 0, "rise" to 3000)), 5L)
+        fun lit(x0: Int, x1: Int, y0: Int, y1: Int) = (y0..y1).sumOf { y -> (x0..x1).count { x -> (burst[x, y] and 0xFF) > 40 } }
+        assertTrue(lit(0, 39, 0, 39) > 10, "from the point")
+        assertTrue(lit(0, 19, 0, 39) > 0 && lit(20, 39, 0, 39) > 0 && lit(0, 39, 22, 39) > 0, "all around")
+        assertEquals("source" to setOf(1), ff.params.first { it.key == "centerX" }.shownFor)
     }
 
     @Test
@@ -603,9 +609,9 @@ class NewGeneratorsTest {
         assertTrue((100..140).sumOf { x -> (70..110).count { y -> one[x, y] != ground } } > 1200, "a ball at the center")
         assertTrue(one.data.toSet().size > 200, "shaded metal")
         assertEquals(ground, one[2, 2])
-        // a seamless loop: 100 % is 0 %, but in between it moves
-        assertContentEquals(one.data, run(calm + ("time" to 10000)).data)
-        assertTrue(!run(calm + ("time" to 2500)).data.contentEquals(one.data), "moves")
+        // a seamless loop: at the loop length (4 s) it is as at 0, but in between it moves
+        assertContentEquals(one.data, run(calm + ("time" to 4000)).data)
+        assertTrue(!run(calm + ("time" to 1000)).data.contentEquals(one.data), "moves")
         // turned, rerolled and recolored it looks different
         assertTrue(!run(calm + ("rotX" to 9000)).data.contentEquals(one.data), "turns")
         assertTrue(!run(calm, 2L).data.contentEquals(one.data), "rerolled")
@@ -617,6 +623,31 @@ class NewGeneratorsTest {
         assertEquals(0, run(calm + ("transparent" to 1))[2, 2] ushr 24)
         val glowing = run(mapOf("antialias" to 0, "glow" to 200))
         assertTrue(glowing[120, 30] != ground || glowing[60, 90] != ground, "glow around the ball")
+    }
+
+    @Test
+    fun `the manta ray sits at its center, beats its wings in a loop and turns around all three axes`() {
+        val g = com.spielgrund.glitchr.effects.Generators.byId("mantaray")!!
+        fun run(values: Map<String, Int>, seed: Long = 1L) = g.generate(240, 180, g.defaultValues(values), seed)
+        val ground = 0xFF0B3550.toInt()
+        val calm = mapOf("antialias" to 0)
+        fun lum(c: Int) = ((c shr 16 and 0xFF) + (c shr 8 and 0xFF) + (c and 0xFF)) / 3
+        val one = run(calm)
+        assertTrue((90..150).sumOf { x -> (60..120).count { y -> one[x, y] != ground } } > 800, "a manta at the center")
+        assertEquals(ground, one[2, 2])
+        // a seamless loop: at the loop length (4 s) it is as at 0, but in between the wings move
+        assertContentEquals(one.data, run(calm + ("time" to 4000)).data)
+        assertTrue(!run(calm + ("time" to 1000)).data.contentEquals(one.data), "beats")
+        // every axis turns it
+        for (axis in listOf("rotX", "rotY", "rotZ")) assertTrue(!run(calm + (axis to 4000)).data.contentEquals(one.data), axis)
+        // seen from below: the pale belly, with spots that change with the seed
+        val below = mapOf("antialias" to 0, "rotX" to -9000, "rotY" to 0, "flap" to 0, "haze" to 0)
+        assertTrue((one.data.count { lum(it) > 160 }) < (run(below).data.count { lum(it) > 160 }), "pale belly")
+        assertTrue(!run(below, 2L).data.contentEquals(run(below).data), "rerolled spots")
+        // dragged to the left the right side stays empty; only the manta on transparency
+        val moved = run(calm + ("centerX" to -800))
+        assertTrue((170..239).all { x -> (0..179).all { y -> moved[x, y] == ground } }, "moved left")
+        assertEquals(0, run(calm + ("transparent" to 1))[2, 2] ushr 24)
     }
 
     @Test

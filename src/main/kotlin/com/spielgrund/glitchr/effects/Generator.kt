@@ -190,6 +190,18 @@ object Generators {
             defaultBase = 0x05060F,
         ),
         Generator(
+            "laserarray", "Laser array", "Laser beams fanning out of one point like a laser show – fan, cone, grid or random, turnable in all three directions, seen in perspective; through drifting haze, with glow and flare; animate sweep and flicker", LaserArray,
+            defaultBase = 0x04060C,
+        ),
+        Generator(
+            "pixelrain", "Pixel rain", "Lines in two colors with slanted ends raining down from the top – falling steadily or with gravity, each with its lifetime, sine, saw and pulse oscillators on their speed, drop shadows; optionally on a coarse pixel grid", PixelRain,
+            defaultBase = 0x05060A,
+        ),
+        Generator(
+            "smoke", "Smoke & fog", "Smoke and fog – a fog bank with a ragged top, an even haze, a plume rising from a point or curling wisps – churned, drifting with the wind, lit from one side, a light shining through; also transparent to lay over a picture", Smoke,
+            defaultBase = 0x0A0C10,
+        ),
+        Generator(
             "portal", "Portal", "A portal – swirling vortex, ring of spinning sparks or rippling surface – with a ragged, glowing rim and sparks flying off; its inside can be a hole; animate the time", Portal,
             defaultBase = 0x06080C,
         ),
@@ -208,6 +220,10 @@ object Generators {
         Generator(
             "jellyfish", "Jellyfish", "Sea jellies with a pulsing, glowing bell, frilly oral arms and long tentacles – from a center or swimming along drawn arrows; rotation, pulse, waves, current, rocking; animate the time", Jellyfish,
             defaultBase = 0x041222,
+        ),
+        Generator(
+            "mantaray", "Manta ray", "A manta ray beating its wings in a wave, with rolled-up fins and a whip of a tail – turnable around all three axes, lit by caustics from the surface, fading into the water; animate the time as a seamless loop", MantaRay,
+            defaultBase = 0x0B3550,
         ),
         Generator(
             "spikeball", "Spike ball", "A ball of liquid-metal spikes like a chrome sea urchin – violet, chrome, gold …, iridescent, with a glowing core; turnable, animate the time as a seamless loop", SpikeBall,

@@ -38,7 +38,7 @@ object FeverDream : Effect("feverdream", "Fever dream", "Eyes in the picture tha
     private const val STARS = 5
 
     override val params = listOf(
-        Param.Slider("time", "Time", 0, 10000, 0, "", "Animate it: the eyes look around and blink", decimals = 1),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Animate it: the eyes look around and blink", decimals = 3),
         Param.Slider("growth", "Growth", 0, 400, 100, " %", "How big the eyes are: 0 % nothing, 100 % their size, up to four times that – animate it to let them grow and push each other aside"),
         Param.Heading("areaHeading", "Where"),
         Param.Choice("source", "Value", thresholdModes, THRESHOLD_LUMA, THRESHOLD_TIP),
@@ -86,7 +86,7 @@ object FeverDream : Effect("feverdream", "Fever dream", "Eyes in the picture tha
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
         val w = src.width
         val h = src.height
-        val t = v["time"] / 10.0
+        val t = v["time"] / 1000.0
         val random = Random(seed)
         val base = min(w, h) * v["size"] / 100.0
         val variation = v["sizeVariation"] / 100.0

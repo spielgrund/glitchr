@@ -116,8 +116,11 @@ abstract class Effect(val id: String, val name: String, val description: String)
     override fun toString() = name
 }
 
-/** Two slider settings ([xKey], [yKey], in pixels from the canvas middle) that a handle on the canvas moves. */
-data class CanvasHandle(val xKey: String, val yKey: String)
+/**
+ * Two slider settings ([xKey], [yKey]) that a handle on the canvas moves: in pixels from the canvas middle,
+ * or with [percent] in percent of half the canvas width and height, so ±100 % is its edge.
+ */
+data class CanvasHandle(val xKey: String, val yKey: String, val percent: Boolean = false)
 
 /**
  * How a name sorts in the menus: alphabetical, letters without their accents (Moiré as Moire),
@@ -133,12 +136,12 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
-        EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Filler, Blur, Sharpen, Glow, H264Prep)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, TunnelTransform, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Dither, Filler, Blur, Sharpen, Glow, LightStreaks, LightRays, LightLeaks, DropShadow, H264Prep)),
         EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture, FeverDream, StickerFace)),
-        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence, GalaxySkin)),
+        EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence, GalaxySkin, Slime, ThinFilm)),
         EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
         EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
     ).map { c -> EffectCategory(c.name, c.effects.sortedBy { menuOrder(it.name) }) }.sortedBy { menuOrder(it.name) }

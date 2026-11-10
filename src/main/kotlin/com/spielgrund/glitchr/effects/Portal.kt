@@ -52,7 +52,7 @@ object Portal : Effect("portal", "Portal", "A swirling, sparking or rippling por
             "Vortex: swirling arms pulled into the middle · Spark ring: a ring of spinning sparks · Ripple: a rippling surface like water standing upright",
         ),
         Param.Choice("inside", "Inside", insides, 0, "What fills the portal: its pattern, darkness, or a hole showing the layers below"),
-        Param.Slider("time", "Time", 0, 100000, 0, "", "Turns the vortex, spins the sparks and moves the ripples – animate it", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Turns the vortex, spins the sparks and moves the ripples – animate it", decimals = 3),
         Param.Slider("spin", "Spin", -300, 300, 100, " %", "How fast and which way it turns with time"),
         Param.Heading("placeHeading", "Place"),
         Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
@@ -87,7 +87,7 @@ object Portal : Effect("portal", "Portal", "A swirling, sparking or rippling por
         val random = Random(seed)
         val style = v["style"]
         val inside = v["inside"]
-        val time = v["time"] / 100.0
+        val time = v["time"] / 1000.0
         val turn = time * v["spin"] / 100.0
         val cx = w / 2.0 + v["centerX"] / 10.0
         val cy = h / 2.0 + v["centerY"] / 10.0

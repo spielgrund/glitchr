@@ -28,11 +28,15 @@ generator chromeshapes: y2k, chrome, metal, symbols, stars, hearts, flowers, glo
 generator noisesphere: sphere, ball, particles, filaments, burst, hairy, kugel, partikel
 generator model3d: 3d, obj, blender, mesh, object, model, torus, cube, skull, duck, würfel, ente, schädel
 generator lightning: bolt, thunder, electric, storm, flash, blitz, gewitter, strom
+generator laserarray: laser, beams, rays, show, stage, concert, club, light show, fan, strahlen, laserstrahlen, bühne, lichtshow
+generator pixelrain: pixel rain, rain, falling, matrix, lines, streaks, particles, emitter, gravity, lifetime, oscillator, sine, saw, pulse, slant, drop shadow, retro, regen, fallen, pixelregen, linien, schatten
+generator smoke: smoke, fog, mist, haze, plume, wisps, steam, cloud, particles, smokelets, burst, motion blur, normal map, rim light, drop shadow, rauch, nebel, dunst, dampf, qualm, schwaden
 generator portal: vortex, gate, stargate, ring, swirl, wormhole, tor, wirbel
 generator explosion: boom, blast, fireball, bomb, mushroom cloud, fire, smoke, kaboom, feuerball, rauch, atompilz
 generator caustics: water, pool, light, ripples, ocean, sea, underwater, wasser, licht, meer, unterwasser
 generator sky: sky, atmosphere, sunset, sunrise, clouds, sun, hdri, panorama, preetham, nishita, horizon, himmel, wolken, sonnenuntergang, sonne, sterne, atmosphäre
 generator spikeball: spikes, spiky, urchin, sea urchin, chrome, liquid metal, thorns, ball, 3d, iridescent, stachel, stachelball, seeigel, chrom, flüssigmetall, dornen, kugel
+generator mantaray: manta, ray, stingray, devil ray, fish, wings, ocean, underwater, sea, 3d, mantarochen, rochen, teufelsrochen, fisch, meer, unterwasser
 generator jellyfish: jelly, medusa, sea jelly, tentacles, ocean, underwater, glow, qualle, meduse, tentakel, meer, unterwasser
 generator barbwire: barbed wire, razor wire, fence, concertina, stacheldraht, zaun
 generator errors: error, windows, dialog, popup, message, solitaire, fehler, meldung, fenster
@@ -62,7 +66,7 @@ effect transform: move, scale, rotate, position, size, verschieben, skalieren, d
 effect tilegrid: grid, tiles, repeat, kacheln, raster, wiederholen
 effect tiling: tile, repeat, pattern, mirror, kacheln, wiederholen, spiegeln
 effect breakopen: crack, break, shatter, open, pieces, roll, aufbrechen, zerbrechen, risse
-effect shatter: shatter, dissolve, disintegrate, dust, ash, snap, shards, fragments, pieces, crumble, blow away, particles, zerspringen, zerfallen, auflösen, staub, asche, scherben, splitter, bröckeln, zerbröseln
+effect shatter: shatter, dissolve, disintegrate, dust, ash, snap, shards, fragments, pieces, crumble, blow away, particles, zerspringen, zerfallen, auflösen, staub, asche, scherben, splitter, bröckeln, zerbröseln, loop, endless, crumbling, schleife, endlos, bröckelnd
 effect noise: displace, distort, warp, noise, verzerren, verschieben
 effect flow: flow, arrows, smear, direction, fließen, pfeile
 effect flowsmooth: flow, smooth, liquify, smear, fließen, verflüssigen
@@ -70,6 +74,7 @@ effect turbulence: turbulence, swirl, warp, distort, wirbel, verwirbeln
 effect twist: twist, twirl, swirl, spin, drehen, verdrehen, wirbel
 effect polar: polar, circle, round, rectangular, kreis, polarkoordinaten
 effect tunnel: tunnel, infinite, zoom, vortex, endlos
+effect tunneltransform: tunnel, transform, turn, bend, look, vanishing point, perspective, swing, curve, tunnel drehen, biegen, fluchtpunkt, perspektive, schwenken, kurve
 effect sphere: sphere, bulge, fisheye, ball, kugel, wölben
 effect kaleido: kaleidoscope, mirror, symmetry, mandala, kaleidoskop, spiegeln
 effect waterreflection: water, reflection, mirror, lake, ripples, wasser, spiegelung, see
@@ -87,6 +92,7 @@ effect ramp: gradient map, ramp, colorize, fire, verlauf, einfärben
 effect lab: lab, color space, channels, farbraum, kanäle
 effect palette: palette, color transfer, match colors, image colors, farbpalette, farben übertragen
 effect reducecolors: posterize, palette, quantize, dither, colors, farben reduzieren, dithering
+effect dither: dither, dithering, bayer, ordered, halftone, floyd steinberg, atkinson, jarvis, stucki, burkes, sierra, blue noise, 1 bit, 1-bit, retro, pixel art, game boy, rastern, raster, punkte, körnung
 effect filler: fill, areas, flood, regions, paint bucket, füllen, flächen
 effect blur: blur, soft, gauss, motion, radial, unschärfe, weichzeichnen
 effect sharpen: sharpen, unsharp mask, crisp, schärfen, scharf
@@ -129,12 +135,18 @@ effect uvtexture: uv, texture, map, wrap, textur
 effect glass: glass, refraction, frosted, ribbed, glas, brechung, milchglas
 effect metal: metal, chrome, emboss, shiny, metall, chrom, glänzend
 effect hologram: hologram, holo, foil, rainbow, iridescent, hologramm, folie, regenbogen
+effect thinfilm: thin film, iridescent, interference, soap bubble, bubble, oil slick, oil, petrol, coating, rainbow, schillern, dünnschicht, interferenz, seifenblase, ölfilm, öl, benzin, regenbogen
 effect lens: optics, lens, distortion, chromatic aberration, vignette, fisheye, cracked, linse, objektiv, verzerrung
 effect blackhole: black hole, gravity, lensing, space, schwarzes loch, gravitation
 effect tv: tv, crt, scanlines, vhs, retro, monitor, fernseher, röhre
 effect fire: fire, flames, burn, feuer, flammen, brennen
 effect fireflies: fireflies, embers, sparks, particles, glühwürmchen, funken, glut
 effect galaxyskin: galaxy, space, stars, cosmic, nebula, fortnite, skin, universe, galaxie, weltraum, sterne, kosmos, all, nebel
+effect lightstreaks: streaks, star filter, anamorphic, flare, motion, cross, sparkle, lichtstreifen, sternfilter, blendenstern
+effect lightleaks: light leaks, leak, film, analog, lomo, burn, flare, vintage, glow, lichteinfall, lichtleck, film, analog, verbrannt
+effect dropshadow: drop shadow, shadow, inner shadow, long shadow, flat, depth, schlagschatten, schatten, innenschatten, langer schatten
+effect lightrays: god rays, sunbeams, light rays, rays, volumetric, crepuscular, shafts, sonnenstrahlen, lichtstrahlen, strahlen, lichtkegel
+effect slime: slime, goo, gel, ooze, liquid, membrane, lace, pores, holes, drips, strands, droplets, two colors, organic, glossy, wet, schleim, glibber, gel, poren, löcher, tropfen, fäden, nass, glänzend
 effect freeze: freeze, ice, frost, frozen, cold, winter, eis, einfrieren, gefroren, kalt
 effect luminescence: bioluminescence, black light, uv, glow, neon, biolumineszenz, schwarzlicht, leuchten
 

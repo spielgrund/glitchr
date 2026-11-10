@@ -19,8 +19,8 @@ import kotlin.random.Random
  * short spikes shooting out in all directions, bent, with flared, melted bases. Built as a mesh,
  * drawn with a z-buffer in perspective and shaded as polished metal mirroring a studio (softboxes,
  * a bright horizon, a dark floor), tinted by the metal color and shifting to a second color at
- * grazing angles. A hot core glows out between the spikes. The time loops: at 100 % everything is
- * as at 0 %. The center can be dragged.
+ * grazing angles. A hot core glows out between the spikes. The time loops: at the loop length everything
+ * is as at 0. The center can be dragged.
  */
 object SpikeBall : Effect("spikeball", "Spike ball", "A ball of chrome spikes like a sea urchin of liquid metal, with a glowing core – turnable; animate the time as a loop") {
     /** Color schemes: metal, sheen at grazing angles, core glow. */
@@ -36,8 +36,9 @@ object SpikeBall : Effect("spikeball", "Spike ball", "A ball of chrome spikes li
     private val CUSTOM = schemes.size - 1
 
     override val params = listOf(
-        Param.Slider("time", "Time", 0, 10000, 0, " %", "Animate it from 0 to 100 %: a seamless loop – the spikes sway and melt, the ball turns as set", decimals = 2),
-        Param.Slider("spin", "Spin", -5, 5, 1, " turns", "How often the ball turns around once while the time runs from 0 to 100 %"),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Animate it: a seamless loop – the spikes sway and melt, the ball turns as set", decimals = 3),
+        Param.Slider("loopLength", "Loop length", 2, 600, 40, " s", "How long one round takes: after it everything is as at the start, so the animation can repeat seamlessly", decimals = 1),
+        Param.Slider("spin", "Spin", -5, 5, 1, " turns", "How often the ball turns around once in a loop"),
         Param.Slider("sway", "Sway", 0, 100, 30, " %", "How much the spikes swing and wobble over the time"),
         Param.Heading("placeHeading", "Place"),
         Param.Slider("centerX", "Center X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
@@ -243,7 +244,8 @@ object SpikeBall : Effect("spikeball", "Spike ball", "A ball of chrome spikes li
     override fun apply(src: Pixels, v: Values, seed: Long): Pixels {
         val w = src.width
         val h = src.height
-        val t = v["time"] / 10000.0
+        // where in the loop: 0 … 1, at the loop length back at 0
+        val t = (v["time"] / 100.0 / max(2.0, v["loopLength"].toDouble())) % 1.0
         val mesh = build(v, seed, t)
         val transparent = v.bool("transparent")
         val colors = schemes[v["scheme"]].second.let { if (v["scheme"] == CUSTOM) intArrayOf(v["metal"], v["sheen"], v["glowColor"]) else it }

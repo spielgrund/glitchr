@@ -38,15 +38,11 @@ import javax.imageio.ImageIO
  * it) and every painted mask as a grayscale PNG under `masks/`, so a project stays
  * complete when the original pictures are moved or deleted. Generator layers only store
  * their settings; their picture is made anew when the project is opened.
- *
- * Version 1 files had a single source picture (`source.png`) and only effect layers;
- * they load with that picture as the bottom image layer.
  */
 object ProjectFile {
     const val EXTENSION = "glitchr"
     private const val JSON_ENTRY = "project.json"
-    private const val V1_SOURCE_ENTRY = "source.png"
-    private const val FORMAT_VERSION = 3
+    private const val FORMAT_VERSION = 5
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun isProject(file: File) = file.extension.equals(EXTENSION, ignoreCase = true)
@@ -107,32 +103,24 @@ object ProjectFile {
             Pixels.of(ImageIO.read(bytes.inputStream()) ?: error("Image $path is damaged"))
         }
 
-        // version 1: one source picture below all layers
-        val v1Source = if (dto.version < 2) image(V1_SOURCE_ENTRY) else null
-        val width = v1Source?.width ?: dto.width
-        val height = v1Source?.height ?: dto.height
+        val width = dto.width
+        val height = dto.height
         if (width <= 0 || height <= 0) error("The canvas size is missing from the file")
 
         val layers = mutableListOf<LayerMemento>()
-        if (v1Source != null) layers += baseLayer(v1Source)
         for (layerDto in dto.layers) {
             val painted = layerDto.mask.painted?.let { path ->
                 readMask(entries[path] ?: error("Mask $path is missing from the file"))
             }
             layers += layerDto.toMemento(painted, ::image)
         }
-        val offset = if (v1Source != null) 1 else 0
         val timeline = dto.animation?.let {
             Timeline(it.fps.coerceIn(1, 240), it.frames.coerceIn(1, 100_000), it.bpm.coerceIn(1.0, 999.0), it.beatsPerBar.coerceIn(1, 32), it.beats)
         }
         return DocState(width, height, dto.sourceName, layers, timeline).apply {
-            selectedId = dto.selected?.let { layers.getOrNull(it + offset)?.id } ?: layers.lastOrNull()?.id
+            selectedId = dto.selected?.let { layers.getOrNull(it)?.id } ?: layers.lastOrNull()?.id
         }
     }
-
-    private fun baseLayer(image: Pixels) = ImageMemento(
-        Layer.newId(), "Picture", true, 100, BlendMode.NORMAL, emptyMask(), image, 0.0, 0.0, 1.0, true,
-    )
 
     private fun maskImage(mask: MaskMemento): BufferedImage {
         val img = BufferedImage(mask.paintedWidth, mask.paintedHeight, BufferedImage.TYPE_BYTE_GRAY)
@@ -169,7 +157,7 @@ private data class ProjectDto(
 )
 
 private data class LayerDto(
-    /** "effect", "image" or "generator"; version 1 only had effects. */
+    /** "effect", "image" or "generator". */
     val type: String = "effect",
     val effect: String = "",
     val generator: String = "",
@@ -348,10 +336,6 @@ private fun LayerDto.plainMemento(painted: PaintedMask?, image: (String) -> Pixe
         adjustment = adjustment,
     )
 }
-
-private fun emptyMask() = MaskMemento(
-    MaskMode.OFF, false, RelPoint(0.5, 0.0), RelPoint(0.5, 1.0), RelPoint(0.5, 0.5), RelPoint(0.5, 0.05), null, 0, 0,
-)
 
 /** The [defaults], overridden by the stored values of [params] that still exist and are in range. */
 private fun checkedValues(params: List<Param>, defaults: MutableMap<String, Int>, stored: Map<String, Int>): Map<String, Int> {

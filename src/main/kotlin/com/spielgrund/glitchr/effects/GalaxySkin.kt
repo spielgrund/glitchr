@@ -45,7 +45,7 @@ object GalaxySkin : Effect("galaxyskin", "Galaxy skin", "The shapes as windows i
         Param.Slider("turn", "Turn", -36000, 36000, 0, "°", "The camera turning: space spins the other way", decimals = 2),
         Param.Slider("zoom", "Zoom", 25, 400, 100, " %", "The camera moving in: space grows, the near layers more"),
         Param.Slider("parallax", "Parallax", 0, 200, 100, " %", "How differently the near and far layers move"),
-        Param.Slider("time", "Time", 0, 10000, 0, "", "The stars twinkle, the nebula drifts – animate it", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "The stars twinkle, the nebula drifts – animate it", decimals = 3),
         Param.Heading("spaceHeading", "Space"),
         Param.Slider("scale", "Scale", 10, 1000, 100, " %", "Size of the nebula and the spacing of the stars"),
         Param.Slider("nebula", "Nebula", 0, 100, 70, " %", "Colored clouds of gas"),
@@ -89,7 +89,7 @@ object GalaxySkin : Effect("galaxyskin", "Galaxy skin", "The shapes as windows i
         val turn = Math.toRadians(v["turn"] / 100.0)
         val zoom = v["zoom"] / 100.0
         val parallax = v["parallax"] / 100.0
-        val time = v["time"] / 100.0
+        val time = v["time"] / 1000.0
         val scale = size * 0.25 * v["scale"] / 100.0
         val nebula = v["nebula"] / 100.0
         val stars = v["stars"] / 100.0

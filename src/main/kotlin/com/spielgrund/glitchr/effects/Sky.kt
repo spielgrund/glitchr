@@ -81,7 +81,7 @@ object Sky : Effect("sky", "Sky", "A sky through a virtual camera – gradient, 
         Param.Color("boltColor", "Color", 0xD8E0FF),
         Param.Toggle("flashes", "Flashing", false, "The bolts strike now and then as the time goes on, flickering – animate the time; off: all of them at once"),
         Param.Slider("wind", "Wind direction", -18000, 18000, 0, "°", decimals = 2),
-        Param.Slider("time", "Time", 0, 10000, 0, "", "Drifts the clouds with the wind – animate it", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Drifts the clouds with the wind – animate it", decimals = 3),
         Param.Heading("groundHeading", "Ground and look"),
         Param.Choice("below", "Below the horizon", belows, 0, "Ground fading into the haze · Water mirroring the sky, with ripples · More sky"),
         Param.Color("groundColor", "Ground", 0x2E2A26),
@@ -515,7 +515,7 @@ object Sky : Effect("sky", "Sky", "A sky through a virtual camera – gradient, 
         val density = v["cloudDensity"] / 100.0
         val cloudScale = 2500.0 * v["cloudSize"] / 100.0
         val cloudHeight = v["cloudHeight"] / 100.0 * 1000
-        val time = v["time"] / 100.0
+        val time = v["time"] / 1000.0
         val wind = Math.toRadians(v["wind"] / 100.0)
         val drift = time * 0.08
         val windX = sin(wind) * drift

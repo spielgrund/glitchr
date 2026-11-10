@@ -30,7 +30,7 @@ object Fire : Effect("fire", "Fire", "Flames around the shapes (alpha or bright 
         Param.Choice("source", "Shapes from", listOf("Alpha (else brightness)", "Bright areas", "Dark areas"), 0,
             "What counts as a shape: the opaque parts (if the picture has no transparency: the bright ones), or the bright or dark areas"),
         Param.Slider("threshold", "Threshold", 0, 100, 50, " %", "For bright or dark areas: from which brightness on"),
-        Param.Slider("time", "Time", 0, 100000, 0, "", "Moves the flames: animate it and they flicker", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Moves the flames: animate it and they flicker", decimals = 3),
         Param.Heading("flameHeading", "Flames"),
         Param.Slider("height", "Height", 100, 10000, 1800, " %", "How high the flames reach, of the canvas height", decimals = 2, transform = true),
         Param.Slider("direction", "Direction", -18000, 18000, 0, "°", "Where they rise: 0° = up", decimals = 2),
@@ -82,7 +82,7 @@ object Fire : Effect("fire", "Fire", "Flames around the shapes (alpha or bright 
         val turbulence = v["turbulence"] / 100.0
         val scale = v["scale"] / 100.0
         val wobble = v["wobble"] / 100.0
-        val rise = v["time"] / 100.0 * v["speed"] / 100.0 * scale * 1.5
+        val rise = v["time"] / 1000.0 * v["speed"] / 100.0 * scale * 1.5
         val samples = min(64, max(8, (length / 3).toInt()))
         val step = length / samples
 

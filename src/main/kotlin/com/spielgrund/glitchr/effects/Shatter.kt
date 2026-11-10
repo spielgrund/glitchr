@@ -36,6 +36,11 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
     override val params = listOf(
         Param.Slider("progress", "Progress", 0, 10000, 4000, " %", "0 % the whole picture, 100 % everything gone – animate it", decimals = 2),
         Param.Toggle("assemble", "Assemble", false, "Backwards: the pieces fly in and put the picture together as the progress rises"),
+        Param.Heading("loopHeading", "Loop"),
+        Param.Toggle("loop", "Loop", false, "The dissolving stops where the progress is and keeps crumbling there: along the edge pieces come loose and fly off again and again – animate the time"),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Animate it for the endless crumbling", decimals = 3).shownWhen("loop", 1),
+        Param.Slider("loopLength", "Loop length", 2, 600, 30, " s", "How long one round takes: after it everything is as at the start, so the animation can repeat seamlessly", decimals = 1).shownWhen("loop", 1),
+        Param.Slider("band", "Crumbling edge", 1, 100, 15, " %", "How deep the crumbling reaches behind the edge, of the whole way").shownWhen("loop", 1),
         Param.Heading("piecesHeading", "Pieces"),
         Param.Choice("shape", "Pieces", shapes, 0, "Shards: irregular like broken glass · Splinters: long, along the flying direction · Blocks: squares · Dust: tiny grains, like ash blown away"),
         Param.Slider("size", "Size", 1, 400, 24, " px", "Size of a piece – dust is a tenth of it"),
@@ -201,7 +206,33 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
         }
         val travel = v["duration"] / 100.0
         val front = p * (1 + travel)
-        val age = DoubleArray(count) { (front - release[it]) / travel }
+        // how much of a piece that is home again shows (pieces in the loop fade back in)
+        val homeAlpha = DoubleArray(count) { 1.0 }
+        val age = if (!v.bool("loop")) DoubleArray(count) { (front - release[it]) / travel } else {
+            // the edge stays at the progress; behind it, in a band, every piece goes round: home, then
+            // flying off – the deeper in the band, the longer away – then back, fading in
+            val band = v["band"] / 100.0
+            // the time in thousandths, the loop length in tenths of a second
+            val round = v["time"] / max(100.0, v["loopLength"] * 100.0)
+            DoubleArray(count) { k ->
+                val r = release[k]
+                when {
+                    r > p -> -1.0
+                    r < p - band -> 2.0
+                    else -> {
+                        val depth = (p - r) / band
+                        val home = 0.15 + 0.75 * (1 - depth)
+                        val c = (round + rnd(k, 10, seed)).let { it - floor(it) }
+                        if (c >= home) (c - home) / (1 - home)
+                        else {
+                            homeAlpha[k] = min(1.0, c / (home * 0.25))
+                            // smouldering more and more before it goes
+                            -0.3 * (1 - c / home)
+                        }
+                    }
+                }
+            }
+        }
 
         // what shows where pieces have gone
         val behind = v["behind"]
@@ -209,11 +240,13 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
         val out = Pixels(w, h)
         for (i in out.data.indices) {
             val c = src.data[i]
-            out.data[i] = if (age[label[i]] < 0) c else when (behind) {
+            val k = label[i]
+            val gone = when (behind) {
                 0 -> 0
                 1 -> behindColor
                 else -> argb(alpha(c), red(c) * 35 / 100, green(c) * 35 / 100, blue(c) * 35 / 100)
             }
+            out.data[i] = if (age[k] >= 0) gone else if (homeAlpha[k] >= 1) c else over(c, gone, homeAlpha[k])
         }
 
         val glow = v["glow"] / 100.0

@@ -27,7 +27,7 @@ import kotlin.random.Random
 
 /**
  * Sea jellies: a translucent bell with a glowing, scalloped rim seen a little from below, radial
- * canals, gonads and a mottled skin; wide oral arms hanging from its middle like curtains – their
+ * canals, gonads, a mottled skin and a dense nucleus under it covering the arms' roots; wide oral arms hanging from its middle like curtains – their
  * margins ruffled and lighter, folds down them, spiralling around each other as set – and long,
  * fine tentacles from the rim. A light in the complementary color can catch its outline, upper
  * bell and tentacles. Each jelly hangs on a spine: from a center point (the bell there), turned by
@@ -67,17 +67,20 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
         Param.Slider("height", "Bell height", 30, 200, 65, " %", "Of its width: flat like a saucer or tall like a helmet"),
         Param.Slider("lobes", "Rim lobes", 0, 32, 16, tip = "Scallops along the bell's rim"),
         Param.Slider("canals", "Canals", 0, 32, 16, tip = "Radial canals in the bell"),
+        Param.Slider("nucleus", "Nucleus", 0, 100, 80, " %", "A dense, glowing core in the bell's middle, under its skin – it covers where the oral arms begin"),
+        Param.Slider("nucleusSize", "Nucleus size", 30, 250, 100, " %"),
         Param.Slider("arms", "Oral arms", 0, 8, 4, tip = "Curtains hanging from the bell's middle"),
         Param.Slider("armLength", "Arm length", 20, 600, 170, " %", "Of the bell's width (fitted to an arrow: 170 % reaches most of the way)"),
         Param.Slider("armWidth", "Arm width", 20, 300, 100, " %"),
         Param.Slider("frills", "Ruffles", 0, 100, 70, " %", "How ruffled the arms' margins are"),
+        Param.Slider("armFade", "Arm fade", 0, 100, 60, " %", "The arms fade in from the bell and out towards their ends – the same share of every arm, however long"),
         Param.Slider("shadow", "Arm shadow", 0, 100, 50, " %", "The arms cast a soft shadow onto the arms and tentacles behind them"),
         Param.Slider("swirl", "Swirl", 0, 100, 45, " %", "How the arms spiral around each other – and turn with the time"),
         Param.Slider("tentacles", "Tentacles", 0, 80, 26),
         Param.Slider("tentacleLength", "Tentacle length", 20, 1200, 260, " %", "Of the bell's width (fitted to an arrow: 260 % reaches its end)"),
         Param.Slider("thickness", "Tentacle thickness", 10, 500, 100, " %"),
         Param.Heading("motionHeading", "Motion"),
-        Param.Slider("time", "Time", 0, 10000, 0, "", "Drives everything – animate it", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Drives everything – animate it", decimals = 3),
         Param.Slider("pulse", "Pulse", 0, 100, 50, " %", "How strongly the bell contracts and opens again"),
         Param.Slider("rate", "Pulse rate", 10, 400, 50, " %", "Pulses per time unit: 100 % = one every 2"),
         Param.Slider("wave", "Tentacle waves", 0, 100, 45, " %", "Waves running down the tentacles and arms"),
@@ -161,7 +164,7 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
         val armLen = v["armLength"] / 100.0 * radius * 2
         val bellHeight = radius * v["height"] / 100.0 * 1.6
         // (half the slider's units, so the default motion is calm)
-        val time = v["time"] / 100.0 * 0.5
+        val time = v["time"] / 1000.0 * 0.5
         val phase = time * v["rate"] / 100.0
         // a quick contraction, then slowly opening again
         val f = phase - floor(phase)
@@ -259,6 +262,7 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
         val frills = v["frills"] / 100.0
         val armWidth = v["armWidth"] / 100.0
         val shadow = v["shadow"] / 100.0
+        val armFade = v["armFade"] / 100.0
         for (spine in spines) {
             /** A point [side] across the spine at [s] down it, swaying with the waves and the current. */
             fun point(s: Double, side: Double, phaseShift: Double, length: Double, sway: Double, out: DoubleArray = DoubleArray(4)): DoubleArray {
@@ -340,7 +344,7 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
                     val r = half + ruffle(-1.0)
                     left += doubleArrayOf(c[0] + c[2] * l, c[1] + c[3] * l)
                     right += doubleArrayOf(c[0] - c[2] * r, c[1] - c[3] * r)
-                    middle += doubleArrayOf(c[0], c[1], c[2], c[3], half)
+                    middle += doubleArrayOf(c[0], c[1], c[2], c[3], half, s)
                     s += step
                 }
                 if (middle.size < 2) continue
@@ -349,6 +353,53 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
                 for (q in left.drop(1)) sheet.lineTo(q[0], q[1])
                 for (q in right.asReversed()) sheet.lineTo(q[0], q[1])
                 sheet.closePath()
+                // each arm drawn on its own and faded in from the bell and out towards its end – along its length, the same
+                // share of every arm however long it is, so the folds, margins and shadow fade with it
+                val sFrom = middle.first()[5]
+                val sTo = middle.last()[5]
+                val span = max(1e-9, sTo - sFrom)
+                fun fade(s: Double) = if (armFade <= 0) 1.0 else smoothstep(0.0, armFade * 0.3, (s - sFrom) / span) * (1 - smoothstep(1 - armFade * 0.6, 1.0, (s - sFrom) / span))
+                val reachOut = middle.maxOf { it[4] } * 2.4 + radius * 0.2 + 3
+                val bx = floor((left + right).minOf { it[0] } - reachOut).toInt()
+                val by = floor((left + right).minOf { it[1] } - reachOut).toInt()
+                val bw = max(1, ((left + right).maxOf { it[0] } + reachOut).toInt() - bx + 1)
+                val bh = max(1, ((left + right).maxOf { it[1] } + reachOut).toInt() - by + 1)
+                // the fade along the arm: a band down its middle, wide enough for its margins, in slices that meet edge to edge
+                // (not antialiased, so they leave no seams), each as opaque as the fade there
+                val mask = BufferedImage(bw, bh, BufferedImage.TYPE_INT_ARGB)
+                mask.createGraphics().apply {
+                    translate(-bx.toDouble(), -by.toDouble())
+                    composite = java.awt.AlphaComposite.Src
+                    for (n in 1 until middle.size) {
+                        val q0 = middle[n - 1]
+                        val q1 = middle[n]
+                        color = Color(255, 255, 255, (255 * fade((q0[5] + q1[5]) / 2).coerceIn(0.0, 1.0)).toInt())
+                        fill(Path2D.Double().apply {
+                            moveTo(q0[0] + q0[2] * reachOut, q0[1] + q0[3] * reachOut)
+                            lineTo(q1[0] + q1[2] * reachOut, q1[1] + q1[3] * reachOut)
+                            lineTo(q1[0] - q1[2] * reachOut, q1[1] - q1[3] * reachOut)
+                            lineTo(q0[0] - q0[2] * reachOut, q0[1] - q0[3] * reachOut)
+                            closePath()
+                        })
+                    }
+                    dispose()
+                }
+                val maskData = (mask.raster.dataBuffer as DataBufferInt).data
+                fun faded(draw: (java.awt.Graphics2D) -> Unit): BufferedImage {
+                    val layer = BufferedImage(bw, bh, BufferedImage.TYPE_INT_ARGB)
+                    val lg = layer.createGraphics()
+                    lg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                    lg.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
+                    lg.translate(-bx.toDouble(), -by.toDouble())
+                    draw(lg)
+                    lg.dispose()
+                    val d = (layer.raster.dataBuffer as DataBufferInt).data
+                    for (i in d.indices) {
+                        val a = d[i] ushr 24
+                        if (a != 0) d[i] = ((a * (maskData[i] ushr 24) + 127) / 255 shl 24) or (d[i] and 0xFFFFFF)
+                    }
+                    return layer
+                }
                 // its shadow on what lies behind (only there – not on the water): soft, a few steps further out,
                 // away from the light at the top left, turned with the jelly
                 if (shadow > 0) {
@@ -357,50 +408,54 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
                     val sy = (-p[2] * 0.45 + p[3] * 0.9) * radius * 0.07
                     val old = g.composite
                     g.composite = java.awt.AlphaComposite.SrcAtop
-                    for (step in 1..4) {
-                        g.color = Color(0, 0, 0, (255 * min(1.0, shadow * 0.22 * (1.1 - step * 0.2))).toInt())
-                        g.fill(java.awt.geom.AffineTransform.getTranslateInstance(sx * step * 0.5, sy * step * 0.5).createTransformedShape(sheet))
-                    }
+                    g.drawImage(faded { sg ->
+                        for (step in 1..4) {
+                            sg.color = Color(0, 0, 0, (255 * min(1.0, shadow * 0.22 * (1.1 - step * 0.2))).toInt())
+                            sg.fill(java.awt.geom.AffineTransform.getTranslateInstance(sx * step * 0.5, sy * step * 0.5).createTransformedShape(sheet))
+                        }
+                    }, bx, by, null)
                     g.composite = old
                 }
-                // the curtain: paler at the top, the arms' color further down, one see-through layer
-                val top = toward(colors[2], 0xFFFFFF, 0.35)
-                val alpha = (255 * min(1.0, opacity * 0.62)).toInt()
-                val start = middle.first()
-                val end = middle.last()
-                if (hypot(end[0] - start[0], end[1] - start[1]) > 1) {
-                    g.paint = LinearGradientPaint(
-                        Point2D.Double(start[0], start[1]), Point2D.Double(end[0], end[1]), floatArrayOf(0f, 0.45f, 1f),
-                        arrayOf(Color(top shr 16, top shr 8 and 0xFF, top and 0xFF, alpha), Color(colors[2] shr 16, colors[2] shr 8 and 0xFF, colors[2] and 0xFF, alpha),
-                            Color(colors[2] shr 16, colors[2] shr 8 and 0xFF, colors[2] and 0xFF, alpha * 3 / 4)),
-                    )
-                } else g.color = Color(colors[2] shr 16, colors[2] shr 8 and 0xFF, colors[2] and 0xFF, alpha)
-                g.fill(sheet)
-                // folds down it: darker lines wandering across the curtain
-                val dark = toward(colors[2], 0x000000, 0.45)
-                // soft, wide shadows first, then a fine crease in each
-                for ((widthShare, alphaShare) in listOf(0.06 to 0.12, 0.01 to 0.3)) for (fold in 0 until 3) {
-                    g.color = Color(dark shr 16, dark shr 8 and 0xFF, dark and 0xFF, (255 * min(1.0, opacity * alphaShare)).toInt())
-                    g.stroke = BasicStroke(max(0.5f, (radius * widthShare).toFloat()), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
-                    val fp = Path2D.Double()
-                    for ((n, q) in middle.withIndex()) {
-                        val off = q[4] * ((fold - 1) * 0.5 + 0.25 * sin(n * 0.09 + fold * 2.1 + shift))
-                        if (n == 0) fp.moveTo(q[0] + q[2] * off, q[1] + q[3] * off) else fp.lineTo(q[0] + q[2] * off, q[1] + q[3] * off)
+                g.drawImage(faded { ag ->
+                    // the curtain: paler at the top, the arms' color further down, one see-through layer
+                    val top = toward(colors[2], 0xFFFFFF, 0.35)
+                    val alpha = (255 * min(1.0, opacity * 0.62)).toInt()
+                    val start = middle.first()
+                    val end = middle.last()
+                    if (hypot(end[0] - start[0], end[1] - start[1]) > 1) {
+                        ag.paint = LinearGradientPaint(
+                            Point2D.Double(start[0], start[1]), Point2D.Double(end[0], end[1]), floatArrayOf(0f, 0.45f, 1f),
+                            arrayOf(Color(top shr 16, top shr 8 and 0xFF, top and 0xFF, alpha), Color(colors[2] shr 16, colors[2] shr 8 and 0xFF, colors[2] and 0xFF, alpha),
+                                Color(colors[2] shr 16, colors[2] shr 8 and 0xFF, colors[2] and 0xFF, alpha * 3 / 4)),
+                        )
+                    } else ag.color = Color(colors[2] shr 16, colors[2] shr 8 and 0xFF, colors[2] and 0xFF, alpha)
+                    ag.fill(sheet)
+                    // folds down it: darker lines wandering across the curtain
+                    val dark = toward(colors[2], 0x000000, 0.45)
+                    // soft, wide shadows first, then a fine crease in each
+                    for ((widthShare, alphaShare) in listOf(0.06 to 0.12, 0.01 to 0.3)) for (fold in 0 until 3) {
+                        ag.color = Color(dark shr 16, dark shr 8 and 0xFF, dark and 0xFF, (255 * min(1.0, opacity * alphaShare)).toInt())
+                        ag.stroke = BasicStroke(max(0.5f, (radius * widthShare).toFloat()), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                        val fp = Path2D.Double()
+                        for ((n, q) in middle.withIndex()) {
+                            val off = q[4] * ((fold - 1) * 0.5 + 0.25 * sin(n * 0.09 + fold * 2.1 + shift))
+                            if (n == 0) fp.moveTo(q[0] + q[2] * off, q[1] + q[3] * off) else fp.lineTo(q[0] + q[2] * off, q[1] + q[3] * off)
+                        }
+                        ag.draw(fp)
                     }
-                    g.draw(fp)
-                }
-                // the margins: crinkled, lighter, catching the light
-                val fc = colors[3]
-                for ((edge, width) in listOf(left to 0.016, right to 0.016, left to 0.005, right to 0.005)) {
-                    val ep = Path2D.Double()
-                    ep.moveTo(edge[0][0], edge[0][1])
-                    for (q in edge.drop(1)) ep.lineTo(q[0], q[1])
-                    val a = if (width > 0.01) 0.4 else 0.75
-                    val c = if (width > 0.01) fc else toward(fc, 0xFFFFFF, 0.5)
-                    g.color = Color(c shr 16, c shr 8 and 0xFF, c and 0xFF, (255 * min(1.0, opacity * a * (0.4 + 0.6 * frills))).toInt())
-                    g.stroke = BasicStroke(max(0.5f, (radius * width * (0.5 + frills)).toFloat()), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
-                    g.draw(ep)
-                }
+                    // the margins: crinkled, lighter, catching the light
+                    val fc = colors[3]
+                    for ((edge, width) in listOf(left to 0.016, right to 0.016, left to 0.005, right to 0.005)) {
+                        val ep = Path2D.Double()
+                        ep.moveTo(edge[0][0], edge[0][1])
+                        for (q in edge.drop(1)) ep.lineTo(q[0], q[1])
+                        val a = if (width > 0.01) 0.4 else 0.75
+                        val c = if (width > 0.01) fc else toward(fc, 0xFFFFFF, 0.5)
+                        ag.color = Color(c shr 16, c shr 8 and 0xFF, c and 0xFF, (255 * min(1.0, opacity * a * (0.4 + 0.6 * frills))).toInt())
+                        ag.stroke = BasicStroke(max(0.5f, (radius * width * (0.5 + frills)).toFloat()), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                        ag.draw(ep)
+                    }
+                }, bx, by, null)
             }
         }
         g.dispose()
@@ -416,6 +471,13 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
         val fg = FloatArray(w * h)
         val fb = FloatArray(w * h)
         val fa = FloatArray(w * h)
+        // the nuclei: between the arms and tentacles and the front skin, so they cover the arms' roots
+        val nr = FloatArray(w * h)
+        val ng = FloatArray(w * h)
+        val nb = FloatArray(w * h)
+        val nuA = FloatArray(w * h)
+        val nucleus = v["nucleus"] / 100.0
+        val nucleusSize = v["nucleusSize"] / 100.0
         val lobes = v["lobes"]
         val canals = v["canals"]
         val bell = colors[0]
@@ -435,6 +497,10 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
             if (x0 > x1 || y0 > y1) continue
             val px = 1.0 / rimHalf
             val opening = height * 0.13
+            // the nucleus up in the dome, around where the arms begin; it swells a little as the bell contracts
+            val nucA = -height * 0.2
+            val nucHalfW = max(1.0, rimHalf * 0.36 * nucleusSize * (1 + 0.08 * squeeze))
+            val nucHalfH = max(1.0, height * 0.3 * nucleusSize)
             parallelRows(y1 - y0 + 1) { row ->
                 val y = y0 + row
                 for (x in x0..x1) {
@@ -504,11 +570,38 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
                     fg[i] = (mix(8) * alpha + fg[i] * keep).toFloat()
                     fb[i] = (mix(0) * alpha + fb[i] * keep).toFloat()
                     fa[i] = (alpha + fa[i] * keep).toFloat()
+                    // the nucleus: dense and lumpy, glowing from its core, its outline catching the complementary light
+                    if (nucleus > 0) {
+                        val nx = u / nucHalfW
+                        val ny = (a - nucA) / nucHalfH
+                        val d = hypot(nx, ny)
+                        if (d < 1.3) {
+                            val phi = atan2(ny, nx)
+                            val edge = 1 + 0.03 * sin(phi * 3 + 1.3) + 0.08 * noise.perlin(cos(phi) * 1.5 + 31.0, sin(phi) * 1.5 + time * 0.2)
+                            val nCover = ((edge - d) * min(nucHalfW, nucHalfH) / 1.2 + 0.5).coerceIn(0.0, 1.0) * cover
+                            if (nCover > 0) {
+                                val core = (1 - d / edge).coerceIn(0.0, 1.0).pow(2)
+                                val grain = noise.fbm(u / (radius * 0.05) - 11.0, a / (radius * 0.05) + 5.0, 3)
+                                val nAlpha = (nucleus * min(1.0, 0.45 + opacity) * (0.85 + 0.15 * core)).coerceIn(0.0, 1.0) * nCover
+                                fun nucMix(sh: Int): Double {
+                                    var c = ch(colors[2], sh) + (ch(rim, sh) - ch(colors[2], sh)) * (0.35 + 0.5 * core)
+                                    c *= 0.7 + 0.3 * sqrt(core)
+                                    c += (ch(comp, sh) - c) * complement * 0.4 * (1 - core).pow(3)
+                                    return (c + (1 - c) * (0.5 * core * core + 0.08 * grain)).coerceIn(0.0, 1.0)
+                                }
+                                val keepNuc = 1 - nAlpha
+                                nr[i] = (nucMix(16) * nAlpha + nr[i] * keepNuc).toFloat()
+                                ng[i] = (nucMix(8) * nAlpha + ng[i] * keepNuc).toFloat()
+                                nb[i] = (nucMix(0) * nAlpha + nb[i] * keepNuc).toFloat()
+                                nuA[i] = (nAlpha + nuA[i] * keepNuc).toFloat()
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // the arms and tentacles over the bells' backs, the fronts over them
+        // the arms and tentacles over the bells' backs, the nuclei over them, the fronts over all
         for (i in hang.indices) {
             val c = hang[i]
             val a = (c ushr 24) / 255f
@@ -518,6 +611,12 @@ object Jellyfish : Effect("jellyfish", "Jellyfish", "Sea jellies with a pulsing,
                 jg[i] = (c shr 8 and 0xFF) / 255f * a + jg[i] * keep
                 jb[i] = (c and 0xFF) / 255f * a + jb[i] * keep
                 ja[i] = a + ja[i] * keep
+            }
+            val n = nuA[i]
+            if (n > 0f) {
+                val keep = 1 - n
+                jr[i] = nr[i] + jr[i] * keep; jg[i] = ng[i] + jg[i] * keep; jb[i] = nb[i] + jb[i] * keep
+                ja[i] = n + ja[i] * keep
             }
             val f = fa[i]
             if (f > 0f) {

@@ -53,4 +53,19 @@ class ShatterTest {
         val dark = run(mapOf("progress" to 10000, "behind" to 2))
         assertEquals(90 * 35 / 100, dark.data[500] and 0xFF, "a third as bright")
     }
+
+    @Test
+    fun `the loop keeps crumbling at the edge and comes round seamlessly`() {
+        fun loop(time: Int) = run(mapOf("progress" to 5000, "loop" to 1, "ragged" to 0, "loopLength" to 30, "time" to time, "distance" to 0))
+        val start = loop(0)
+        assertContentEquals(start.data, loop(3000).data, "after one round as at the start")
+        assertContentEquals(start.data, loop(9000).data)
+        val frames = listOf(700, 1300, 2100).map { loop(it).data }
+        assertTrue(frames.all { !it.contentEquals(start.data) } && !frames[0].contentEquals(frames[1]), "crumbling in between")
+        // the front runs to the left: the left stays whole, the far right is gone, always (the pieces fade where they are)
+        for (f in listOf(start.data) + frames) {
+            assertTrue((0 until 80).all { y -> (0 until 30).all { x -> f[y * 120 + x] == src.data[y * 120 + x] } }, "left whole")
+            assertTrue((0 until 80).all { y -> (110 until 120).all { x -> f[y * 120 + x] ushr 24 == 0 } }, "right gone")
+        }
+    }
 }

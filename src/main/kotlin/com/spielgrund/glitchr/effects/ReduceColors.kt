@@ -16,7 +16,8 @@ object ReduceColors : Effect("reducecolors", "Reduce colors", "Reduces the pictu
     )
     private val dithers = listOf("None", "Ordered (Bayer)", "Floyd–Steinberg", "Atkinson", "Noise")
 
-    private val fixed = mapOf(
+    /** The fixed palettes by their index in the palette choice (also used by [Dither]). */
+    internal val fixed = mapOf(
         3 to intArrayOf(0x000000, 0xFFFFFF),
         4 to intArrayOf(0x0F380F, 0x306230, 0x8BAC0F, 0x9BBC0F),
         5 to intArrayOf(0x000000, 0x55FFFF, 0xFF55FF, 0xFFFFFF),

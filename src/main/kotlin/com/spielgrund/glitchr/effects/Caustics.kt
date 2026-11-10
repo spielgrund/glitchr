@@ -198,9 +198,9 @@ internal fun causticLight(
  */
 object Caustics : Effect("caustics", "Water caustics", "The wobbling net of light under water – pool, ocean, rings or cells; animate the time, also as a seamless loop") {
     override val params = listOf(
-        Param.Slider("time", "Time", 0, 100000, 0, "", "Moves the water – animate it", decimals = 2),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Moves the water – animate it", decimals = 3),
         Param.Toggle("loop", "Seamless loop", false, "At the loop length the water is exactly as at 0: animate the time from 0 to the loop length"),
-        Param.Slider("loopLength", "Loop length", 100, 100000, 2000, "", "Of the time, for a seamless loop", decimals = 2),
+        Param.Slider("loopLength", "Loop length", 10, 10000, 200, " s", "How long one round takes: at it the water is exactly as at 0, so the animation can repeat seamlessly", decimals = 1),
         Param.Heading("wavesHeading", "Waves"),
         Param.Choice(
             "waves", "Waves", waveTypes, 0,
@@ -231,11 +231,11 @@ object Caustics : Effect("caustics", "Water caustics", "The wobbling net of ligh
         val h = src.height
         val noise = Noise(seed)
         val size = max(4.0, v["size"] / 100.0)
-        val time = v["time"] / 100.0
+        val time = v["time"] / 1000.0
         val rings = PointList.parse(v.text("points")).map { doubleArrayOf(it.x * w, it.y * h) }
         val water = Water(
             noise, v["waves"], size, Math.toRadians(v["direction"] / 100.0), v["stretch"] / 100.0, v["detail"] / 100.0,
-            rings, if (v.bool("loop")) v["loopLength"] / 100.0 else 0.0,
+            rings, if (v.bool("loop")) v["loopLength"] / 10.0 else 0.0,
         )
         val light = causticLight(w, h, noise, water, time, v["focus"] / 100.0, v["focusVariation"] / 100.0, v["sharpness"] / 100.0, v["dispersion"] / 100.0)
         fun ch(c: Int, sh: Int) = (c shr sh and 0xFF) / 255.0

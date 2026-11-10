@@ -32,9 +32,9 @@ class StickerFaceTest {
     @Test
     fun `the time waves the hands and blinks the eyes`() {
         val a = StickerFace.apply(src, StickerFace.defaultValues(mapOf("time" to 0)), 1)
-        val b = StickerFace.apply(src, StickerFace.defaultValues(mapOf("time" to 3)), 1)
+        val b = StickerFace.apply(src, StickerFace.defaultValues(mapOf("time" to 300)), 1)
         assertTrue(changed(a, 0, 0, 200, 60).let { it > 0 } && !a.data.contentEquals(b.data), "the hands moved")
-        val still = StickerFace.defaultValues(mapOf("wave" to 0, "time" to 3))
+        val still = StickerFace.defaultValues(mapOf("wave" to 0, "time" to 300))
         assertContentEquals(StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0)), 1).data, StickerFace.apply(src, still, 1).data, "without waving the arcs stay")
         val times = (0 until 2000).map { StickerFace.blinkOpen(it / 100.0, 1.0, 5, 0) }
         assertTrue(times.any { it < 0.1 } && times.count { it == 1.0 } > 1500, "now and then shut, mostly open")
@@ -45,7 +45,7 @@ class StickerFaceTest {
     fun `the arm wave ripples the arms only, running with the time`() {
         val still = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0)), 1)
         val rippled = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "armWave" to 100)), 1)
-        val later = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "armWave" to 100, "time" to 3)), 1)
+        val later = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "armWave" to 100, "time" to 300)), 1)
         assertTrue(!still.data.contentEquals(rippled.data) && !rippled.data.contentEquals(later.data))
         // the eyes stay where they are
         assertEquals(0, (80 until 100).sumOf { y -> (70 until 130).count { x -> still[x, y] != rippled[x, y] } })
@@ -54,10 +54,10 @@ class StickerFaceTest {
     @Test
     fun `fidgeting twitches the parts in steps`() {
         fun at(time: Int, fidget: Int = 100) = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "fidget" to fidget, "fidgetRate" to 2, "time" to time)), 1).data
-        assertContentEquals(at(0, 0), at(10, 0), "without fidgeting nothing moves")
-        assertContentEquals(at(1), at(4), "the same within a step (half a second)")
-        assertTrue(!at(1).contentEquals(at(6)), "a new spot in the next step")
-        assertTrue(!at(1).contentEquals(at(1, 0)))
+        assertContentEquals(at(0, 0), at(1000, 0), "without fidgeting nothing moves")
+        assertContentEquals(at(100), at(400), "the same within a step (half a second)")
+        assertTrue(!at(100).contentEquals(at(600)), "a new spot in the next step")
+        assertTrue(!at(100).contentEquals(at(100, 0)))
     }
 
     @Test
@@ -88,7 +88,7 @@ class StickerFaceTest {
     fun `the mouth stands open without talking, ears sit above the eyes`() {
         val shut = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0)), 1)
         val open = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "mouthOpen" to 80)), 1)
-        val later = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "mouthOpen" to 80, "time" to 37)), 1)
+        val later = StickerFace.apply(src, StickerFace.defaultValues(mapOf("wave" to 0, "mouthOpen" to 80, "time" to 3700)), 1)
         assertTrue(!shut.data.contentEquals(open.data), "open")
         assertContentEquals(open.data, later.data, "and stays so without talking")
         for (ears in 1..4) {

@@ -52,7 +52,7 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
     private const val CAT_PAW = 5
 
     override val params = listOf(
-        Param.Slider("time", "Time", 0, 10000, 0, "", "Animate it: the hands wave, the eyes blink and look around, the mouth talks", decimals = 1),
+        Param.Slider("time", "Time", 0, 1000000, 0, " s", "Animate it: the hands wave, the eyes blink and look around, the mouth talks", decimals = 3),
         Param.Heading("faceHeading", "Face"),
         Param.Slider("centerX", "Position X", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
         Param.Slider("centerY", "Position Y", -50000, 50000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 1, transform = true),
@@ -140,7 +140,7 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         val w = src.width
         val h = src.height
         val speed = v["speed"] / 100.0
-        val t = v["time"] / 10.0 * speed
+        val t = v["time"] / 1000.0 * speed
         val s = min(w, h) * v["size"] / 100.0
         if (s < 1) return src.copy()
         val line = max(0.6, s * v["lineWidth"] / 1000.0)

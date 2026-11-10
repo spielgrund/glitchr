@@ -328,6 +328,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         add(small("+ Image…", "Insert an image as a new layer (Ctrl+I) – or just drag it into the window") { insertImageDialog() })
         add(small("Save", "Save the project with all layers and masks (Ctrl+S)") { save() })
         add(small("Export…", "Save the result as an image (Ctrl+E)") { exportDialog() })
+        add(small("×2", "Double the resolution: canvas and everything on it, sizes in the effects too") { scaleBy(2.0) })
+        add(small("½", "Halve the resolution: canvas and everything on it, sizes in the effects too") { scaleBy(0.5) })
         add(small("Fit", "Show the whole picture (Ctrl+0)") { canvas.fit() })
         add(originalButton.apply {
             isFocusable = false
@@ -433,6 +435,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 toolTipText = "Scales the canvas together with everything on it"
                 addActionListener { scaleDialog() }
             })
+            add(JMenuItem("Double resolution").apply { addActionListener { scaleBy(2.0) } })
+            add(JMenuItem("Halve resolution").apply { addActionListener { scaleBy(0.5) } })
             add(item("Crop", KeyEvent.VK_K) { startCrop() })
         })
         add(JMenu("Layer").apply {
@@ -1560,6 +1564,19 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val h = height.value as Int
         if (w == docWidth && h == docHeight) return
         resizeDocument(w, h, f, 0.0, 0.0, sizes.isSelected)
+        status.text = "Scaled to $w × $h px"
+    }
+
+    /** Scales canvas and content by [f] at once, sizes in the effects too, within the canvas limits (1 … 30000 px). */
+    private fun scaleBy(f: Double) {
+        if (!hasDocument) return
+        val w = kotlin.math.round(docWidth * f).toInt()
+        val h = kotlin.math.round(docHeight * f).toInt()
+        if (w < 1 || h < 1 || w > 30000 || h > 30000) {
+            status.text = "Can't scale to $w × $h px – the canvas must stay between 1 and 30000 px"
+            return
+        }
+        resizeDocument(w, h, f, 0.0, 0.0)
         status.text = "Scaled to $w × $h px"
     }
 
