@@ -30,15 +30,18 @@ import kotlin.random.Random
 /**
  * A drawn face stuck onto the photo, like a doodle on a cup: eyes, cheeks, nose and mouth around a
  * point that the handle moves, and two thin arms from its sides to hands that are dragged in the
- * picture. All in one line color, as if drawn with a marker. The time animates it: the hands wave,
- * the eyes blink and look around, the mouth talks and the whole face bounces.
+ * picture. All in one line color, as if drawn with a marker, the eyes in their own color. A mood
+ * sets eyes, eyebrows and mouth together – happy, sad, angry, surprised … – with lids cutting into
+ * the eyes, smaller pupils, a tear or a drop of sweat where it fits. The time animates it: the hands
+ * wave, the eyes blink and look around, the mouth talks and the whole face bounces.
  */
 object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with eyes, cheeks, nose, mouth and arms on the photo – drag it and the hands, animate the time") {
     private val eyeStyles = listOf("Happy arcs", "Dots", "Cartoon", "Wink", "Sleepy", "Hearts", "Crosses", "None")
-    private val browStyles = listOf("None", "Friendly", "Angry", "Worried")
+    private val browStyles = listOf("None", "Friendly", "Angry", "Worried", "Raised", "Puzzled")
     private val cheekStyles = listOf("None", "Round", "Soft blush", "Hatched")
     private val noseStyles = listOf("None", "Dot", "Hook", "Button", "Triangle")
-    private val mouthStyles = listOf("Smile", "Grin", "Open", "Cat", "Flat", "Sad", "Tongue out", "One fang", "Two fangs", "None")
+    private val mouthStyles = listOf("Smile", "Grin", "Open", "Cat", "Flat", "Sad", "Tongue out", "One fang", "Two fangs", "None", "Wavy", "Gritted teeth")
+    private val moods = listOf("Custom", "Happy", "Sad", "Angry", "Surprised", "Scared", "Sleepy", "In love", "Cheeky", "Confused", "Smug", "Evil", "Knocked out")
     private val handStyles = listOf("Knob", "Ball", "Mitten", "Fingers", "None", "Cat paw")
     private val whiskerStyles = listOf("None", "Straight", "Curved up", "Drooping")
     private val earStyles = listOf("None", "Cat", "Cat, pink inside", "Round", "Round, pink inside")
@@ -48,6 +51,10 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
     private const val ONE_FANG = 7
     private const val TWO_FANGS = 8
     private const val MOUTH_NONE = 9
+    private const val WAVY = 10
+    private const val GRITTED = 11
+    private const val RAISED = 4
+    private const val PUZZLED = 5
     private const val HANDS_NONE = 4
     private const val CAT_PAW = 5
 
@@ -62,12 +69,15 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         Param.Color("lineColor", "Line color", 0x1C1C1E),
         Param.Slider("lineWidth", "Line width", 5, 200, 35, " %", "Of the face width, in tenths of a percent: 35 is 3.5 %", decimals = 1),
         Param.Slider("opacity", "Opacity", 0, 100, 92, " %"),
+        Param.Heading("moodHeading", "Mood"),
+        Param.Choice("mood", "Mood", moods, 0, "Sets eyes, eyebrows and mouth together, with lids, pupils, tears or sweat where they fit – Custom: choose them yourself below"),
         Param.Heading("eyesHeading", "Eyes"),
-        Param.Choice("eyes", "Eyes", eyeStyles, 0, "Happy arcs: closed, smiling · Dots · Cartoon: white with pupils that look around · Wink · Sleepy: hanging lids · Hearts · Crosses", order = listOf(EYES_NONE) + (0 until EYES_NONE)),
+        Param.Choice("eyes", "Eyes", eyeStyles, 0, "Happy arcs: closed, smiling · Dots · Cartoon: white with pupils that look around · Wink · Sleepy: hanging lids · Hearts · Crosses", order = listOf(EYES_NONE) + (0 until EYES_NONE)).shownWhen("mood", 0),
+        Param.Color("eyeColor", "Eye color", 0x1C1C1E, "Fills the dots, the irises of the cartoon eyes and the hearts"),
         Param.Slider("eyeSize", "Eye size", 20, 300, 100, " %"),
         Param.Slider("eyeSpacing", "Eye spacing", 10, 120, 46, " %", "Of the face width"),
         Param.Slider("eyeHeight", "Eye height", -50, 50, -12, " %", "Above (−) or below the middle, of the face width"),
-        Param.Choice("brows", "Eyebrows", browStyles, 0),
+        Param.Choice("brows", "Eyebrows", browStyles, 0, "Raised: high arcs, surprised · Puzzled: one up, one down").shownWhen("mood", 0),
         Param.Heading("earsHeading", "Ears"),
         Param.Choice("ears", "Ears", earStyles, 0, "Cat: pointed · Round: like a bear or mouse · pink inside: in the cheek color"),
         Param.Slider("earSize", "Ear size", 20, 300, 100, " %"),
@@ -82,7 +92,7 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         Param.Choice("whiskers", "Whiskers", whiskerStyles, 0, "Three on each side of the nose, like a cat"),
         Param.Slider("whiskerLength", "Whisker length", 20, 300, 100, " %"),
         Param.Heading("mouthHeading", "Mouth"),
-        Param.Choice("mouth", "Mouth", mouthStyles, 0, "One fang, two fangs: a smile with pointed teeth hanging over the lip", order = listOf(MOUTH_NONE) + (0 until MOUTH_NONE)),
+        Param.Choice("mouth", "Mouth", mouthStyles, 0, "One fang, two fangs: a smile with pointed teeth hanging over the lip · Wavy: a nervous squiggle · Gritted teeth: clenched", order = listOf(MOUTH_NONE) + (0 until MOUTH_NONE) + listOf(WAVY, GRITTED)).shownWhen("mood", 0),
         Param.Slider("mouthWidth", "Mouth width", 20, 300, 100, " %"),
         Param.Slider("mouthHeight", "Mouth height", -50, 80, 20, " %", "Below (+) the middle, of the face width"),
         Param.Slider("mouthOpen", "Mouth open", 0, 100, 0, " %", "How far the mouth stands open – talking opens it further from there"),
@@ -110,12 +120,49 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
 
     private const val MOUTH_DARK = 0x4A0E1A
     private const val TONGUE = 0xE8566E
+    private const val DROP = 0x8FD3F5
+
+    // lids cutting into the cartoon eyes from above
+    private const val LID_NONE = 0
+    private const val LID_ANGRY = 1
+    private const val LID_SAD = 2
+    private const val LID_HALF = 3
+
+    /**
+     * How the face looks: the eye, eyebrow and mouth styles, a [lid] cutting into the cartoon eyes,
+     * the [pupil] size, how far the eyes look down, how far the mouth stands [open] at least, the
+     * eyes' size, a tear and a drop of sweat.
+     */
+    private class Expression(
+        val eyes: Int, val brows: Int, val mouth: Int, val lid: Int = LID_NONE, val pupil: Double = 1.0,
+        val lookDown: Double = 0.0, val open: Double = 0.0, val eyeSize: Double = 1.0, val tear: Boolean = false, val sweat: Boolean = false,
+    )
+
+    /** The mood's expression, or with Custom the chosen styles. */
+    private fun expression(v: Values) = when (moods.getOrNull(v["mood"])) {
+        "Happy" -> Expression(0, 1, 1)
+        "Sad" -> Expression(2, 3, 5, LID_SAD, pupil = 0.9, lookDown = 0.7, tear = true)
+        "Angry" -> Expression(2, 2, GRITTED, LID_ANGRY, pupil = 0.8)
+        "Surprised" -> Expression(2, RAISED, 2, pupil = 0.55, open = 0.5, eyeSize = 1.2)
+        "Scared" -> Expression(2, 3, WAVY, pupil = 0.45, eyeSize = 1.15, sweat = true)
+        "Sleepy" -> Expression(4, 0, 4)
+        "In love" -> Expression(5, 1, 0)
+        "Cheeky" -> Expression(3, 1, 6)
+        "Confused" -> Expression(2, PUZZLED, WAVY, pupil = 0.8)
+        "Smug" -> Expression(2, 1, 3, LID_HALF)
+        "Evil" -> Expression(2, 2, TWO_FANGS, LID_ANGRY, pupil = 0.6)
+        "Knocked out" -> Expression(6, 0, 6)
+        else -> Expression(v["eyes"], v["brows"], v["mouth"])
+    }
 
     /**
      * Everything about the face that the parts need: size, line width, colors, time – and the
      * fidgeting: how far the parts twitch ([jitter], pixels) and the current twitch [step].
      */
-    private class Face(val s: Double, val line: Double, val ink: Color, val t: Double, val v: Values, val seed: Long, val jitter: Double, val step: Long)
+    private class Face(
+        val s: Double, val line: Double, val ink: Color, val t: Double, val v: Values, val seed: Long, val jitter: Double, val step: Long,
+        val expr: Expression, val eyeColor: Color,
+    )
 
     /** A part's twitch – shift across, down and a turn – the same throughout a step, new in the next. */
     private fun jitter(f: Face, part: Int): DoubleArray {
@@ -145,7 +192,10 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         if (s < 1) return src.copy()
         val line = max(0.6, s * v["lineWidth"] / 1000.0)
         val ink = Color(v["lineColor"] or (0xFF shl 24), true)
-        val face = Face(s, line, ink, t, v, seed, s * 0.025 * v["fidget"] / 100.0, floor(t * v["fidgetRate"]).toLong())
+        val face = Face(
+            s, line, ink, t, v, seed, s * 0.025 * v["fidget"] / 100.0, floor(t * v["fidgetRate"]).toLong(),
+            expression(v), Color(v["eyeColor"] or (0xFF shl 24), true),
+        )
 
         // the face's frame on the canvas: its middle, bouncing, twitching, tilted, squashed
         val hop = -abs(sin(t * PI * 1.6)) * s * 0.12 * v["bounce"] / 100.0
@@ -217,10 +267,10 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
 
     private fun drawEyes(g: Graphics2D, f: Face) {
         val v = f.v
-        val r = f.s * 0.075 * v["eyeSize"] / 100.0
+        val r = f.s * 0.075 * v["eyeSize"] / 100.0 * f.expr.eyeSize
         val dx = f.s * v["eyeSpacing"] / 200.0
         val y = f.s * v["eyeHeight"] / 100.0
-        val style = v["eyes"]
+        val style = f.expr.eyes
         for ((i, side) in listOf(-1, 1).withIndex()) {
             val x = side * dx
             val open = blinkOpen(f.t, v["blink"] / 100.0, f.seed, 0)
@@ -229,11 +279,11 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
             fidget(g, f, 10 + i, x, y) {
                 when (style) {
                     0 -> happyArc(g, x, y, r)
-                    1 -> dot(g, x, y, r, open)
-                    2 -> cartoon(g, f, x, y, r, open)
-                    3 -> if (i == 0) happyArc(g, x, y, r) else dot(g, x, y, r, open)
+                    1 -> { g.color = f.eyeColor; dot(g, x, y, r, open) }
+                    2 -> cartoon(g, f, x, y, r, open, side)
+                    3 -> if (i == 0) happyArc(g, x, y, r) else { g.color = f.eyeColor; dot(g, x, y, r, open) }
                     4 -> sleepy(g, f, x, y, r)
-                    5 -> heart(g, x, y, r)
+                    5 -> { g.color = f.eyeColor; heart(g, x, y, r) }
                     EYES_NONE -> {}
                     else -> {
                         val c = r * 0.6
@@ -243,6 +293,28 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
                 }
             }
         }
+        // a tear running from under the right eye, a drop of sweat on the forehead
+        if (f.expr.tear) fidget(g, f, 15, dx, y) { drop(g, f, dx + r * 0.35, y + r * 1.75, r * 0.42) }
+        if (f.expr.sweat) fidget(g, f, 16, dx, y) { drop(g, f, dx + r * 1.7, y - r * 1.6, r * 0.45) }
+    }
+
+    /** A drop, pointed at the top: a tear or a bead of sweat. */
+    private fun drop(g: Graphics2D, f: Face, x: Double, y: Double, s: Double) {
+        val p = GeneralPath().apply {
+            moveTo(x, y - s * 1.3)
+            curveTo(x + s * 0.35, y - s * 0.6, x + s, y - s * 0.1, x + s, y + s * 0.35)
+            curveTo(x + s, y + s * 1.05, x - s, y + s * 1.05, x - s, y + s * 0.35)
+            curveTo(x - s, y - s * 0.1, x - s * 0.35, y - s * 0.6, x, y - s * 1.3)
+            closePath()
+        }
+        g.color = Color(DROP)
+        g.fill(p)
+        g.color = f.ink
+        g.stroke = stroke(f.line * 0.6)
+        g.draw(p)
+        g.color = Color(255, 255, 255, 200)
+        g.fill(Ellipse2D.Double(x - s * 0.55, y - s * 0.05, s * 0.4, s * 0.5))
+        g.stroke = stroke(f.line)
     }
 
     /** An upward arc ∩, the eye closed in a smile. */
@@ -256,27 +328,54 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         else g.fill(Ellipse2D.Double(x - rx, y - ry, 2 * rx, 2 * ry))
     }
 
-    private fun cartoon(g: Graphics2D, f: Face, x: Double, y: Double, r: Double, open: Double) {
+    /**
+     * A white eye with an iris in the eye color and a dark pupil that look around; a lid can cut into it
+     * from above, slanting down to the middle (angry) or to the side (sad), or level (half shut). [side]:
+     * −1 the left eye, 1 the right one.
+     */
+    private fun cartoon(g: Graphics2D, f: Face, x: Double, y: Double, r: Double, open: Double, side: Int) {
         val rx = r * 0.85
         val ry = r * 1.05
         if (open < 0.12) {
             g.draw(Arc2D.Double(x - rx, y - ry * 0.4, 2 * rx, 2 * ry * 0.4, 200.0, 140.0, Arc2D.OPEN))
             return
         }
-        val eye = Ellipse2D.Double(x - rx, y - ry * open, 2 * rx, 2 * ry * open)
+        val eye = Area(Ellipse2D.Double(x - rx, y - ry * open, 2 * rx, 2 * ry * open))
+        val lid = f.expr.lid
+        if (lid != LID_NONE) {
+            // where the lid's edge crosses the eye's inner side (towards the nose) and its outer side
+            val (innerY, outerY) = when (lid) {
+                LID_ANGRY -> -0.15 to -0.85
+                LID_SAD -> -0.85 to -0.15
+                else -> -0.2 to -0.2
+            }
+            val innerX = x - side * rx * 1.2
+            val outerX = x + side * rx * 1.2
+            eye.subtract(Area(GeneralPath().apply {
+                moveTo(innerX, y + ry * innerY)
+                lineTo(outerX, y + ry * outerY)
+                lineTo(outerX, y - ry * 2)
+                lineTo(innerX, y - ry * 2)
+                closePath()
+            }))
+        }
         g.color = Color.WHITE
         g.fill(eye)
-        val (lx, ly) = look(f.t, f.seed)
-        val pr = r * 0.48
-        val px = x + lx * (rx - pr) * 0.9
-        val py = y + ly * (ry - pr) * 0.9
+        val (lx, look) = look(f.t, f.seed)
+        val ly = look * (1 - f.expr.lookDown) + 0.8 * f.expr.lookDown
+        val ir = r * 0.48 * f.expr.pupil
+        val px = x + lx * (rx - ir) * 0.9
+        val py = y + ly * (ry - ir) * 0.9
         val old = g.clip
         g.clip(eye)
+        g.color = f.eyeColor
+        g.fill(Ellipse2D.Double(px - ir, py - ir, 2 * ir, 2 * ir))
+        val pr = ir * 0.55
         g.color = f.ink
         g.fill(Ellipse2D.Double(px - pr, py - pr, 2 * pr, 2 * pr))
         g.color = Color.WHITE
-        val gl = pr * 0.35
-        g.fill(Ellipse2D.Double(px - pr * 0.45 - gl, py - pr * 0.45 - gl, 2 * gl, 2 * gl))
+        val gl = ir * 0.35
+        g.fill(Ellipse2D.Double(px - ir * 0.45 - gl, py - ir * 0.45 - gl, 2 * gl, 2 * gl))
         g.clip = old
         g.color = f.ink
         g.draw(eye)
@@ -287,7 +386,9 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         val rx = r * 0.85
         g.draw(Arc2D.Double(x - rx, y - r * 0.7, 2 * rx, 2 * r * 1.2, 200.0, 140.0, Arc2D.OPEN))
         g.draw(Line2D.Double(x - rx * 1.05, y - r * 0.05, x + rx * 1.05, y - r * 0.05))
+        g.color = f.eyeColor
         g.fill(Arc2D.Double(x - r * 0.42, y - r * 0.42, r * 0.84, r * 0.84, 180.0, 180.0, Arc2D.CHORD))
+        g.color = f.ink
     }
 
     private fun heart(g: Graphics2D, x: Double, y: Double, r: Double) {
@@ -301,7 +402,7 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
 
     private fun drawBrows(g: Graphics2D, f: Face) {
         val v = f.v
-        val style = v["brows"]
+        val style = f.expr.brows
         if (style == 0) return
         val r = f.s * 0.075 * v["eyeSize"] / 100.0
         val dx = f.s * v["eyeSpacing"] / 200.0
@@ -317,7 +418,12 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
                 1 -> { p.moveTo(inner, y + r * 0.1); p.quadTo(x, y - r * 0.45, outer, y + r * 0.15) }
                 // inner ends low: angry, high: worried
                 2 -> { p.moveTo(inner, y + r * 0.45); p.lineTo(outer, y - r * 0.2) }
-                else -> { p.moveTo(inner, y - r * 0.35); p.quadTo(x, y - r * 0.1, outer, y + r * 0.3) }
+                3 -> { p.moveTo(inner, y - r * 0.35); p.quadTo(x, y - r * 0.1, outer, y + r * 0.3) }
+                // high arcs
+                RAISED -> { p.moveTo(inner, y - r * 0.2); p.quadTo(x, y - r * 0.95, outer, y - r * 0.15) }
+                // puzzled: the left one raised, the right one low and level
+                else -> if (side < 0) { p.moveTo(inner, y - r * 0.2); p.quadTo(x, y - r * 0.95, outer, y - r * 0.15) }
+                else { p.moveTo(inner, y + r * 0.3); p.lineTo(outer, y + r * 0.2) }
             }
             fidget(g, f, 20 + side, x, y) { g.draw(p) }
         }
@@ -393,11 +499,11 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
         val a = f.s * 0.2 * v["mouthWidth"] / 100.0
         val y = f.s * (v["eyeHeight"] / 100.0 + v["mouthHeight"] / 100.0 + 0.12)
         // open by the slider, talking opens it further
-        val open = v["mouthOpen"] / 100.0
+        val open = max(v["mouthOpen"] / 100.0, f.expr.open)
         val talk = open + (1 - open) * talking(f.t, v["talk"] / 100.0)
         g.color = f.ink
         g.stroke = stroke(f.line)
-        when (v["mouth"]) {
+        when (f.expr.mouth) {
             0 -> openSmile(g, f, y, a, a * 0.55, talk)
             1 -> openSmile(g, f, y, a, a * 0.45, 0.55 + 0.45 * talk)
             2 -> {
@@ -424,31 +530,80 @@ object StickerFace : Effect("stickerface", "Sticker face", "A drawn face with ey
                     closePath()
                 }, null)
             }
-            ONE_FANG, TWO_FANGS -> fangSmile(g, f, y, a, talk, if (v["mouth"] == ONE_FANG) listOf(0.68) else listOf(0.3, 0.7))
+            ONE_FANG, TWO_FANGS -> fangSmile(g, f, y, a, talk, if (f.expr.mouth == ONE_FANG) listOf(0.68) else listOf(0.3, 0.7))
             MOUTH_NONE -> {}
-            else -> {
-                // the tongue hangs out under the smile, a little to one side
-                val tw = a * 0.36
-                val tx = a * 0.18
-                val ty = y + a * 0.38
-                val tongue = GeneralPath().apply {
-                    moveTo(tx - tw, ty - a * 0.1)
-                    lineTo(tx - tw, ty + a * 0.25)
-                    curveTo(tx - tw, ty + a * 0.75, tx + tw, ty + a * 0.75, tx + tw, ty + a * 0.25)
-                    lineTo(tx + tw, ty - a * 0.1)
-                    closePath()
+            WAVY -> g.draw(GeneralPath().apply {
+                // a nervous squiggle: three waves along a line
+                val n = 6
+                moveTo(-a * 0.75, y + a * 0.2)
+                for (k in 0 until n) {
+                    val x0 = -a * 0.75 + a * 1.5 * k / n
+                    val x1 = -a * 0.75 + a * 1.5 * (k + 1) / n
+                    quadTo((x0 + x1) / 2, y + a * (0.2 + if (k % 2 == 0) -0.16 else 0.16), x1, y + a * 0.2)
                 }
-                g.color = Color(TONGUE)
-                g.fill(tongue)
+            })
+            GRITTED -> {
+                // clenched teeth: a rounded white bar, split into upper and lower teeth
+                val bw = a * 0.75
+                val bh = a * (0.22 + 0.12 * talk)
+                val cy = y + a * 0.2
+                val bar = java.awt.geom.RoundRectangle2D.Double(-bw, cy - bh, 2 * bw, 2 * bh, bh * 1.2, bh * 1.2)
+                g.color = Color.WHITE
+                g.fill(bar)
                 g.color = f.ink
-                g.draw(tongue)
                 g.stroke = stroke(f.line * 0.6)
-                g.draw(Line2D.Double(tx, ty + a * 0.05, tx, ty + a * 0.35))
+                val old = g.clip
+                g.clip(bar)
+                g.draw(Line2D.Double(-bw, cy, bw, cy))
+                for (k in 1..4) {
+                    val tx = -bw + 2 * bw * k / 5
+                    g.draw(Line2D.Double(tx, cy - bh, tx, cy + bh))
+                }
+                g.clip = old
                 g.stroke = stroke(f.line)
-                g.color = f.ink
-                g.draw(GeneralPath().apply { moveTo(-a, y); quadTo(0.0, y + a * 0.9, a, y) })
+                g.draw(bar)
             }
+            else -> tongueOut(g, f, y, a)
         }
+    }
+
+    /**
+     * A smile with the tongue sticking out under it, a little to one side: round at the tip, a groove down its
+     * middle, its root tucked under the smile's line, which is drawn over it.
+     */
+    private fun tongueOut(g: Graphics2D, f: Face, y: Double, a: Double) {
+        val dip = a * 0.9
+        // a point on the smile's line at u (−1 left … 1 right): a parabola from (−a, y) through the dip to (a, y)
+        fun lip(u: Double) = y + dip * 0.5 * (1 - u * u)
+        val tx = a * 0.18
+        val tw = a * 0.34
+        val len = a * 0.78
+        val ul = (tx - tw) / a
+        val ur = (tx + tw) / a
+        val um = tx / a
+        // its sides and round tip, from the lip on the left down and back up to the lip on the right
+        val rim = GeneralPath().apply {
+            moveTo(tx - tw, lip(ul))
+            lineTo(tx - tw, lip(ul) + len * 0.4)
+            curveTo(tx - tw, lip(ul) + len * 1.05, tx + tw, lip(ur) + len * 1.05, tx + tw, lip(ur) + len * 0.4)
+            lineTo(tx + tw, lip(ur))
+        }
+        // filled up to exactly the lip: back along the parabola (a quadratic curve through its middle)
+        val tongue = GeneralPath(rim).apply {
+            quadTo(tx, 2 * lip(um) - (lip(ul) + lip(ur)) / 2, tx - tw, lip(ul))
+            closePath()
+        }
+        g.color = Color(TONGUE)
+        g.fill(tongue)
+        g.color = f.ink
+        g.stroke = stroke(f.line * 0.7)
+        g.draw(rim)
+        // the groove down its middle
+        g.stroke = stroke(f.line * 0.5)
+        g.draw(Line2D.Double(tx, lip(um) + len * 0.15, tx, lip(um) + len * 0.5))
+        // the smile over the tongue's root
+        g.stroke = stroke(f.line)
+        g.draw(GeneralPath().apply { moveTo(-a, y); quadTo(0.0, y + dip, a, y) })
     }
 
     /**

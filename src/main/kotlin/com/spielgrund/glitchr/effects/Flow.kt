@@ -36,6 +36,60 @@ object FlowStrokes {
     fun format(strokes: List<List<Point2D.Double>>): String = strokes.joinToString(";") { stroke ->
         stroke.joinToString(" ") { String.format(Locale.ROOT, "%.4f,%.4f", it.x, it.y) }
     }
+
+    /** How much of the brush a point [d] from its middle feels: 1 in the middle, softly 0 at radius [r]. */
+    private fun falloff(d: Double, r: Double): Double {
+        if (d >= r) return 0.0
+        val t = 1 - d / r
+        return t * t * (3 - 2 * t)
+    }
+
+    /**
+     * The brush that pushes: every point of [strokes] (relative, on a [w] x [h] canvas) within
+     * [r] pixels of ([cx], [cy]) moves by ([dx], [dy]) pixels, the nearer the middle the more.
+     * Stretched segments get points in between, so the strokes stay smooth ([gap] pixels at most).
+     */
+    fun push(strokes: List<List<Point2D.Double>>, w: Int, h: Int, cx: Double, cy: Double, r: Double, dx: Double, dy: Double, gap: Double): List<List<Point2D.Double>> =
+        strokes.map { stroke ->
+            val moved = stroke.map { p ->
+                val f = falloff(hypot(p.x * w - cx, p.y * h - cy), r)
+                if (f == 0.0) p else Point2D.Double(p.x + dx * f / w, p.y + dy * f / h)
+            }
+            refine(moved, w, h, gap)
+        }
+
+    /**
+     * The brush that smooths: every point within [r] pixels of ([cx], [cy]) moves towards the
+     * middle of its two neighbours by [amount] (0..1), the nearer the brush's middle the more.
+     * The ends of a stroke stay where they are.
+     */
+    fun smooth(strokes: List<List<Point2D.Double>>, w: Int, h: Int, cx: Double, cy: Double, r: Double, amount: Double): List<List<Point2D.Double>> =
+        strokes.map { stroke ->
+            if (stroke.size < 3) return@map stroke
+            List(stroke.size) { i ->
+                val p = stroke[i]
+                val f = if (i == 0 || i == stroke.size - 1) 0.0 else falloff(hypot(p.x * w - cx, p.y * h - cy), r) * amount
+                if (f == 0.0) p
+                else Point2D.Double(
+                    p.x + ((stroke[i - 1].x + stroke[i + 1].x) / 2 - p.x) * f,
+                    p.y + ((stroke[i - 1].y + stroke[i + 1].y) / 2 - p.y) * f,
+                )
+            }
+        }
+
+    /** [stroke] with points in between where two lie more than [gap] pixels apart. */
+    private fun refine(stroke: List<Point2D.Double>, w: Int, h: Int, gap: Double): List<Point2D.Double> {
+        val out = ArrayList<Point2D.Double>(stroke.size)
+        out.add(stroke[0])
+        for (i in 1 until stroke.size) {
+            val a = stroke[i - 1]
+            val b = stroke[i]
+            val n = ceil(hypot((b.x - a.x) * w, (b.y - a.y) * h) / gap).toInt().coerceIn(1, 64)
+            for (k in 1 until n) out.add(Point2D.Double(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n))
+            out.add(b)
+        }
+        return out
+    }
 }
 
 /** Points relative to the canvas (0..1 across and down), as text: "x,y;x,y". */

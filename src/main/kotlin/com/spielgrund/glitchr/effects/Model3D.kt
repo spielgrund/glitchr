@@ -564,7 +564,7 @@ object Model3D : Effect("model3d", "3D model", "A 3D model – pasted from Blend
             for (b in b0..b1) lists[b] += t
         }
         val out = ground.copy()
-        java.util.stream.IntStream.range(0, bands).parallel().forEach { b ->
+        com.spielgrund.glitchr.image.Workload.forEach(bands) { b ->
             val rowFrom = b * band * k
             val rowTo = min(hh, (b + 1) * band * k)
             val rows = rowTo - rowFrom

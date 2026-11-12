@@ -157,7 +157,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
                         host.layerChanged()
                     }
                 }.apply { toolTipText = p.tip })
-                is Param.Curve -> form.full(CurveField(layer.texts[p.key] ?: "") { text ->
+                is Param.Curve -> form.full(CurveField(layer.texts[p.key] ?: p.defaultText, p.single) { text ->
                     if (layer.texts[p.key] != text) {
                         layer.texts[p.key] = text
                         host.layerChanged()
@@ -583,7 +583,7 @@ class LayerEditor(private val layer: Layer, private val host: LayerEditorHost) :
         })
         form.full(hint(
             (p.tip?.let { "$it. " } ?: "") +
-                "The right mouse button (or Alt) wipes arrows away. While the mask is shown, the mask is edited instead.",
+                "The right mouse button (or Alt) wipes arrows away. Ctrl + left drag pushes the arrows under the brush along, Ctrl + right drag smooths them; Alt + mouse wheel sets the brush size. While the mask is shown, the mask is edited instead.",
         ))
     }
 

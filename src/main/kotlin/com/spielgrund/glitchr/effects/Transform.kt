@@ -11,11 +11,11 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * Moves, scales (also in X and Y alone), turns and mirrors the picture around a center.
+ * Moves, scales (also in X and Y alone), shears, turns and mirrors the picture around a center.
  * What comes in from beyond the picture's edge is transparent, repeated, mirrored or the
  * stretched edge; sampling is smooth (bilinear) or hard (nearest pixel).
  */
-object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mirror around a chosen center") {
+object Transform : Effect("transform", "Transform", "Shift, scale, shear, rotate and mirror around a chosen center") {
     /** Edge choices, shared with the generators' position. */
     internal val edgeOptions = listOf("Transparent", "Repeat", "Mirror", "Stretch edge")
 
@@ -27,6 +27,8 @@ object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mi
         Param.Slider("scale", "Scale", 10, 10000, 1000, " %", decimals = 1, transform = true),
         Param.Slider("stretchX", "Stretch X", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in X"),
         Param.Slider("stretchY", "Stretch Y", 10, 10000, 1000, " %", decimals = 1, tip = "Additionally scale only in Y"),
+        Param.Slider("shearX", "Shear X", -8500, 8500, 0, "°", decimals = 2, tip = "Slants the picture sideways: the top and bottom shift against each other"),
+        Param.Slider("shearY", "Shear Y", -8500, 8500, 0, "°", decimals = 2, tip = "Slants the picture up and down: the left and right shift against each other"),
         Param.Slider("rotation", "Rotation", -18000, 18000, 0, "°", decimals = 2),
         Param.Slider("centerX", "Center X", -1000, 2000, 500, " %", decimals = 1, tip = "Scaling and rotation happen around this point", transform = true),
         Param.Slider("centerY", "Center Y", -1000, 2000, 500, " %", decimals = 1, transform = true),
@@ -41,7 +43,7 @@ object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mi
     )
 
     /** The settings that motion blur follows. */
-    val MOVING = setOf("offsetX", "offsetY", "scale", "stretchX", "stretchY", "rotation", "centerX", "centerY")
+    val MOVING = setOf("offsetX", "offsetY", "scale", "stretchX", "stretchY", "shearX", "shearY", "rotation", "centerX", "centerY")
 
     override val random = false
 
@@ -50,6 +52,7 @@ object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mi
         offsetX = v["offsetX"] / 10.0, offsetY = v["offsetY"] / 10.0,
         scaleX = v["scale"] / 1000.0 * v["stretchX"] / 1000.0, scaleY = v["scale"] / 1000.0 * v["stretchY"] / 1000.0,
         rotation = v["rotation"] / 100.0,
+        shearX = v["shearX"] / 100.0, shearY = v["shearY"] / 100.0,
         centerX = src.width * v["centerX"] / 1000.0, centerY = src.height * v["centerY"] / 1000.0,
         mirrorX = v.bool("mirrorX"), mirrorY = v.bool("mirrorY"),
         edge = edgeOf(v["edge"]), smooth = v.bool("smooth"),
@@ -57,16 +60,16 @@ object Transform : Effect("transform", "Transform", "Shift, scale, rotate and mi
 }
 
 /**
- * [src] moved by ([offsetX], [offsetY]), scaled, turned by [rotation] degrees and mirrored
+ * [src] moved by ([offsetX], [offsetY]), scaled, sheared by [shearX] and [shearY] degrees, turned by [rotation] degrees and mirrored
  * around ([centerX], [centerY]); outside the picture [edge] decides (null = transparent).
  * Returns [src] itself when nothing changes.
  */
 internal fun transformPixels(
     src: Pixels, offsetX: Double = 0.0, offsetY: Double = 0.0, scaleX: Double = 1.0, scaleY: Double = 1.0,
-    rotation: Double = 0.0, centerX: Double = src.width / 2.0, centerY: Double = src.height / 2.0,
+    rotation: Double = 0.0, shearX: Double = 0.0, shearY: Double = 0.0, centerX: Double = src.width / 2.0, centerY: Double = src.height / 2.0,
     mirrorX: Boolean = false, mirrorY: Boolean = false, edge: Edge? = null, smooth: Boolean = true,
 ): Pixels {
-    if (offsetX == 0.0 && offsetY == 0.0 && scaleX == 1.0 && scaleY == 1.0 && rotation == 0.0 && !mirrorX && !mirrorY) return src
+    if (offsetX == 0.0 && offsetY == 0.0 && scaleX == 1.0 && scaleY == 1.0 && rotation == 0.0 && shearX == 0.0 && shearY == 0.0 && !mirrorX && !mirrorY) return src
     val w = src.width
     val h = src.height
     val a = Math.toRadians(rotation)
@@ -75,13 +78,19 @@ internal fun transformPixels(
     // back from the output to the picture: undo the shift, the turn, the scale and the mirror
     val sx = (if (mirrorX) -1 else 1) * scaleX.coerceAtLeast(1e-6)
     val sy = (if (mirrorY) -1 else 1) * scaleY.coerceAtLeast(1e-6)
+    // the shear [[1, kx], [ky, 1]] (after the scale, before the turn) and its inverse
+    val kx = kotlin.math.tan(Math.toRadians(shearX))
+    val ky = kotlin.math.tan(Math.toRadians(shearY))
+    val det = (1 - kx * ky).let { if (kotlin.math.abs(it) < 1e-3) (if (it < 0) -1e-3 else 1e-3) else it }
     val out = Pixels(w, h)
     parallelRows(h) { y ->
         for (x in 0 until w) {
             val dx = x + 0.5 - centerX - offsetX
             val dy = y + 0.5 - centerY - offsetY
-            val qx = centerX + (dx * ca + dy * sa) / sx
-            val qy = centerY + (-dx * sa + dy * ca) / sy
+            val rx = dx * ca + dy * sa
+            val ry = -dx * sa + dy * ca
+            val qx = centerX + (rx - kx * ry) / det / sx
+            val qy = centerY + (ry - ky * rx) / det / sy
             out.data[y * w + x] = when {
                 smooth -> if (edge == null) sampleTransparent(src, qx, qy) else sampleBilinear(src, qx, qy, edge)
                 else -> sampleNearest(src, qx, qy, edge)

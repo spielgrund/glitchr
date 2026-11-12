@@ -137,7 +137,8 @@ object Wiggle : Effect("wiggle", "Camera wiggle", "2.5D: the camera moves, near 
         return sampleBilinear(src, qx - ux * best, qy - uy * best, Edge.CLAMP)
     }
 
-    private fun depthAt(d: FloatArray, w: Int, h: Int, x: Double, y: Double): Double {
+    /** The depth at ([x], [y]), between the pixels. */
+    internal fun depthAt(d: FloatArray, w: Int, h: Int, x: Double, y: Double): Double {
         val cx = (x - 0.5).coerceIn(0.0, w - 1.0)
         val cy = (y - 0.5).coerceIn(0.0, h - 1.0)
         val x0 = cx.toInt()

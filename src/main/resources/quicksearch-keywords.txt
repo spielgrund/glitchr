@@ -29,7 +29,7 @@ generator noisesphere: sphere, ball, particles, filaments, burst, hairy, kugel, 
 generator model3d: 3d, obj, blender, mesh, object, model, torus, cube, skull, duck, würfel, ente, schädel
 generator lightning: bolt, thunder, electric, storm, flash, blitz, gewitter, strom
 generator laserarray: laser, beams, rays, show, stage, concert, club, light show, fan, strahlen, laserstrahlen, bühne, lichtshow
-generator pixelrain: pixel rain, rain, falling, matrix, lines, streaks, particles, emitter, gravity, lifetime, oscillator, sine, saw, pulse, slant, drop shadow, retro, regen, fallen, pixelregen, linien, schatten
+generator shaperain: shape rain, pixel rain, rain, falling, matrix, lines, streaks, particles, emitter, gravity, lifetime, oscillator, sine, saw, pulse, slant, drop shadow, retro, regen, fallen, pixelregen, linien, schatten
 generator smoke: smoke, fog, mist, haze, plume, wisps, steam, cloud, particles, smokelets, burst, motion blur, normal map, rim light, drop shadow, rauch, nebel, dunst, dampf, qualm, schwaden
 generator portal: vortex, gate, stargate, ring, swirl, wormhole, tor, wirbel
 generator explosion: boom, blast, fireball, bomb, mushroom cloud, fire, smoke, kaboom, feuerball, rauch, atompilz
@@ -43,6 +43,8 @@ generator errors: error, windows, dialog, popup, message, solitaire, fehler, mel
 generator tribal: tattoo, ornament, sigilism, polynesian, flames, tribal tattoo
 generator flowers: flower, rose, tulip, daisy, sunflower, bouquet, blossom, blumen, rose, tulpe, strauß
 generator chaostype: typography, carson, grunge, text, letters, type, typo, schrift, buchstaben
+generator fireworks: fireworks, firework, rocket, rockets, new year, silvester, celebration, explosion, sparks, peony, willow, chrysanthemum, feuerwerk, rakete, raketen, neujahr, böller, funken
+generator eclipse: eclipse, solar eclipse, sun, moon, corona, totality, diamond ring, annular, ring of fire, space, dark sun, dark souls, beam, strahl, sonnenfinsternis, finsternis, sonne, mond, korona
 generator blackhole: black hole, interstellar, space, accretion, stars, schwarzes loch, weltall
 generator chars: text, letters, ascii, characters, type, schrift, buchstaben, zeichen
 
@@ -62,7 +64,11 @@ effect slitscan: slit scan, scan, time, stretch, schlitz
 # ---------------------------------------------------------------- effects: distort & repeat
 
 effect offset: shift, move, wrap, offset, verschieben
-effect transform: move, scale, rotate, position, size, verschieben, skalieren, drehen
+effect transform: move, scale, rotate, position, size, shear, skew, slant, verschieben, skalieren, drehen, scheren, neigen, schräg
+effect pixelrain: pixel rain, rain, falling pixels, drops, splash, particles, regen, pixelregen, tropfen, spritzer, aufprall, fallen
+effect spheretransform: sphere transform, sphere, dome, look up, zenith, nadir, vanishing point, converge, streaks, globe, meridians, pole, kuppel, schlieren, hochschauen, bend, curve, converge, stretch, warp, kugel, kugeltransformation, globus, pol, biegen, krümmen, zusammenziehen, dehnen
+effect depthblur: depth blur, depth of field, dof, bokeh, lens blur, lenscare, aperture, f-stop, blades, focus, tiefenunschärfe, unschärfe, blende, schärfentiefe, fokus, objektiv
+effect risingpixels: rising pixels, particles, pixels fly, float up, disintegrate, dissolve, dust, fireflies, aufsteigen, pixel fliegen, partikel, auflösen, zerfallen, staub
 effect tilegrid: grid, tiles, repeat, kacheln, raster, wiederholen
 effect tiling: tile, repeat, pattern, mirror, kacheln, wiederholen, spiegeln
 effect breakopen: crack, break, shatter, open, pieces, roll, aufbrechen, zerbrechen, risse
@@ -155,6 +161,7 @@ effect luminescence: bioluminescence, black light, uv, glow, neon, biolumineszen
 effect zmap: depth, z map, z-map, 3d, depth map, tiefe, tiefenkarte
 effect fog: fog, haze, mist, depth, nebel, dunst
 effect wiggle: wiggle, wigglegram, parallax, 3d, camera, wackeln, kamera
+effect dolly: dolly, camera dolly, dolly zoom, vertigo, push in, drive in, zoom in, fly in, 2.5d, 3d, parallax, depth, kamerafahrt, hineinfahren, ranfahren, reinzoomen, kamera, tiefe
 
 # ---------------------------------------------------------------- effects: time
 
@@ -167,7 +174,15 @@ effect blocktime: block, time glitch, frames, datamosh, zeit, blöcke
 effect stutter: stutter, freeze, repeat, frames, stottern, wiederholen
 effect timegrid: grid, frames, time, contact sheet, zeit, raster
 effect persistence: persistence, trails, ghosting, afterimage, nachleuchten, spuren
-effect strobe: strobe, stroboscope, flicker, flash, stroboskop, flackern
+effect minmax: minimum, maximum, min max, dilate, erode, grow, shrink, expand, choke, spread, blob, streak, after effects, erweitern, wachsen
+effect beat: beat, bpm, rhythm, music, pulse, bounce, kick, sync, takt, musik, rhythmus, pumpen, curve, kurve
+effect morph: morph, transition, blend, crossfade, dissolve, wipe, überblenden, übergang, verwandeln
+effect uzumaki: uzumaki, swirl, twirl, whirl, vortex, spiral, sphere, dome, 360, panorama, hdri, sky, wrap, twist, camera, look around, strudel, wirbel, kugel, kuppel, himmel
+effect scanner: scanner, scan, flatbed, streaks, smear, light leak, xerox, copy, kopierer, schlieren
+effect mp4preview: mp4, h264, h.264, video, export, preview, compression, codec, vorschau, kompression
+effect grain: grain, film grain, noise, iso, film, analog, körnung, korn, rauschen, filmkorn
+effect onionskin: onion skin, onionskin, zwiebelhaut, stroboscope, strobe, stroboskop, ghost copies, trails
+effect flicker: flicker, flackern, flash, blitz, strobe, random, transparent, invert, blink, blinken
 effect timedatamosh: datamosh, motion, mosh, bewegung
 effect motionblur: motion blur, blur, speed, movement, bewegungsunschärfe, bewegung
 effect feverdream: fever dream, eyes, eye, blink, staring, surreal, creepy, horror, nightmare, psychedelic, fiebertraum, augen, auge, blinzeln, starren, albtraum, gruselig

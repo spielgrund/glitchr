@@ -44,7 +44,8 @@ class Pixels(val width: Int, val height: Int, val data: IntArray = IntArray(widt
 }
 
 /** Runs [body] for every row index in parallel. */
-fun parallelRows(height: Int, body: (Int) -> Unit) = IntStream.range(0, height).parallel().forEach { body(it) }
+/** Runs [body] for every row, spread over the cores rendering may use (see [Workload]). */
+fun parallelRows(height: Int, body: (Int) -> Unit) = Workload.forEach(height, body)
 
 fun alpha(c: Int) = c ushr 24
 fun red(c: Int) = (c shr 16) and 0xFF

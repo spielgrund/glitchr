@@ -30,7 +30,7 @@ object Lens : Effect("lens", "Optics", "Lens defects: distortion, vignette, chro
     private val glitches = listOf("Off", "Shards", "Fresnel rings", "Facets", "Ghosts", "Cracks")
 
     override val params = listOf(
-        Param.Slider("distortion", "Bulge", -100, 100, 30, " %", "Positive: barrel distortion bulging outwards · negative: pincushion pulled inwards"),
+        Param.Slider("distortion", "Bulge", -100, 100, -25, " %", "Positive: barrel distortion bulging outwards · negative: pincushion pulled inwards"),
         Param.Toggle("fit", "Fill picture", true, "Scales so that no empty borders appear; off: whatever lies outside becomes transparent"),
         Param.Slider("centerX", "Center X", 0, 10000, 5000, " %", "Optical center, for “Cracks” also the impact", decimals = 2, transform = true),
         Param.Slider("centerY", "Center Y", 0, 10000, 5000, " %", decimals = 2, transform = true),

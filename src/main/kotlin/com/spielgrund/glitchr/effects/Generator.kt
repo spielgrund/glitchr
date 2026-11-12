@@ -194,7 +194,7 @@ object Generators {
             defaultBase = 0x04060C,
         ),
         Generator(
-            "pixelrain", "Pixel rain", "Lines in two colors with slanted ends raining down from the top – falling steadily or with gravity, each with its lifetime, sine, saw and pulse oscillators on their speed, drop shadows; optionally on a coarse pixel grid", PixelRain,
+            "shaperain", "Shape rain", "Lines in two colors with slanted ends raining down from the top – falling steadily or with gravity, each with its lifetime, sine, saw and pulse oscillators on their speed, drop shadows; optionally on a coarse pixel grid", ShapeRain,
             defaultBase = 0x05060A,
         ),
         Generator(
@@ -247,6 +247,14 @@ object Generators {
         Generator(
             "chaostype", "Chaos type", "Chaotic grunge typography in the manner of David Carson, your text or made-up words", CarsonType,
             defaultBase = 0xE9E4DA,
+        ),
+        Generator(
+            "eclipse", "Solar eclipse", "A solar eclipse – totality with a glowing corona, fine rays, helmet streamers and pink prominences, a flaring diamond ring, a ring of fire or partial; animate the moon passing", SolarEclipse,
+            defaultBase = 0x000000,
+        ),
+        Generator(
+            "fireworks", "Fireworks", "Rockets climb on a trail of sparks and burst into peonies, chrysanthemums, willows, rings, palms, glitter and crossettes – animate the time, it loops seamlessly", Fireworks,
+            defaultBase = 0x05060E,
         ),
         Generator(
             "blackhole", "Black hole", "A black hole with a glowing disk among stars – Interstellar, Luminet 1978, EHT 2019 and 2024",

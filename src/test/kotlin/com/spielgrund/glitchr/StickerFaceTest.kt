@@ -97,4 +97,22 @@ class StickerFaceTest {
             assertTrue(changed(out, 50, 40, 150, 80) > 50, "ears $ears")
         }
     }
+
+    @Test
+    fun `every mood looks different, the eye color colors the eyes, custom leaves the choices to you`() {
+        fun face(vararg c: Pair<String, Int>) = StickerFace.apply(src, StickerFace.defaultValues(mapOf("blink" to 0, *c), mapOf("handPoints" to "")), 1)
+        val moods = (1..12).map { face("mood" to it).data.toList() }
+        assertEquals(moods.size, moods.toSet().size, "twelve different faces")
+        // a mood overrides the chosen styles; Custom uses them
+        assertContentEquals(face("mood" to 1).data, face("mood" to 1, "mouth" to 5, "eyes" to 6).data)
+        assertTrue(!face("mood" to 0, "mouth" to 5).data.contentEquals(face("mood" to 0).data))
+        assertEquals("mood" to setOf(0), StickerFace.params.first { it.key == "eyes" }.shownFor)
+        // blue irises in the cartoon eyes
+        val blue = face("eyes" to 2, "eyeColor" to 0x3366FF)
+        assertTrue(blue.data.count { (it and 0xFF) > 200 && (it shr 16 and 0xFF) < 120 } > 5, "blue in the eyes")
+        assertTrue(face("eyes" to 2).data.none { (it and 0xFF) > 200 && (it shr 16 and 0xFF) < 120 }, "not by default")
+        // the tongue is pink, under the smile
+        val tongue = face("mouth" to 6)
+        assertTrue(tongue.data.count { (it shr 16 and 0xFF) > 200 && (it shr 8 and 0xFF) < 130 && (it and 0xFF) > 80 && (it and 0xFF) < 150 } > 20, "a pink tongue")
+    }
 }

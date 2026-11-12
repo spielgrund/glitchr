@@ -327,8 +327,8 @@ object Persistence : TimeEffect("persistence", "Persistence", "Bright moving thi
     }
 }
 
-/** Stroboscope / onion skin: single copies at fixed distances in time, each in its own color if wanted. */
-object Stroboscope : TimeEffect("strobe", "Stroboscope", "Single copies of earlier (or later) frames at fixed distances – onion skin, each in its own color if you like") {
+/** Onion skin: single copies at fixed distances in time, each in its own color if wanted. */
+object OnionSkin : TimeEffect("onionskin", "Onion Skin", "Single copies of earlier (or later) frames at fixed distances – onion skin, each in its own color if you like") {
     override val params = listOf(
         Param.Slider("copies", "Copies", 1, 20, 4),
         Param.Slider("spacing", "Spacing", 1, 60, 4, " frames"),
@@ -383,6 +383,114 @@ object Stroboscope : TimeEffect("strobe", "Stroboscope", "Single copies of earli
                     c = lerpArgb(c, blend.apply(c, p), strength)
                 }
                 out.data[i] = c
+            }
+        }
+        return out
+    }
+}
+
+/**
+ * Flicker: now and then, at random, the picture – or single stripes or blocks of it – goes
+ * transparent, inverts, flashes black, white or a color, jumps in brightness or hue, or jumps
+ * sideways, for a frame or a few. Which frames flicker and how is fixed by the seed, so the same
+ * animation flickers the same way every time it is played; “Reroll” gives other flickers.
+ */
+object Flicker : TimeEffect("flicker", "Flicker", "At random frames the picture goes transparent, inverts, flashes black, white or a color, jumps in brightness, hue or sideways – whole or in stripes and blocks") {
+    private const val TRANSPARENT = 0
+    private const val INVERT = 1
+    private const val BLACK = 2
+    private const val WHITE = 3
+    private const val FLASH = 4
+    private const val BRIGHTNESS = 5
+    private const val HUE = 6
+    private const val JUMP = 7
+    private val kinds = listOf(
+        "transparent" to "Transparent", "invert" to "Invert", "black" to "Black", "white" to "White",
+        "flash" to "Color flash", "brightness" to "Brightness jump", "hue" to "Hue jump", "jump" to "Sideways jump",
+    )
+    private val areas = listOf("Whole picture", "Stripes", "Columns", "Blocks")
+
+    override val params = listOf(
+        Param.Toggle("manual", "Flicker now", false, "Flickers this frame, whatever the chance – set keyframes to switch it on exactly where you want a flicker; with chance 0 % only then"),
+        Param.Slider("chance", "Chance", 0, 100, 25, " %", "How often it flickers by itself: the share of the moments that flicker"),
+        Param.Slider("hold", "Duration", 1, 30, 1, " frames", "How long one flicker lasts – and one calm moment"),
+        Param.Slider("strength", "Strength", 0, 100, 100, " %", "How far a flicker goes: fully transparent, fully inverted …"),
+        Param.Slider("vary", "Varying strength", 0, 100, 40, " %", "Each flicker a little weaker at random"),
+        Param.Heading("kindsHeading", "Flickers with"),
+    ) + kinds.mapIndexed { k, (key, label) ->
+        Param.Toggle(key, label, k == TRANSPARENT || k == INVERT || k == WHITE, "One of the things a flicker can do – picked at random among the ones switched on")
+    } + listOf(
+        Param.Color("flashColor", "Flash color", 0xFF2D95).shownWhen("flash", 1),
+        Param.Slider("jumpSize", "Jump", 1, 100, 10, " %", "How far a sideways jump goes at most, of the width").shownWhen("jump", 1),
+        Param.Heading("areaHeading", "Where"),
+        Param.Choice("area", "Flickers", areas, 0, "The whole picture at once, or every stripe, column or block on its own"),
+        Param.Slider("pieces", "Pieces", 2, 64, 8, tip = "How many stripes or columns, or blocks across").shownWhen("area", 1, 2, 3),
+        Param.Slider("phase", "Phase", 0, 59, 0, " frames", "Shifts when the flickers come"),
+    )
+
+    /** The flicker of one piece at one moment: its kind (−1: none), how strong, and a random number for its direction. */
+    private class Flick(val kind: Int, val amount: Double, val r: Double)
+
+    override fun apply(src: Pixels, v: Values, seed: Long, frames: FrameInput?): Pixels {
+        val w = src.width
+        val h = src.height
+        val on = kinds.indices.filter { v[kinds[it].first] == 1 }
+        val manual = v["manual"] == 1
+        if (on.isEmpty() || (v["chance"] == 0 && !manual)) return src
+        val slot = Math.floorDiv((frames?.frame ?: 0) + v["phase"], v["hold"])
+        val chance = v["chance"] / 100.0
+        val strength = v["strength"] / 100.0
+        val vary = v["vary"] / 100.0
+        val area = v["area"]
+        val pieces = v["pieces"]
+        val cols = if (area == 2 || area == 3) pieces else 1
+        val rows = when (area) {
+            1 -> pieces
+            3 -> max(1, (pieces * h.toDouble() / w).roundToInt())
+            else -> 1
+        }
+        val flicks = Array(cols * rows) { cell ->
+            // switched on by hand, every piece flickers
+            if (!manual && unit(timeHash(slot, cell, 0, seed)) >= chance) Flick(-1, 0.0, 0.0)
+            else Flick(
+                on[(unit(timeHash(slot, cell, 1, seed)) * on.size).toInt().coerceAtMost(on.size - 1)],
+                strength * (1 - vary * unit(timeHash(slot, cell, 2, seed))),
+                unit(timeHash(slot, cell, 3, seed)),
+            )
+        }
+        if (flicks.all { it.kind < 0 }) return src
+        val flash = v["flashColor"] and 0xFFFFFF
+        val jump = v["jumpSize"] / 100.0 * w
+        val out = Pixels(w, h)
+        parallelRows(h) { y ->
+            val row = y * rows / h
+            for (x in 0 until w) {
+                val i = y * w + x
+                val c = src.data[i]
+                val f = flicks[row * cols + x * cols / w]
+                val a = f.amount.toFloat()
+                out.data[i] = when (f.kind) {
+                    TRANSPARENT -> (((c ushr 24) * (1 - a) + 0.5f).toInt() shl 24) or (c and 0xFFFFFF)
+                    INVERT -> lerpArgb(c, c xor 0xFFFFFF, a)
+                    BLACK -> lerpArgb(c, c and 0xFF000000.toInt(), a)
+                    WHITE -> lerpArgb(c, c or 0xFFFFFF, a)
+                    FLASH -> lerpArgb(c, (c and 0xFF000000.toInt()) or flash, a)
+                    BRIGHTNESS -> {
+                        // brighter or darker, at random
+                        val k = if (f.r < 0.5) 1 + 2 * f.amount else 1 - 0.85 * f.amount
+                        argb(c ushr 24, ((c shr 16 and 0xFF) * k).roundToInt().coerceIn(0, 255), ((c shr 8 and 0xFF) * k).roundToInt().coerceIn(0, 255), ((c and 0xFF) * k).roundToInt().coerceIn(0, 255))
+                    }
+                    HUE -> {
+                        // the channels passed on: red to green to blue, or the other way round
+                        val r = c shr 16 and 0xFF; val g = c shr 8 and 0xFF; val b = c and 0xFF
+                        lerpArgb(c, if (f.r < 0.5) argb(c ushr 24, b, r, g) else argb(c ushr 24, g, b, r), a)
+                    }
+                    JUMP -> {
+                        val d = ((f.r * 2 - 1) * jump * f.amount).roundToInt()
+                        src.data[y * w + Math.floorMod(x - d, w)]
+                    }
+                    else -> c
+                }
             }
         }
         return out

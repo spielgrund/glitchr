@@ -324,7 +324,7 @@ object SpikeBall : Effect("spikeball", "Spike ball", "A ball of chrome spikes li
             }
         }
 
-        java.util.stream.IntStream.range(0, bands).parallel().forEach { bn ->
+        com.spielgrund.glitchr.image.Workload.forEach(bands) { bn ->
             val rowFrom = bn * band * k
             val rowTo = min(hh, (bn + 1) * band * k)
             val rows = rowTo - rowFrom

@@ -51,7 +51,7 @@ sealed class Param(val key: String, val label: String, val default: Int, val tip
     class Ramp(key: String, label: String, defaultText: String, tip: String? = null) : Text(key, label, defaultText, tip)
 
     /** Tone curves (see [Curves]); stored as text, edited in a curve editor. */
-    class Curve(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
+    class Curve(key: String, label: String, tip: String? = null, defaultText: String = "", val single: Boolean = false) : Text(key, label, defaultText, tip)
 
     /** An own symbol pasted in (see [CustomIcon]): SVG or a black-and-white picture, stored as text. */
     class Icon(key: String, label: String, tip: String? = null) : Text(key, label, "", tip)
@@ -135,15 +135,15 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 /** All available effects, grouped and in menu order: the groups and the effects in them alphabetical. */
 object Effects {
     val categories: List<EffectCategory> = listOf(
-        EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, TunnelTransform, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf)),
-        EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Dither, Filler, Blur, Sharpen, Glow, LightStreaks, LightRays, LightLeaks, DropShadow, H264Prep)),
+        EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan, Scanner)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, TunnelTransform, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf, Uzumaki, Morph, RisingPixels, PixelRain, SphereTransform)),
+        EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Dither, Filler, Blur, Sharpen, MinMax, Grain, Glow, LightStreaks, LightRays, LightLeaks, DropShadow, H264Prep, Mp4Preview)),
         EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
         EffectCategory("Patterns & Generative", listOf(NoiseField, ColorPattern, Geometric, MoireFilter, Generative, GridModules, Characters, CarsonType, Ridgelines, Particles, UvTexture, FeverDream, StickerFace)),
         EffectCategory("Material & Optics", listOf(Glass, Metal, Hologram, Lens, BlackHole, Television, Fire, Fireflies, FreezeOver, Luminescence, GalaxySkin, Slime, ThinFilm)),
-        EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle)),
-        EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, Stroboscope, MotionDatamosh, MotionBlur)),
+        EffectCategory("Depth (2.5D)", listOf(ZMap, Fog, Wiggle, Dolly, DepthBlur)),
+        EffectCategory("Time", listOf(TimeFeedback, TimeBlend, TimeDifference, TimeDisplace, RgbTimeSplit, BlockTimeGlitch, Stutter, TimeGrid, Persistence, OnionSkin, Flicker, Beat, MotionDatamosh, MotionBlur)),
     ).map { c -> EffectCategory(c.name, c.effects.sortedBy { menuOrder(it.name) }) }.sortedBy { menuOrder(it.name) }
 
     val all: List<Effect> = categories.flatMap { it.effects }
@@ -181,6 +181,21 @@ interface FrameInput {
 
     /** The picture this effect receives at frame [f] (0 until [frameCount]). */
     fun at(f: Int): Pixels
+
+    /** Frames per second of the animation. */
+    val fps: Double get() = 25.0
+
+    /** The animation's tempo in beats per minute. */
+    val bpm: Double get() = 120.0
+}
+
+/**
+ * An effect that also sees the picture below its layer – the canvas its group is laid over –
+ * e.g. to blend or morph between the two. Null where there is none (an adjustment layer: its
+ * picture already is everything below).
+ */
+interface UsesBelow {
+    fun apply(src: Pixels, below: Pixels?, v: Values, seed: Long, frames: FrameInput?): Pixels
 }
 
 /**

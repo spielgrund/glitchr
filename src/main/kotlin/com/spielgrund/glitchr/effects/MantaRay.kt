@@ -226,9 +226,10 @@ object MantaRay : Effect("mantaray", "Manta ray", "A manta ray beating its wings
         // thick in the middle, thin wings; blunt in front, tapering behind
         fun thickAt(a: Double) = thick * (0.07 * exp(-(a / 0.15).pow(2)) + 0.022 * exp(-(a / 0.4).pow(2))) + 0.005
         fun profile(c: Double) = sin(PI * c).coerceAtLeast(0.0).pow(0.55) * (1.15 - 0.4 * c)
-        // how steep a wing is at [a] out along its span and [c] back along its chord: the beat, later further out and
-        // further back
-        fun angle(a: Double, c: Double) = flap * 0.6 * smoothstep(0.05, 0.6, a) * sin(beat - wave * (2.4 * a + 1.0 * c) * 1.6)
+        // how steep a wing is at [a] out along its span and [c] back along its chord: the beat, later further out – and
+        // only a little later further back, a slight twist: a bigger lag would tip the front edge up and the back edge
+        // down, so the wingtips spread into tall paddles instead of beating
+        fun angle(a: Double, c: Double) = flap * 0.6 * smoothstep(0.05, 0.6, a) * sin(beat - wave * (3.8 * a + 0.25 * c * a))
 
         // ---- the wings and body: a top and a bottom sheet over the same outline, meeting at the edges ----
         val half = 72
@@ -366,7 +367,7 @@ object MantaRay : Effect("mantaray", "Manta ray", "A manta ray beating its wings
         }
 
         val out = if (transparent) Pixels(w, h) else src.copy()
-        java.util.stream.IntStream.range(0, bands).parallel().forEach { bn ->
+        com.spielgrund.glitchr.image.Workload.forEach(bands) { bn ->
             val rowFrom = bn * band * k
             val rowTo = min(hh, (bn + 1) * band * k)
             val rows = rowTo - rowFrom

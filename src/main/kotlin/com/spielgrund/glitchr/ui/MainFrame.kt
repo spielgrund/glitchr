@@ -148,7 +148,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
     private var projectFile: File? = null
 
     private val renderer = Renderer()
-    private val renderExecutor = Executors.newSingleThreadExecutor { Thread(it, "glitch-render").apply { isDaemon = true } }
+    private val renderExecutor = Executors.newSingleThreadExecutor(com.spielgrund.glitchr.image.Workload.threads("glitch-render"))
     private val generation = AtomicInteger()
 
     // ---- animation
@@ -168,7 +168,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
      * a cache and renders one frame at a time), so the interactive one keeps its cache too.
      */
     private val animRenderers = mutableListOf<Renderer>()
-    private val animExecutor = Executors.newCachedThreadPool { Thread(it, "glitch-animation").apply { isDaemon = true } }
+    private val animExecutor = Executors.newCachedThreadPool(com.spielgrund.glitchr.image.Workload.threads("glitch-animation"))
 
     /** Frames a playback thread is rendering right now, so the others take different ones. */
     private val claimedFrames = HashSet<Int>()
@@ -499,6 +499,10 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                 "Animated angles move in whole degrees; keyframes keep their fractions",
                 PREF_WHOLE_ROTATIONS,
             ) { WholeSteps.rotations = it })
+            add(JMenuItem("Performance…").apply {
+                toolTipText = "How many processor cores and how much memory GlitchR may use, and whether it renders at low priority"
+                addActionListener { Performance.showDialog(this@MainFrame) }
+            })
             add(JMenuItem("Edit quick search keywords…").apply {
                 toolTipText = "Opens the list of keywords the quick search (F1, F2, F3) finds the filters by – a text file you can edit"
                 addActionListener { editQuickKeywords() }
@@ -872,7 +876,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val cacheVersion = frameCache.version
         val animated = timeline != null && !original
         // time effects see the other frames of the animation
-        val session = timeline?.takeIf { !original }?.let { com.spielgrund.glitchr.model.TimeSession(snapshots, it.frames, width, height) }
+        val session = timeline?.takeIf { !original }?.let { com.spielgrund.glitchr.model.TimeSession(snapshots, it.frames, width, height, it.fps.toDouble(), it.bpm) }
         status.text = "Rendering…"
         renderExecutor.execute {
             if (generation.get() != gen) return@execute
@@ -893,7 +897,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
                     updateStatus(if (generation.get() == gen) "$ms ms" else "Rendering…")
                 }
             } catch (e: OutOfMemoryError) {
-                SwingUtilities.invokeLater { status.text = "Out of memory – start GlitchR with more memory (java -Xmx8g -jar …)" }
+                SwingUtilities.invokeLater { status.text = "Out of memory – allow GlitchR more memory in Settings › Performance" }
             } catch (e: Exception) {
                 e.printStackTrace()
                 SwingUtilities.invokeLater { status.text = "Error while rendering: ${e.message}" }
@@ -1057,7 +1061,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         val workers = renderThreads(snapshots.size)
         while (animRenderers.size < workers) animRenderers += Renderer()
         // one time session for all threads, so the frames time effects look at are rendered only once
-        val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height)
+        val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height, t.fps.toDouble(), t.bpm)
         for (k in 0 until workers) animExecutor.execute { prerender(animRenderers[k], snapshots, session, width, height, t, version, run) }
         playTimer = javax.swing.Timer(maxOf(1, 1000 / t.fps)) { tick() }.apply {
             initialDelay = 0
@@ -1072,7 +1076,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
      * renderer keeps the in-between pictures of all [layerCount] layers.
      */
     private fun renderThreads(layerCount: Int): Int {
-        val cores = Runtime.getRuntime().availableProcessors()
+        // within the cores rendering may use (see the performance settings)
+        val cores = com.spielgrund.glitchr.image.Workload.cores
         val perRenderer = docWidth.toLong() * docHeight * 4 * (3L * layerCount + 4)
         val byMemory = (Runtime.getRuntime().maxMemory() * 0.25 / perRenderer).toInt()
         return minOf(maxOf(1, cores / 2), byMemory, 8).coerceAtLeast(1)
@@ -1109,7 +1114,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         } catch (e: OutOfMemoryError) {
             SwingUtilities.invokeLater {
                 stopPlayback()
-                status.text = "Out of memory – start GlitchR with more memory (java -Xmx8g -jar …)"
+                status.text = "Out of memory – allow GlitchR more memory in Settings › Performance"
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1310,9 +1315,9 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         Thread({
             // several frames are rendered at once, each thread with its own renderer; the writer
             // takes them in order and the threads stay a few frames ahead of it
-            val pool = Executors.newFixedThreadPool(workers) { Thread(it, "glitch-export-render").apply { isDaemon = true } }
+            val pool = Executors.newFixedThreadPool(workers, com.spielgrund.glitchr.image.Workload.threads("glitch-export-render"))
             val renderers = ThreadLocal.withInitial { Renderer() }
-            val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height)
+            val session = com.spielgrund.glitchr.model.TimeSession(snapshots, t.frames, width, height, t.fps.toDouble(), t.bpm)
             val pending = HashMap<Int, java.util.concurrent.Future<Pixels>>()
             var last = -1
             fun request(f: Int) = pending.getOrPut(f) {
@@ -1395,6 +1400,21 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             toolTipText = "Pixels that changed only this little keep their old color – smaller files for noisy animations; 0 = exact"
         }
         val loop = javax.swing.JCheckBox("Loop forever", prefs.getBoolean("animLoop", true))
+        val levels = javax.swing.JComboBox(arrayOf("TV range 16–235 (standard)", "Full range 0–255 (for VLC)")).apply {
+            selectedIndex = if (prefs.getBoolean("animFullRange", false)) 1 else 0
+            toolTipText = "TV range: what YouTube, browsers, Premiere and Resolve expect. Full range: for players that show " +
+                "TV-range videos flat because they ignore the range tag (VLC with hardware decoding) – elsewhere it may look a little harsher"
+        }
+        val ffmpegPath = com.spielgrund.glitchr.export.Ffmpeg.path
+        val encoderBox = javax.swing.JComboBox(arrayOf(
+            if (ffmpegPath != null) "FFmpeg x264 (exact colors)" else "FFmpeg x264 – not installed",
+            "JCodec (built in)",
+        )).apply {
+            selectedIndex = if (ffmpegPath == null || !prefs.getBoolean("animFfmpeg", true)) 1 else 0
+            toolTipText = "FFmpeg (found on the PATH or in C:\\ffmpeg\\bin) makes the colors exactly and much smaller files. " +
+                "JCodec needs nothing installed, but its compression drifts the colors towards red and magenta" +
+                (ffmpegPath?.let { " · $it" } ?: "")
+        }
         fun update() {
             val f = formatBox.selectedItem
             backgroundBox.isEnabled = f != com.spielgrund.glitchr.export.AnimFormat.PNG
@@ -1404,6 +1424,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             colors.isEnabled = gif
             onlyChanges.isEnabled = gif
             tolerance.isEnabled = gif && onlyChanges.isSelected
+            levels.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.MP4
+            encoderBox.isEnabled = f == com.spielgrund.glitchr.export.AnimFormat.MP4 && ffmpegPath != null
         }
         formatBox.addActionListener { update() }
         onlyChanges.addActionListener { update() }
@@ -1415,7 +1437,7 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             fill = java.awt.GridBagConstraints.HORIZONTAL
         }
         val rows = listOf(
-            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "GIF colors" to colors, "Dithering" to dither,
+            "Format" to formatBox, "Size" to sizeBox, "Background" to backgroundBox, "MP4 encoder" to encoderBox, "MP4 levels" to levels, "GIF colors" to colors, "Dithering" to dither,
             "" to onlyChanges, "Change tolerance" to tolerance, "" to loop,
             "" to JLabel("<html><span style='color:gray'>${t.frames} frames · ${t.fps} fps · ${timecode(t.frames, t.fps)}${if (t.beats) " · " + t.length() + " at " + bpmText(t.bpm) + " BPM" else ""}<br>" +
                 "Background: under transparent parts (GIF and MP4 have none; PNG keeps it)</span></html>"),
@@ -1438,6 +1460,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
         prefs.putBoolean("animOnlyChanges", onlyChanges.isSelected)
         prefs.putInt("animTolerance", tolerance.value as Int)
         prefs.putBoolean("animLoop", loop.isSelected)
+        prefs.putBoolean("animFullRange", levels.selectedIndex == 1)
+        if (ffmpegPath != null) prefs.putBoolean("animFfmpeg", encoderBox.selectedIndex == 0)
         return com.spielgrund.glitchr.export.ExportSettings(
             format = format,
             scale = scales[sizeBox.selectedIndex] / 100.0,
@@ -1447,6 +1471,8 @@ class MainFrame : JFrame("GlitchR"), LayerEditorHost, TimelineHost {
             colors = colors.value as Int,
             onlyChanges = onlyChanges.isSelected,
             tolerance = tolerance.value as Int,
+            fullRange = levels.selectedIndex == 1,
+            ffmpeg = encoderBox.selectedIndex == 0,
         )
     }
 

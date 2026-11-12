@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
  * dragging it far off the square) removes it; the end points stay at the left and right
  * edge. The square takes the whole width of the editor. Every change goes to [onChange] as the curves' text.
  */
-class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(BorderLayout(0, 4)) {
+class CurveField(text: String, private val single: Boolean = false, private val onChange: (String) -> Unit) : JPanel(BorderLayout(0, 4)) {
     private val curves = Curves.parse(text).map { it.toMutableList() }.toMutableList()
     private var channel = 0
     private val area = Area()
@@ -38,14 +38,17 @@ class CurveField(text: String, private val onChange: (String) -> Unit) : JPanel(
         }
         val buttons = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
             isOpaque = false
-            add(channelBox)
-            add(javax.swing.Box.createHorizontalStrut(6))
+            // a single curve (not tone curves): no channels to choose
+            if (!single) {
+                add(channelBox)
+                add(javax.swing.Box.createHorizontalStrut(6))
+            }
             add(JButton("Reset").apply {
                 toolTipText = "Make this curve straight again"
                 addActionListener { curves[channel] = mutableListOf(0 to 0, 255 to 255); changed() }
             })
-            add(javax.swing.Box.createHorizontalStrut(6))
-            add(JButton("All").apply {
+            if (!single) add(javax.swing.Box.createHorizontalStrut(6))
+            if (!single) add(JButton("All").apply {
                 toolTipText = "Make all curves straight again"
                 addActionListener { for (k in curves.indices) curves[k] = mutableListOf(0 to 0, 255 to 255); changed() }
             })

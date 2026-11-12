@@ -30,7 +30,7 @@ object H264Prep : Effect("h264prep", "H.264 prep", "Prepares the picture for MP4
         Param.Slider("denoise", "Denoise", 0, 100, 25, " %", "Drops tiny frequencies (noise, grain) that cost data and turn into flicker and mosquito noise"),
         Param.Slider("qp", "Match quality (QP)", 0, 51, 0, tip = "Rounds the frequencies like the encoder at this quantizer, so you see the result beforehand and it compresses predictably; 0 = off"),
         Param.Toggle("chroma", "Colors on the 4:2:0 grid", true, "Averages the colors on the encoder's own 2 × 2 grid, so color edges don't smear further"),
-        Param.Toggle("safe", "Video levels (16–235)", false, "Keeps brightness within TV range, so players don't clip lights and shadows"),
+        Param.Toggle("safe", "Video levels (16–235)", false, "Squeezes the brightness into TV range – only for pictures that go into a video tool which doesn't convert them itself; GlitchR's own MP4 export already does, with this on its videos look flat"),
     )
 
     override val random = false

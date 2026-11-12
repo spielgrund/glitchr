@@ -47,7 +47,7 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
         Param.Slider("irregular", "Irregularity", 0, 100, 80, " %", "How uneven the shards and splinters are"),
         Param.Heading("orderHeading", "Order"),
         Param.Choice("start", "Comes loose", starts, 0, "From a side: a front running across · From a point: outwards from the handle · Random: anywhere · Clouds: in soft patches"),
-        Param.Slider("frontAngle", "Front direction", 0, 359, 180, "°", "Where the front runs to: 0° to the right, 90° upwards").shownWhen("start", 0),
+        Param.Slider("frontAngle", "Front direction", 0, 359, 180, "°", "Where the front runs to: 0° to the right, 90° downwards, 270° upwards").shownWhen("start", 0),
         Param.Slider("centerX", "Point X", -500000, 500000, 0, " px", "From the middle of the canvas – can also be dragged with the handle in the picture", decimals = 2, transform = true).shownWhen("start", 1),
         Param.Slider("centerY", "Point Y", -500000, 500000, 0, " px", decimals = 2, transform = true).shownWhen("start", 1),
         Param.Slider("cloudSize", "Cloud size", 1, 100, 25, " %", "Of the shorter side").shownWhen("start", 3),
@@ -55,7 +55,7 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
         Param.Heading("flightHeading", "Flight"),
         Param.Slider("duration", "Flight time", 5, 100, 35, " %", "How long a piece flies until it is gone, of the whole progress"),
         Param.Slider("distance", "Distance", 0, 300, 60, " %", "How far the pieces fly, of the shorter side"),
-        Param.Slider("direction", "Direction", 0, 359, 20, "°", "Where they fly: 0° to the right, 90° upwards"),
+        Param.Slider("direction", "Direction", 0, 359, 340, "°", "Where they fly: 0° to the right, 90° downwards, 270° upwards"),
         Param.Slider("scatter", "Scatter", 0, 100, 40, " %", "Every piece also flies off in its own direction"),
         Param.Slider("gravity", "Gravity", -100, 100, 0, " %", "Falling (+) or rising (−) more and more"),
         Param.Slider("turbulence", "Turbulence", 0, 100, 30, " %", "Swirling on the way"),
@@ -156,7 +156,8 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
         val p = (v["progress"] / 10000.0).let { if (v.bool("assemble")) 1 - it else it }
         if (p <= 0) return src.copy()
         val short = min(w, h).toDouble()
-        val flyAngle = Math.toRadians(v["direction"].toDouble())
+        // the settings count clockwise on the screen (90° = down); inside counterclockwise
+        val flyAngle = Math.toRadians(-v["direction"].toDouble())
         val (label, count) = pieces(w, h, v["shape"], v["size"], v["irregular"] / 100.0, flyAngle, seed)
 
         // every piece: its box and middle
@@ -180,7 +181,7 @@ object Shatter : Effect("shatter", "Shatter & dissolve", "The picture breaks int
 
         // when every piece comes loose, 0..1
         val start = v["start"]
-        val frontAngle = Math.toRadians(v["frontAngle"].toDouble())
+        val frontAngle = Math.toRadians(-v["frontAngle"].toDouble())
         val fx = cos(frontAngle)
         val fy = -sin(frontAngle)
         val corners = listOf(0.0 to 0.0, w.toDouble() to 0.0, 0.0 to h.toDouble(), w.toDouble() to h.toDouble())

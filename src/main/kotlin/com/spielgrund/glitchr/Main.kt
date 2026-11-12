@@ -10,6 +10,9 @@ import javax.swing.SwingUtilities
 
 /** Starts GlitchR; the first argument (image or project) is opened, further images become image layers. */
 fun main(args: Array<String>) {
+    // a memory limit set in the performance settings: GlitchR starts again with it
+    if (com.spielgrund.glitchr.ui.Performance.relaunchForMemory(args)) return
+    com.spielgrund.glitchr.ui.Performance.applyStored()
     // English throughout: dialog buttons, file chooser and decimal points, whatever the system language
     Locale.setDefault(Locale.ENGLISH)
     JComponent.setDefaultLocale(Locale.ENGLISH)

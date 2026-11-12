@@ -30,7 +30,7 @@ class NewEffectsTest {
 
     @Test
     fun `kaleidoscope with mirrored segments is symmetric`() {
-        val out = run(Kaleidoscope, "segments" to 4)
+        val out = run(Kaleidoscope, "segments" to 400)
         // 4 mirrored segments around the center: symmetric left/right and top/bottom
         var mismatches = 0
         for (y in 0 until 200) for (x in 0 until 100) if (!close(out[x, y], out[199 - x, y])) mismatches++
@@ -41,8 +41,8 @@ class NewEffectsTest {
 
     @Test
     fun `nested folds change the picture and keep the outer symmetry`() {
-        val single = run(Kaleidoscope, "segments" to 4)
-        val nested = run(Kaleidoscope, "segments" to 4, "levels" to 3, "innerSegments" to 5, "innerDistance" to 40)
+        val single = run(Kaleidoscope, "segments" to 400)
+        val nested = run(Kaleidoscope, "segments" to 400, "levels" to 300, "innerSegments" to 500, "innerDistance" to 4000)
         assertTrue(!single.data.contentEquals(nested.data), "inner fold changes the picture")
         var mismatches = 0
         for (y in 0 until 200) for (x in 0 until 100) if (!close(nested[x, y], nested[199 - x, y])) mismatches++

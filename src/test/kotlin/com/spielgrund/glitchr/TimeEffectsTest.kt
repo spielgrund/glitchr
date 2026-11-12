@@ -71,7 +71,7 @@ class TimeEffectsTest {
     private val moving = listOf(
         com.spielgrund.glitchr.effects.TimeDisplace, com.spielgrund.glitchr.effects.RgbTimeSplit, com.spielgrund.glitchr.effects.BlockTimeGlitch,
         com.spielgrund.glitchr.effects.Stutter, com.spielgrund.glitchr.effects.TimeGrid, com.spielgrund.glitchr.effects.Persistence,
-        com.spielgrund.glitchr.effects.Stroboscope, com.spielgrund.glitchr.effects.MotionDatamosh, com.spielgrund.glitchr.effects.MotionBlur,
+        com.spielgrund.glitchr.effects.OnionSkin, com.spielgrund.glitchr.effects.MotionDatamosh, com.spielgrund.glitchr.effects.MotionBlur,
     )
 
     @Test
@@ -87,7 +87,7 @@ class TimeEffectsTest {
 
     @Test
     fun `time effects that only move through time leave a still picture alone`() {
-        for (fx in moving - com.spielgrund.glitchr.effects.Stroboscope) {
+        for (fx in moving - com.spielgrund.glitchr.effects.OnionSkin) {
             assertContentEquals(picture(false, 5).data, render(layers(false, EffectLayer(fx)), 5).data, fx.name)
         }
     }

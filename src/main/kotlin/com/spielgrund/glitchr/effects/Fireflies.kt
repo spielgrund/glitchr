@@ -29,7 +29,7 @@ object Fireflies : Effect("fireflies", "Fireflies", "Single glowing pixels risin
         Param.Slider("spread", "Spread", 0, 36000, 36000, "°", "How wide they fan out around the direction: 360° = in all directions, small = a narrow fountain", decimals = 2).shownWhen("source", 1),
         Param.Heading("motionHeading", "Motion"),
         Param.Slider("rise", "Rise", 100, 10000, 2500, " %", "How far one flies in its life, of the canvas height", decimals = 2, transform = true),
-        Param.Slider("direction", "Direction", -18000, 18000, 0, "°", "Where they fly: 0° = up", decimals = 2),
+        Param.Slider("direction", "Direction", 0, 35900, 27000, "°", "Where they fly: 0° = right, 90° = down, 180° = left, 270° = up", decimals = 2),
         Param.Slider("speed", "Speed", 0, 400, 100, " %", "How quickly they live with the time"),
         Param.Slider("wander", "Wander", 0, 100, 35, " %", "How much they sway from side to side"),
         Param.Heading("lookHeading", "Look"),
@@ -66,7 +66,8 @@ object Fireflies : Effect("fireflies", "Fireflies", "Single glowing pixels risin
         val spread = Math.toRadians(v["spread"] / 100.0)
         val time = v["time"] / 1000.0 * v["speed"] / 100.0
         val rise = h * v["rise"] / 10000.0
-        val a = Math.toRadians(v["direction"] / 100.0)
+        // counted from the right, clockwise on the screen; inside from "up"
+        val a = Math.toRadians(v["direction"] / 100.0 + 90)
         val ux = sin(a); val uy = -cos(a)
         val px = cos(a); val py = sin(a)
         val wander = v["wander"] / 100.0

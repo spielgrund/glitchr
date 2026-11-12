@@ -1,7 +1,17 @@
 package com.spielgrund.glitchr.export
 
 import com.spielgrund.glitchr.image.Pixels
-import org.jcodec.api.awt.AWTSequenceEncoder
+import org.jcodec.codecs.h264.H264Encoder
+import org.jcodec.codecs.h264.io.model.SeqParameterSet
+import org.jcodec.codecs.h264.io.model.VUIParameters
+import org.jcodec.common.Codec
+import org.jcodec.common.VideoCodecMeta
+import org.jcodec.common.io.NIOUtils
+import org.jcodec.common.model.ColorSpace
+import org.jcodec.common.model.Packet
+import org.jcodec.common.model.Picture
+import org.jcodec.common.model.Size
+import org.jcodec.containers.mp4.muxer.MP4Muxer
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.awt.image.IndexColorModel
@@ -36,6 +46,14 @@ data class ExportSettings(
     val onlyChanges: Boolean = true,
     /** GIF with [onlyChanges]: pixels that moved less than this (per channel, roughly) count as unchanged. */
     val tolerance: Int = 0,
+    /**
+     * MP4: brightness in the full range 0–255 instead of the TV range 16–235 (the standard). For
+     * players that ignore the video's range tag and show TV-range videos flat (VLC with hardware
+     * decoding); programs that do read it show either right.
+     */
+    val fullRange: Boolean = false,
+    /** MP4: through FFmpeg's x264 when it is installed (exact colors, smaller files); otherwise JCodec. */
+    val ffmpeg: Boolean = true,
 )
 
 /** Writes rendered frames as GIF, MP4 or numbered PNGs. */
@@ -101,18 +119,112 @@ object AnimationExport {
 
     // ------------------------------------------------------------------ MP4
 
+    /**
+     * H.264 in MP4, with the colors as players expect them: the frames converted to Rec. 709 in the
+     * usual "TV" range (Y 16–235), and the video tagged as exactly that. (JCodec on its own converts
+     * with a rounded-off formula into the full range 0–255 without saying so, so players stretch
+     * it again: the video came out darker, its colors stronger and redder.)
+     */
     private fun writeMp4(frames: Int, fps: Int, s: ExportSettings, file: File, render: (Int) -> Pixels, progress: (Int) -> Boolean): File {
         val out = withExtension(file, "mp4")
-        val encoder = AWTSequenceEncoder.createSequenceEncoder(out, fps)
+        if (s.ffmpeg && Ffmpeg.path != null) {
+            // FFmpeg's x264: the frames piped in as they are rendered
+            var encoder: Ffmpeg.Encoder? = null
+            var done = false
+            try {
+                for (f in 0 until frames) {
+                    val image = prepare(render(f), s.scale, s.background, evenSize = true)
+                    val e = encoder ?: Ffmpeg.Encoder(out, image.width, image.height, fps, s.fullRange).also { encoder = it }
+                    e.frame(image)
+                    if (!progress(f + 1)) break
+                }
+                encoder?.finish()
+                done = true
+            } finally {
+                if (!done) encoder?.cancel()
+            }
+            return out
+        }
+        val channel = NIOUtils.writableChannel(out)
         try {
+            val muxer = MP4Muxer.createMP4MuxerToChannel(channel)
+            val encoder = TaggedH264Encoder(s.fullRange)
+            var track: org.jcodec.common.MuxerTrack? = null
+            var buffer: java.nio.ByteBuffer? = null
             for (f in 0 until frames) {
-                encoder.encodeImage(prepare(render(f), s.scale, s.background, evenSize = true))
+                val image = prepare(render(f), s.scale, s.background, evenSize = true)
+                val picture = toRec709(image, s.fullRange)
+                val size = encoder.estimateBufferSize(picture)
+                if (buffer == null || buffer.capacity() < size) buffer = java.nio.ByteBuffer.allocate(size)
+                buffer!!.clear()
+                val encoded = encoder.encodeFrame(picture, buffer)
+                val packet = Packet.createPacket(
+                    NIOUtils.clone(encoded.data), f.toLong(), fps, 1, f.toLong(),
+                    if (encoded.isKeyFrame) Packet.FrameType.KEY else Packet.FrameType.INTER, null,
+                )
+                if (track == null) track = muxer.addVideoTrack(Codec.H264, VideoCodecMeta.createSimpleVideoCodecMeta(Size(image.width, image.height), ColorSpace.YUV420J))
+                track!!.addFrame(packet)
                 if (!progress(f + 1)) break
             }
+            muxer.finish()
         } finally {
-            encoder.finish()
+            channel.close()
         }
         return out
+    }
+
+    /** JCodec's H.264 encoder, its stream tagged as Rec. 709 in the TV range (or the full range). */
+    internal class TaggedH264Encoder(private val fullRange: Boolean = false) : H264Encoder(org.jcodec.codecs.h264.encode.DumbRateControl()) {
+        override fun initSPS(sz: Size): SeqParameterSet = super.initSPS(sz).apply {
+            vuiParams = VUIParameters().apply {
+                videoSignalTypePresentFlag = true
+                videoFormat = 5 // unspecified
+                videoFullRangeFlag = fullRange
+                colourDescriptionPresentFlag = true
+                colourPrimaries = 1 // Rec. 709 (= sRGB)
+                transferCharacteristics = 1
+                matrixCoefficients = 1
+            }
+        }
+    }
+
+    /** [image] (even width and height) as a 4:2:0 picture in Rec. 709, TV range (or [fullRange]), the way JCodec stores it (values − 128). */
+    internal fun toRec709(image: BufferedImage, fullRange: Boolean = false): Picture {
+        // TV range: brightness 16–235, colors 16–240 · full range: all of 0–255
+        val lumaScale = if (fullRange) 255.0 else 219.0
+        val lumaFloor = if (fullRange) 0 else 16
+        val lumaTop = if (fullRange) 255 else 235
+        val chromaScale = if (fullRange) 255.0 else 224.0
+        val chromaLow = if (fullRange) 0 else 16
+        val chromaHigh = if (fullRange) 255 else 240
+        val w = image.width
+        val h = image.height
+        val picture = Picture.create(w, h, ColorSpace.YUV420J)
+        val yPlane = picture.getPlaneData(0)
+        val cbPlane = picture.getPlaneData(1)
+        val crPlane = picture.getPlaneData(2)
+        val rgb = image.getRGB(0, 0, w, h, null, 0, w)
+        val cw = w / 2
+        for (y in 0 until h) for (x in 0 until w) {
+            val c = rgb[y * w + x]
+            val luma = 0.2126 * (c shr 16 and 0xFF) + 0.7152 * (c shr 8 and 0xFF) + 0.0722 * (c and 0xFF)
+            yPlane[y * w + x] = ((lumaFloor + luma * lumaScale / 255).roundToInt().coerceIn(lumaFloor, lumaTop) - 128).toByte()
+        }
+        for (cy in 0 until h / 2) for (cx in 0 until cw) {
+            // the color of the 2 × 2 block
+            var r = 0.0; var g = 0.0; var b = 0.0
+            for (dy in 0..1) for (dx in 0..1) {
+                val c = rgb[(cy * 2 + dy) * w + cx * 2 + dx]
+                r += (c shr 16 and 0xFF); g += (c shr 8 and 0xFF); b += (c and 0xFF)
+            }
+            r /= 4 * 255.0; g /= 4 * 255.0; b /= 4 * 255.0
+            val luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            val cb = 128 + chromaScale * (b - luma) / 1.8556
+            val cr = 128 + chromaScale * (r - luma) / 1.5748
+            cbPlane[cy * cw + cx] = (cb.roundToInt().coerceIn(chromaLow, chromaHigh) - 128).toByte()
+            crPlane[cy * cw + cx] = (cr.roundToInt().coerceIn(chromaLow, chromaHigh) - 128).toByte()
+        }
+        return picture
     }
 
     // ------------------------------------------------------------------ GIF

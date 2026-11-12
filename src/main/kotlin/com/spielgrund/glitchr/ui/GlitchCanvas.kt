@@ -310,6 +310,12 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 onCropFinish(e.keyCode == KeyEvent.VK_ENTER)
                 return@addKeyEventDispatcher true
             }
+            // Ctrl or Alt pressed or let go: the brush circles show or hide at once
+            if ((e.keyCode == KeyEvent.VK_CONTROL || e.keyCode == KeyEvent.VK_ALT) && (e.id == KeyEvent.KEY_PRESSED || e.id == KeyEvent.KEY_RELEASED) && flowKey != null) {
+                brushHeld = e.isControlDown
+                eraseHeld = e.isAltDown
+                repaint()
+            }
             if (e.keyCode == KeyEvent.VK_SPACE && KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner !is JTextComponent) {
                 val down = e.id == KeyEvent.KEY_PRESSED
                 if (down != spaceDown && (e.id == KeyEvent.KEY_PRESSED || e.id == KeyEvent.KEY_RELEASED)) {
@@ -640,10 +646,39 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
             g.color = Color.WHITE
             g.draw(Ellipse2D.Double(p.x - r, p.y - r, 2 * r, 2 * r))
         }
+        // the brush that pushes (Ctrl + left) or smooths (Ctrl + right) the arrows
+        if (drag is FlowPush || drag is FlowSmooth || (drag == null && brushHeld)) mouse?.let { p ->
+            val r = flowBrush.toDouble()
+            g.stroke = BasicStroke(1.5f)
+            g.color = Color(0, 0, 0, 150)
+            g.draw(Ellipse2D.Double(p.x - r, p.y - r, 2 * r, 2 * r))
+            g.stroke = BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, floatArrayOf(4f, 3f), 0f)
+            g.color = Color(0x7CE0FF)
+            g.draw(Ellipse2D.Double(p.x - r, p.y - r, 2 * r, 2 * r))
+        }
     }
 
     /** Whether Alt is held (erasing flow strokes). */
     private var eraseHeld = false
+
+    /** Whether Ctrl is held (the brush that pushes and smooths flow strokes). */
+    private var brushHeld = false
+
+    /** Radius of that brush, in screen pixels; Alt + mouse wheel changes it. */
+    private var flowBrush = 40
+
+    /** Pushes (by [dx], [dy] canvas pixels, around [at]) or smooths the flow strokes under the brush. */
+    private fun brushFlow(key: String, at: Point2D.Double, dx: Double, dy: Double, smooth: Boolean) {
+        val img = image ?: return
+        val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
+        val strokes = FlowStrokes.parse(l.texts[key] ?: "")
+        if (strokes.isEmpty()) return
+        val r = flowBrush / zoom
+        val changed = if (smooth) FlowStrokes.smooth(strokes, img.width, img.height, at.x, at.y, r, 0.5)
+        else FlowStrokes.push(strokes, img.width, img.height, at.x, at.y, r, dx, dy, 6 / zoom)
+        l.texts[key] = FlowStrokes.format(changed)
+        onFlowEdited(false)
+    }
 
     /** Removes the flow strokes passing within [ERASE_RADIUS] screen pixels of [p]. */
     private fun eraseFlow(p: Point, key: String) {
@@ -831,6 +866,8 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
     /** A flow stroke being drawn, in canvas pixels. */
     private class FlowDraw(val key: String, val points: MutableList<Point2D.Double>) : Drag
     private class FlowErase(val key: String) : Drag
+    private class FlowPush(val key: String, var last: Point2D.Double) : Drag
+    private class FlowSmooth(val key: String) : Drag
 
     private class MoveLayer(val layer: ImageLayer, val start: Point2D.Double, val x: Double, val y: Double) : Drag
 
@@ -1051,7 +1088,15 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 return
             }
             flowKey?.let { key ->
-                if (SwingUtilities.isRightMouseButton(e) || e.isAltDown) {
+                if (e.isControlDown) {
+                    // Ctrl: the brush - left pushes the arrows along, right smooths them
+                    val p = toImage(e.point)
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        drag = FlowSmooth(key)
+                        brushFlow(key, p, 0.0, 0.0, true)
+                    } else if (SwingUtilities.isLeftMouseButton(e)) drag = FlowPush(key, p)
+                    repaint()
+                } else if (SwingUtilities.isRightMouseButton(e) || e.isAltDown) {
                     drag = FlowErase(key)
                     eraseFlow(e.point, key)
                 } else if (SwingUtilities.isLeftMouseButton(e)) {
@@ -1200,6 +1245,12 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                     if (p.distance(d.points.last()) * zoom >= 4) d.points.add(p)
                 }
                 is FlowErase -> eraseFlow(e.point, d.key)
+                is FlowPush -> {
+                    val p = toImage(e.point)
+                    brushFlow(d.key, d.last, p.x - d.last.x, p.y - d.last.y, false)
+                    d.last = p
+                }
+                is FlowSmooth -> brushFlow(d.key, toImage(e.point), 0.0, 0.0, true)
                 is MovePoint -> {
                     val l = layer as? com.spielgrund.glitchr.model.ParamLayer ?: return
                     val img = image ?: return
@@ -1248,7 +1299,7 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
                 }
                 onFlowEdited(true)
             }
-            if (d is FlowErase) onFlowEdited(true)
+            if (d is FlowErase || d is FlowPush || d is FlowSmooth) onFlowEdited(true)
             if (d is MoveHandlePoint || d is MovePoint) onHandleEdited(true)
             when (d) {
                 is ShapeDrag -> applyShape(d.shape(), d.subtract)
@@ -1268,7 +1319,9 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         override fun mouseMoved(e: MouseEvent) {
             mouse = e.point
             eraseHeld = e.isAltDown
+            brushHeld = e.isControlDown && flowKey != null
             updateCursor(e.point)
+            if (flowKey != null) repaint()
         }
 
         override fun mouseExited(e: MouseEvent) {
@@ -1277,7 +1330,12 @@ class GlitchCanvas(private val brush: Brush) : JComponent(), Scrollable {
         }
 
         override fun mouseWheelMoved(e: MouseWheelEvent) {
-            if (e.isControlDown && image != null) {
+            if (e.isAltDown && flowKey != null) {
+                // Alt + wheel: the size of the arrow brush
+                flowBrush = (flowBrush * if (e.preciseWheelRotation < 0) 1.15 else 1 / 1.15).roundToInt().coerceIn(5, 600)
+                brushHeld = true
+                repaint()
+            } else if (e.isControlDown && image != null) {
                 if (e.preciseWheelRotation < 0) zoomIn(e.point) else zoomOut(e.point)
             } else {
                 // let the scroll pane scroll

@@ -42,4 +42,41 @@ class TunnelTransformTest {
         assertEquals(com.spielgrund.glitchr.effects.CanvasHandle("turnX", "turnY", percent = true), TunnelTransform.canvasHandle)
         assertTrue(TunnelTransform.params.none { it.key == "centerX" })
     }
+
+    @Test
+    fun `square, the rings are squares`() {
+        // a gradient from left to right, so any shift sideways shows
+        val ramp = Pixels(120, 120, IntArray(120 * 120) { i -> val g = i % 120 * 2; (0xFF shl 24) or (g shl 16) or (g shl 8) or g })
+        fun turn(shape: Int) = TunnelTransform.apply(ramp, TunnelTransform.defaultValues(mapOf("radius" to 7000, "turnX" to 3333, "shape" to shape)), 1L)
+        val round = turn(0)
+        val square = turn(1)
+        // radius 70 %: round 59 px (of the half diagonal), square 42 px (of half the side)
+        // (110, 60) lies 50 px out to the side: inside the circle, beyond the square
+        assertTrue((round[110, 60] and 0xFF) < (ramp[110, 60] and 0xFF), "round moves it")
+        assertEquals(ramp[110, 60], square[110, 60])
+        // towards the corner the square reaches as far as the circle: (95, 95) moves
+        assertTrue((square[95, 95] and 0xFF) < (ramp[95, 95] and 0xFF), "square moves the diagonal")
+        // mirrored top to bottom, the same
+        assertEquals(square[95, 95], square[95, 24])
+    }
+
+    @Test
+    fun `copies nest smaller and smaller, the deepest moved furthest`() {
+        fun copies(vararg c: Pair<String, Int>) = TunnelTransform.apply(src, TunnelTransform.defaultValues(mapOf("mode" to 1, *c)), 1L)
+        // their part of the picture, turned right by 50 %: the dot in the middle goes with the deepest copy, 30 px over
+        val part = copies("content" to 1, "turnX" to 5000)
+        assertTrue((part[90, 60] and 0xFF) < 100 && (part[60, 60] and 0xFF) > 100, "dot moved")
+        // the outermost copy is the picture itself: the corner stays
+        assertEquals(src[1, 1] and 0xFFFFFF, part[1, 1] and 0xFFFFFF)
+        // soft edges: on a gradient each copy, moved over, jumps against the one around it – blended softly, no more
+        val ramp = Pixels(120, 120, IntArray(120 * 120) { i -> val g = i % 120 * 2; (0xFF shl 24) or (g shl 16) or (g shl 8) or g })
+        fun cut(soft: Int) = TunnelTransform.apply(ramp, TunnelTransform.defaultValues(mapOf("mode" to 1, "content" to 1, "turnX" to 10000, "soft" to soft)), 1L)
+        fun jump(p: Pixels) = (1 until 120).maxOf { x -> kotlin.math.abs((p[x, 60] and 0xFF) - (p[x - 1, 60] and 0xFF)) }
+        assertTrue(jump(cut(0)) > 8, "hard edges jump: ${jump(cut(0))}")
+        assertTrue(jump(cut(30)) * 2 < jump(cut(0)), "soft edges blend: ${jump(cut(30))} against ${jump(cut(0))}")
+        // the whole picture made small: at half the size the ring of radius 40 comes back at 20 px (between copies 2 and 1)
+        val whole = copies("scale" to 50)
+        assertTrue((77..82).minOf { whole[it, 60] and 0xFF } < 128 && (77..82).all { (src[it, 60] and 0xFF) > 128 }, "ring copied smaller")
+        assertTrue(TunnelTransform.params.first { it.key == "radius" }.shownFor == ("mode" to setOf(0)))
+    }
 }

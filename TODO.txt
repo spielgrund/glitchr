@@ -1,1 +1,26 @@
-Cute Sticker Animations
+min/max mit Blobs
+ich hätte gerne den Min Max Filter aus Aftereffects. Bei ihm werden weiße oder schwarze Bereiche erweitert.
+kombiniere das bitte wahlweise auch mit Blobrichtungen
+Beat
+Ich hätte gerne einen Effekt der alle x Beats auslöst. Das kann sich dann wahlweise auch skalierung, x, y rotation etc auswirken.
+Ich kann über einen kurveneditor die Kurve zeichnen, die die transformation machen soll und den wert einstellen,
+um den aufaddiert oder subrahiert wird. Die standart Kurvenformen sind voreingestellt.
+Morph
+Der Effekt morpht vom darunterliegenden Bild zur aktuellen ebene
+Strudel
+Ich selektieren einen Teil des Bildes.
+z.b. den Himmel. Dieser füllt dann generativ einen 360 Halbkreis. Oben oder Unten. Diesen kann ich dann drehen
+und über einen Parameter twisten.
+Scanner Effekt
+Ein Effekt bei dem das Bild danach so aussieht, als ob es mit einem Scanner aufgenommen wurde.
+ähnlich wie in dem Bild
+
+Feuerwerk
+
+Pixelrain
+
+sphere transform
+
+depth dolly
+
+depth blur

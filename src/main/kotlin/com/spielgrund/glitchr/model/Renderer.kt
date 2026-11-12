@@ -3,6 +3,7 @@ package com.spielgrund.glitchr.model
 import com.spielgrund.glitchr.effects.FrameInput
 import com.spielgrund.glitchr.effects.Generator
 import com.spielgrund.glitchr.effects.TimeEffect
+import com.spielgrund.glitchr.effects.UsesBelow
 import com.spielgrund.glitchr.effects.Values
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.image.alpha
@@ -33,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap
 class Renderer {
     private class EffectEntry {
         var input: Pixels? = null
+        var below: Pixels? = null
         var effectKey: Any? = null
         var effect: Pixels? = null
         var compositeKey: Any? = null
@@ -148,7 +150,7 @@ class Renderer {
             entry.cutKey = cutKey
         }
         var group = entry.cut!!
-        for (fx in groupEffects) group = applyEffect(fx, group, space)
+        for (fx in groupEffects) group = applyEffect(fx, group, space, below.takeIf { it !== blank })
         if (inputOnly) return group
 
         val compositeKey = listOf(image.opacity, image.blend)
@@ -190,14 +192,16 @@ class Renderer {
         return entry.output!!
     }
 
-    private fun applyEffect(layer: EffectState, input: Pixels, space: MaskSpace): Pixels {
+    private fun applyEffect(layer: EffectState, input: Pixels, space: MaskSpace, below: Pixels? = null): Pixels {
         if (!layer.visible || layer.opacity == 0) return input
         val entry = effects.getOrPut(layer.id) { EffectEntry() }
-        val sameInput = entry.input === input
+        // an effect that sees the picture below depends on it too
+        val sameInput = entry.input === input && (layer.effect !is UsesBelow || entry.below === below)
+        entry.below = below
 
         val effectKey = listOf(layer.effect.id, layer.values, layer.seed, layer.texts, timeKey(layer))
         if (!sameInput || entry.effectKey != effectKey || entry.effect == null) {
-            entry.effect = runEffect(layer, input)
+            entry.effect = runEffect(layer, input, below)
             entry.effectKey = effectKey
             entry.compositeKey = null
         }
@@ -220,12 +224,12 @@ class Renderer {
         return listOf(frame, t.frameCount, t.below(layer.id))
     }
 
-    private fun runEffect(layer: EffectState, input: Pixels): Pixels {
+    private fun runEffect(layer: EffectState, input: Pixels, below: Pixels? = null): Pixels {
         val values = Values(layer.values, layer.texts)
         val effect = layer.effect
         // motion blur: the effect at every moment the shutter is open, blended
         if (layer.motion.isNotEmpty()) return com.spielgrund.glitchr.image.meanOf(layer.motion.map { effect.apply(input, Values(it, layer.texts), layer.seed) })
-        if (effect !is TimeEffect) return effect.apply(input, values, layer.seed)
+        if (effect !is TimeEffect && effect !is UsesBelow) return effect.apply(input, values, layer.seed)
         val t = time
         val current = frame
         val frames = t?.let {
@@ -233,9 +237,12 @@ class Renderer {
                 override val frame = current
                 override val frameCount = it.frameCount
                 override fun at(f: Int) = if (f == current) input else it.input(layer.id, f)
+                override val fps = it.fps
+                override val bpm = it.bpm
             }
         }
-        return effect.apply(input, values, layer.seed, frames)
+        if (effect is UsesBelow) return effect.apply(input, below, values, layer.seed, frames)
+        return (effect as TimeEffect).apply(input, values, layer.seed, frames)
     }
 
     companion object {
@@ -360,7 +367,10 @@ class Renderer {
  * each other – and kept for a while, so playing or exporting computes each only once,
  * even when several threads render frames at the same time.
  */
-class TimeSession(val layers: List<AnimatedLayer>, val frameCount: Int, private val width: Int, private val height: Int) {
+class TimeSession(
+    val layers: List<AnimatedLayer>, val frameCount: Int, private val width: Int, private val height: Int,
+    val fps: Double = 25.0, val bpm: Double = 120.0,
+) {
     /** How many inputs are kept: about a fifth of the memory Java may use. */
     private val budget = (Runtime.getRuntime().maxMemory() * 0.2 / (width.toLong() * height * 4).coerceAtLeast(1)).toInt().coerceIn(4, 1000)
 

@@ -1,7 +1,7 @@
 package com.spielgrund.glitchr
 
 import com.spielgrund.glitchr.effects.Generators
-import com.spielgrund.glitchr.effects.PixelRain
+import com.spielgrund.glitchr.effects.ShapeRain
 import com.spielgrund.glitchr.image.Pixels
 import com.spielgrund.glitchr.image.alpha
 import com.spielgrund.glitchr.image.blue
@@ -10,11 +10,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class PixelRainTest {
+class ShapeRainTest {
     private val black = Pixels(160, 120, IntArray(160 * 120) { 0xFF000000.toInt() })
     private val white = Pixels(160, 120, IntArray(160 * 120) { 0xFFFFFFFF.toInt() })
 
-    private fun run(m: Map<String, Int>, base: Pixels = black) = PixelRain.apply(base, PixelRain.defaultValues(m), 5)
+    private fun run(m: Map<String, Int>, base: Pixels = black) = ShapeRain.apply(base, ShapeRain.defaultValues(m), 5)
     private fun lit(p: Pixels, base: Pixels = black) = p.data.indices.filter { p.data[it] != base.data[it] }
 
     @Test
@@ -77,7 +77,7 @@ class PixelRainTest {
             val c = out[cx * 8, cy * 8]
             for (y in 0 until 8) for (x in 0 until 8) assertEquals(c, out[cx * 8 + x, cy * 8 + y])
         }
-        val clear = Generators.byId("pixelrain")!!.let { it.generate(160, 120, it.defaultValues(mapOf("transparent" to 1, "fadeOut" to 0, "fadeIn" to 0, "depth" to 0, "width" to 40, "count" to 40)), 5) }
+        val clear = Generators.byId("shaperain")!!.let { it.generate(160, 120, it.defaultValues(mapOf("transparent" to 1, "fadeOut" to 0, "fadeIn" to 0, "depth" to 0, "width" to 40, "count" to 40)), 5) }
         assertTrue(clear.data.count { alpha(it) == 0 } > clear.data.size / 2, "mostly clear")
         assertTrue(clear.data.any { alpha(it) == 255 }, "with lines")
     }
