@@ -249,6 +249,10 @@ object Generators {
             defaultBase = 0xE9E4DA,
         ),
         Generator(
+            "nebula", "Nebula", "A glowing space nebula ray-marched in 3D – billowing clouds, a shell or filaments of gas in palettes, dark dust lanes, stars; turn the camera around it, animate the drift", Nebula,
+            defaultBase = 0x020308,
+        ),
+        Generator(
             "eclipse", "Solar eclipse", "A solar eclipse – totality with a glowing corona, fine rays, helmet streamers and pink prominences, a flaring diamond ring, a ring of fire or partial; animate the moon passing", SolarEclipse,
             defaultBase = 0x000000,
         ),

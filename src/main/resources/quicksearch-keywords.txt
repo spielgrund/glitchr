@@ -44,6 +44,10 @@ generator tribal: tattoo, ornament, sigilism, polynesian, flames, tribal tattoo
 generator flowers: flower, rose, tulip, daisy, sunflower, bouquet, blossom, blumen, rose, tulpe, strauß
 generator chaostype: typography, carson, grunge, text, letters, type, typo, schrift, buchstaben
 generator fireworks: fireworks, firework, rocket, rockets, new year, silvester, celebration, explosion, sparks, peony, willow, chrysanthemum, feuerwerk, rakete, raketen, neujahr, böller, funken
+generator nebula: nebula, space, galaxy, gas, cloud, cosmos, stars, ray marching, volumetric, 3d, hubble, orion, nebel, weltraum, sternennebel, kosmos, sterne
+effect flag: flag, wave, flutter, wind, cloth, banner, fabric, flagge, fahne, wehen, flattern, stoff
+effect flatsphere: flat sphere, ball, bulge, lens, spherize, dome, circle, fan, kugel, flache kugel, wölbung, linse, kreis
+effect monsterwave: monster wave, wave, tsunami, curl, barrel, surf, ocean, tidal wave, welle, monsterwelle, riesenwelle, brandung, tunnel, wölben
 generator eclipse: eclipse, solar eclipse, sun, moon, corona, totality, diamond ring, annular, ring of fire, space, dark sun, dark souls, beam, strahl, sonnenfinsternis, finsternis, sonne, mond, korona
 generator blackhole: black hole, interstellar, space, accretion, stars, schwarzes loch, weltall
 generator chars: text, letters, ascii, characters, type, schrift, buchstaben, zeichen

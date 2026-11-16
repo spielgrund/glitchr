@@ -136,7 +136,7 @@ class EffectCategory(val name: String, val effects: List<Effect>)
 object Effects {
     val categories: List<EffectCategory> = listOf(
         EffectCategory("Glitch", listOf(PixelSort, PixelBleed, PixelStretch, JpegArtifacts, Datamosh, BlockGlitch, Bitcrush, RgbDistort, SliceShift, SlitScan, Scanner)),
-        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, TunnelTransform, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf, Uzumaki, Morph, RisingPixels, PixelRain, SphereTransform)),
+        EffectCategory("Distort & Repeat", listOf(Offset, Transform, Grid, Tiling, BreakOpen, Shatter, Displace, Flow, FlowSmooth, Turbulence, Twist, Polar, Tunnel, TunnelTransform, Sphere, Kaleidoscope, WaterReflection, Feedback, BlobEcho, Surf, Uzumaki, Morph, RisingPixels, PixelRain, SphereTransform, Flag, MonsterWave, FlatSphere)),
         EffectCategory("Color & Sharpness", listOf(ColorCorrect, CurvesEffect, ColorCompressor, SoftLightStack, Ramp, LabColor, PaletteTransfer, ReduceColors, Dither, Filler, Blur, Sharpen, MinMax, Grain, Glow, LightStreaks, LightRays, LightLeaks, DropShadow, H264Prep, Mp4Preview)),
         EffectCategory("Keying", listOf(LumaKey, ColorKey, FindKey)),
         EffectCategory("Growth & Simulation", listOf(Grow, Horns, Bubbles, DiffGrowth, Erosion, ErosionFast, InkFill, Bleed)),
